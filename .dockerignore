@@ -1,0 +1,10 @@
+.git
+.idea
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+**/coverage
+**/.expo
+apps/mobile/ios
+apps/mobile/android
