@@ -121,7 +121,7 @@
 | `status` | `pending` / `approved` / `cancelled` / `superseded` / `expired` | `expired`는 서버가 만료 시각으로 판정한 값 |
 | `expiresAt` | 시각 | |
 | `consumesQuota` | boolean | 승인 시 AI 일정 변경 이용량을 차감하는지 |
-| `changes` | 배열 | 훈련별 변경. `{ sessionId, action, before, after }`. `action`은 `move` / `skip` / `modify` / `add` / `remove`. `before`·`after`는 `{ date, type, distanceKm, durationMin }` 또는 null |
+| `changes` | 배열 | 훈련별 변경. `{ sessionId, action, before, after }`. `action`은 `move` / `skip` / `modify` / `add` / `remove`. `before`·`after`는 `{ date, type, distanceKm, durationMin }` 또는 null. 새로 추가되는 훈련(`add`)의 `sessionId`는 null이다 |
 | `impact` | 객체 또는 null | `{ weeklyDistanceBeforeKm, weeklyDistanceAfterKm, skippedCount }` |
 | `warnings` | 문자열 배열 | 경고 코드. 문구는 `packages/shared`에 둔다 |
 | `goal` | 객체 또는 null | 목표 변경일 때 `{ before, after }` |
