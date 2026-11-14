@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { Text } from 'react-native';
 import { getHealth } from '@/api/health';
 import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { Text } from '@/ui';
 
 export default function Home() {
   // 앱과 서버의 연결을 확인하는 임시 표시. 홈 화면을 만드는 T-205에서 지운다

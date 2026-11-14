@@ -102,7 +102,7 @@
 - 패키지: `@pacemate/shared`(`packages/shared`), `@pacemate/training-engine`(`packages/training-engine`), `@pacemate/api`(`services/api`), `@pacemate/mobile`(`apps/mobile`).
 - **`packages/*`를 고친 뒤에는 `pnpm build`를 다시 실행한다.** API는 패키지의 소스가 아니라 빌드 결과(`dist`)를 쓴다. 빌드하지 않으면 API의 타입 검사와 테스트가 이전 내용을 본다.
 - API와 패키지는 ESM이다. 상대 경로 import에 `.js` 확장자를 붙인다(`import { x } from './file.js'`).
-- 테스트는 API와 패키지가 Vitest, 앱이 Jest다(`AD-12`). 테스트 함수는 `vitest`에서 직접 import한다.
+- 테스트는 API와 패키지가 Vitest, 앱이 Jest다(`AD-12`). 테스트 함수는 `vitest`에서 직접 import한다. 앱의 컴포넌트 테스트는 `@testing-library/react-native`로 쓴다.
 - 테스트 파일은 대상 파일 옆에 `*.test.ts`로 둔다. API의 HTTP 수준 테스트는 `services/api/test/`에 둔다.
 - TypeScript는 6 버전을 쓴다. 7 버전은 typescript-eslint가 지원하지 않는다.
 - Prisma는 7 버전을 쓴다. npm의 `latest`가 8의 출시 후보(RC)를 가리키므로 버전을 지정해 설치한다.

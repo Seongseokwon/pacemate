@@ -11,7 +11,9 @@
     "test": "jest"
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.1.1",
     "@pacemate/shared": "workspace:*",
+    "@react-native-community/datetimepicker": "9.2.1",
     "@tanstack/react-query": "^5.107.1",
     "expo": "~58.0.25",
     "expo-constants": "~58.0.16",
@@ -26,6 +28,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^14.1.0",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.3.0",
     "jest": "^30.5.2",
