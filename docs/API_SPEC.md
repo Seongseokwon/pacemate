@@ -210,12 +210,13 @@
 | `goalTimeSec` | | 목표 기록 |
 | `raceDate` | | 오늘 이후 날짜 |
 
-- 미리보기 응답: `startDate`, `endDate`, `totalWeeks`, `sessions`(Session 배열, ID 없음), `warnings`.
+- 미리보기 응답: `options` 배열. 항목마다 `kind`(`race_prep` / `base_building`), `startDate`, `endDate`, `totalWeeks`, `sessions`(Session 배열, ID 없음), `warnings`가 있다. 만들 수 있는 계획만 들어 있으므로 항목은 하나 또는 둘이다(`TE-G06`).
+- 확정 요청에는 고른 계획의 `kind`를 더한다. 그 종류의 계획을 만들 수 없는 입력이면 `PLAN_NOT_FEASIBLE`이다.
 - Training Engine이 결정적이므로 확정 요청은 같은 입력으로 다시 계산해 저장한다. 미리보기 결과를 서버에 보관하지 않는다.
 - 확정 응답은 `GET /v1/plan`과 같다. 활성 계획이 이미 있으면 `PLAN_ALREADY_ACTIVE`. 기간이 끝난 계획은 이 요청에서 종료 처리된다(`F03-R08`).
-- 조건에 맞는 계획을 만들 수 없으면 `PLAN_NOT_FEASIBLE`. 준비 기간 부족처럼 보수적 대안을 만들 수 있는 경우는 오류가 아니라 `warnings`와 함께 대안 계획을 돌려준다(`TE-G06`).
+- 어떤 계획도 만들 수 없으면 `PLAN_NOT_FEASIBLE`이다. 완주 준비 계획만 만들 수 없는 경우는 오류가 아니다. `options`에 기초 훈련 계획만 담고 그 `warnings`에 이유를 넣는다(`TE-G06`).
 
-**`GET /v1/plan`** 응답: `id`, `goalDistance`, `goalTimeSec`, `raceDate`, `startDate`, `endDate`, `version`, `warnings`, `progress`(`{ completed, total }`), `isFinished`(종료일이 지났는지).
+**`GET /v1/plan`** 응답: `id`, `kind`, `goalDistance`, `goalTimeSec`, `raceDate`, `startDate`, `endDate`, `version`, `warnings`, `progress`(`{ completed, total }`), `isFinished`(종료일이 지났는지).
 
 **`GET /v1/sessions/{id}`** 응답: Session 필드에 더해 `workout`(Workout 또는 null), `changes`(이 훈련이 바뀐 이력: 시각, 사유, 변경 전후).
 

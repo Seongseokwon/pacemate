@@ -119,6 +119,7 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | `id` | uuid | ✓ | 기본 키 |
 | `user_id` | uuid | ✓ | `users` 참조 |
 | `status` | enum `active` / `ended` | ✓ | |
+| `kind` | enum `race_prep` / `base_building` | ✓ | 완주 준비 계획 / 기초 훈련 계획(`TE-G06`). 마이그레이션은 계획 API를 만드는 `T-204`에서 추가한다 |
 | `goal_distance` | enum `five_k` / `ten_k` / `half` | ✓ | |
 | `goal_time_sec` | integer | | 목표 기록 |
 | `race_date` | date | | 대회 날짜 |
