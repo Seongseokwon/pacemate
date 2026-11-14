@@ -8,3 +8,5 @@ allowBuilds:
   # 마이그레이션에 쓰는 엔진 바이너리를 내려받는다
   '@prisma/engines': true
   prisma: true
+  # jest의 파일 감시용 선택 의존성. 미리 빌드된 바이너리가 있어 스크립트가 필요 없다
+  '@parcel/watcher': false

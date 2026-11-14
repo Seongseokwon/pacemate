@@ -1,6 +1,10 @@
 node_modules/
 dist/
 services/api/src/generated/
+# Expo가 생성하는 네이티브 프로젝트와 타입
+apps/mobile/ios/
+apps/mobile/android/
+expo-env.d.ts
 coverage/
 .expo/
 .env
