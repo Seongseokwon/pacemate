@@ -11,9 +11,11 @@ import { JWKS } from '../src/auth/token-verifier.js';
 import { ZodPipe } from '../src/common/zod.pipe.js';
 import { APP_CONFIG, type AppConfig } from '../src/config.js';
 import { configureApp } from '../src/setup.js';
+import { TEST_DATABASE_URL } from './test-db.js';
 
 const config: AppConfig = {
   PORT: 0,
+  DATABASE_URL: TEST_DATABASE_URL,
   AUTH_JWKS_URL: 'https://auth.test/jwks.json',
   AUTH_ISSUER: 'https://auth.test/auth/v1',
   AUTH_AUDIENCE: 'authenticated',
@@ -78,7 +80,7 @@ afterAll(() => app.close());
 const api = () => request(app.getHttpServer());
 
 describe('상태 확인', () => {
-  test('토큰과 앱 버전 없이 응답한다', async () => {
+  test('토큰과 앱 버전 없이 응답하고 DB 연결을 확인한다', async () => {
     const res = await api().get('/health');
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ status: 'ok' });

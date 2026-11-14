@@ -8,6 +8,23 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      # API 테스트용 DB. 로컬에서는 docker compose가 같은 역할을 한다
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: pacemate
+          POSTGRES_PASSWORD: pacemate
+          POSTGRES_DB: pacemate_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pacemate"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql://pacemate:pacemate@localhost:5432/pacemate_test
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

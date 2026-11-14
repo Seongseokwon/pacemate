@@ -93,6 +93,8 @@
 | `pnpm check` | 빌드 → 타입 검사 → 린트 → 테스트. 작업을 끝내기 전에 통과시킨다 |
 | `pnpm --filter @pacemate/api test` | 한 패키지만 실행(패키지 이름을 바꿔 쓴다) |
 | `pnpm --filter @pacemate/api dev` | API를 감시 모드로 실행. `services/api/.env`가 필요하다(`.env.example` 참고) |
+| `docker compose up -d` | 로컬 PostgreSQL 실행(포트 5433). API 실행과 API 테스트에 필요하다 |
+| `pnpm --filter @pacemate/api db:migrate` | 스키마 변경으로 새 마이그레이션을 만들고 개발 DB에 적용 |
 
 - 패키지: `@pacemate/shared`(`packages/shared`), `@pacemate/training-engine`(`packages/training-engine`), `@pacemate/api`(`services/api`), `@pacemate/mobile`(`apps/mobile`). 앱은 자리만 있고 `T-105`에서 구성한다.
 - **`packages/*`를 고친 뒤에는 `pnpm build`를 다시 실행한다.** API는 패키지의 소스가 아니라 빌드 결과(`dist`)를 쓴다. 빌드하지 않으면 API의 타입 검사와 테스트가 이전 내용을 본다.
@@ -100,4 +102,7 @@
 - 테스트는 API와 패키지가 Vitest, 앱이 Jest다(`AD-12`). 테스트 함수는 `vitest`에서 직접 import한다.
 - 테스트 파일은 대상 파일 옆에 `*.test.ts`로 둔다. API의 HTTP 수준 테스트는 `services/api/test/`에 둔다.
 - TypeScript는 6 버전을 쓴다. 7 버전은 typescript-eslint가 지원하지 않는다.
+- Prisma는 7 버전을 쓴다. npm의 `latest`가 8의 출시 후보(RC)를 가리키므로 버전을 지정해 설치한다.
+- API 테스트는 `pacemate_test` DB를 쓰고 테스트마다 테이블을 비운다. 마이그레이션은 테스트 시작 때 자동으로 적용된다. 이름이 `_test`로 끝나지 않는 DB에서는 테스트가 실행되지 않는다.
+- 테이블을 추가하거나 바꿀 때는 `docs/DATABASE.md`를 먼저 고친다. 새 테이블의 마이그레이션에는 `ENABLE ROW LEVEL SECURITY`를 넣는다. 부분 유일 인덱스와 체크 제약은 마이그레이션 SQL에 직접 쓴다.
 - 설치 스크립트가 있는 의존성을 추가하면 `pnpm install`이 실패한다. `pnpm-workspace.yaml`의 `allowBuilds`에 그 패키지의 허용 여부를 적는다.

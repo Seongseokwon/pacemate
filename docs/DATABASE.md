@@ -37,7 +37,8 @@ Supabase는 `public` 스키마의 테이블을 자동 생성 API로 노출한다
 
 1. **모든 테이블에 행 수준 보안(RLS)을 켜고 정책은 만들지 않는다.** 앱에 들어가는 공개 키로는 어떤 행도 읽거나 쓸 수 없다.
 2. Backend API는 RLS를 우회하는 서버 전용 접속 정보로 연결한다.
-3. 새 테이블을 추가하는 마이그레이션에는 RLS 활성화를 반드시 포함한다. 출시 전 보안 점검(PRD §12) 항목에 "공개 키로 테이블 조회 불가"를 넣는다.
+3. 새 테이블을 추가하는 마이그레이션에는 RLS 활성화를 반드시 포함한다. 빠뜨리면 테스트(`services/api/test/database.test.ts`)가 실패한다. Prisma가 마이그레이션 기록에 쓰는 `_prisma_migrations` 테이블에도 RLS를 켠다.
+4. 출시 전 보안 점검(PRD §12) 항목에 "실제 Supabase의 공개 키로 테이블 조회 불가"를 넣는다. 로컬 테스트는 권한만 있는 다른 역할로 이를 흉내 낸다.
 
 ---
 
@@ -402,7 +403,20 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | `plan_change_logs` | 유일 `(proposal_id)` | 제안당 적용 1회 |
 | `ai_call_logs` | `(user_id, created_at)`, `(created_at)` | 비용 집계 |
 
-부분 유일 인덱스는 Prisma 스키마 문법으로 표현할 수 없어 마이그레이션 SQL에 직접 쓴다. 그 밖의 인덱스는 실제 조회가 느려졌을 때 추가한다.
+부분 유일 인덱스는 Prisma 스키마 문법으로 표현할 수 없어 마이그레이션 SQL에 직접 쓴다. 이렇게 넣은 인덱스와 제약을 Prisma가 다음 마이그레이션에서 지우려 하지 않는 것을 확인했다. 그 밖의 인덱스는 실제 조회가 느려졌을 때 추가한다.
+
+### 체크 제약
+
+값의 범위는 서버 코드가 먼저 검증하고, DB가 마지막으로 한 번 더 막는다. 마이그레이션 SQL에 직접 쓴다.
+
+| 테이블 | 제약 |
+|---|---|
+| `runner_profiles` | `weekly_run_count` 2~5, `recent_weekly_km` 0~100, `preferred_weekdays`는 1~7이고 개수가 `weekly_run_count` 이상 |
+| `training_plans` | `version` 1 이상, `end_date`가 `start_date` 이후 |
+| `planned_sessions` | `distance_km`와 `duration_min` 중 하나 이상 존재 |
+| `workout_logs` | `distance_km` 0.1~100, `duration_sec` 60~43200, `condition` 1~5, `rpe` 1~10, `memo` 500자 이하 |
+| `usage_counters` | `month`는 `YYYY-MM` 형식, 횟수는 0 이상 |
+| `notification_settings` | `reminder_hour` 8~20 |
 
 ---
 
