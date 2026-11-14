@@ -1,0 +1,22 @@
+# 로컬 개발과 테스트용 PostgreSQL. 운영 DB는 Supabase다(AD-06).
+services:
+  db:
+    image: postgres:17
+    ports:
+      # 이미 설치된 PostgreSQL(5432)과 겹치지 않게 한다
+      - '5433:5432'
+    environment:
+      POSTGRES_USER: pacemate
+      POSTGRES_PASSWORD: pacemate
+      POSTGRES_DB: pacemate
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./services/api/prisma/local-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U pacemate']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  db-data:

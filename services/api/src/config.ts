@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
+  DATABASE_URL: z.url(),
   AUTH_JWKS_URL: z.url(),
   AUTH_ISSUER: z.string().min(1),
   AUTH_AUDIENCE: z.string().min(1).default('authenticated'),

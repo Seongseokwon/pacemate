@@ -1,0 +1,451 @@
+// 테이블 구조의 기준은 docs/DATABASE.md다. 구조를 바꿀 때는 그 문서를 먼저 고친다.
+// 부분 유일 인덱스, 체크 제약, 행 수준 보안은 이 문법으로 표현할 수 없어 마이그레이션 SQL에 직접 쓴다.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AuthProvider {
+  apple
+  google
+
+  @@map("auth_provider")
+}
+
+enum Experience {
+  none
+  under_6m
+  under_2y
+  over_2y
+
+  @@map("experience")
+}
+
+enum ContinuousRun {
+  under_10m
+  under_30m
+  under_60m
+  over_60m
+
+  @@map("continuous_run")
+}
+
+enum RunnerLevel {
+  beginner
+  novice
+  intermediate
+
+  @@map("runner_level")
+}
+
+enum PlanStatus {
+  active
+  ended
+
+  @@map("plan_status")
+}
+
+enum GoalDistance {
+  five_k
+  ten_k
+  half
+
+  @@map("goal_distance")
+}
+
+enum SessionType {
+  walk_run
+  easy
+  tempo
+  long
+  race
+
+  @@map("session_type")
+}
+
+enum WorkoutSource {
+  app
+  chat
+
+  @@map("workout_source")
+}
+
+enum ChatRole {
+  user
+  assistant
+  system
+
+  @@map("chat_role")
+}
+
+enum ChatMessageStatus {
+  processing
+  done
+  failed
+
+  @@map("chat_message_status")
+}
+
+enum ChatCardType {
+  proposal
+  plan_summary
+  weekly_summary
+  limit
+  result
+
+  @@map("chat_card_type")
+}
+
+enum ProposalType {
+  reschedule
+  goal_change
+  workout_log
+
+  @@map("proposal_type")
+}
+
+enum ProposalSource {
+  chat
+  settings
+
+  @@map("proposal_source")
+}
+
+enum ProposalStatus {
+  pending
+  approved
+  cancelled
+  superseded
+
+  @@map("proposal_status")
+}
+
+enum ProposalReason {
+  schedule
+  fatigue
+  pain
+
+  @@map("proposal_reason")
+}
+
+enum Store {
+  app_store
+  play_store
+
+  @@map("store")
+}
+
+enum AiCallPurpose {
+  chat
+  weekly_feedback
+
+  @@map("ai_call_purpose")
+}
+
+enum PushPlatform {
+  ios
+  android
+
+  @@map("push_platform")
+}
+
+enum NotificationType {
+  workout_reminder
+  missed_notice
+  weekly_summary
+
+  @@map("notification_type")
+}
+
+model User {
+  id                  String       @id @db.Uuid
+  authProvider        AuthProvider @map("auth_provider")
+  termsAgreedAt       DateTime     @map("terms_agreed_at") @db.Timestamptz(3)
+  privacyAgreedAt     DateTime     @map("privacy_agreed_at") @db.Timestamptz(3)
+  healthDataAgreedAt  DateTime     @map("health_data_agreed_at") @db.Timestamptz(3)
+  consentVersion      String       @map("consent_version")
+  deletionRequestedAt DateTime?    @map("deletion_requested_at") @db.Timestamptz(3)
+  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  profile              RunnerProfile?
+  plans                TrainingPlan[]
+  sessions             PlannedSession[]
+  workouts             WorkoutLog[]
+  chatMessages         ChatMessage[]
+  proposals            ChangeProposal[]
+  planChangeLogs       PlanChangeLog[]
+  subscription         Subscription?
+  subscriptionEvents   SubscriptionEvent[]
+  usageCounters        UsageCounter[]
+  aiCallLogs           AiCallLog[]
+  weeklySummaries      WeeklySummary[]
+  notificationSetting  NotificationSetting?
+  pushTokens           PushToken[]
+  notificationLogs     NotificationLog[]
+
+  @@map("users")
+}
+
+model RunnerProfile {
+  userId             String        @id @map("user_id") @db.Uuid
+  experience         Experience
+  continuousRun      ContinuousRun @map("continuous_run")
+  recentWeeklyKm     Decimal?      @map("recent_weekly_km") @db.Decimal(5, 1)
+  recentPaceSecPerKm Int?          @map("recent_pace_sec_per_km")
+  recentRecordKm     Decimal?      @map("recent_record_km") @db.Decimal(5, 2)
+  weeklyRunCount     Int           @map("weekly_run_count") @db.SmallInt
+  preferredWeekdays  Int[]         @map("preferred_weekdays") @db.SmallInt
+  level              RunnerLevel
+  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("runner_profiles")
+}
+
+model TrainingPlan {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String       @map("user_id") @db.Uuid
+  status        PlanStatus
+  goalDistance  GoalDistance @map("goal_distance")
+  goalTimeSec   Int?         @map("goal_time_sec")
+  raceDate      DateTime?    @map("race_date") @db.Date
+  startDate     DateTime     @map("start_date") @db.Date
+  endDate       DateTime     @map("end_date") @db.Date
+  version       Int          @default(1)
+  warnings      Json         @default("[]")
+  engineVersion String       @map("engine_version")
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  endedAt       DateTime?    @map("ended_at") @db.Timestamptz(3)
+
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions   PlannedSession[]
+  proposals  ChangeProposal[]
+  changeLogs PlanChangeLog[]
+
+  @@map("training_plans")
+}
+
+model PlannedSession {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  planId          String      @map("plan_id") @db.Uuid
+  userId          String      @map("user_id") @db.Uuid
+  date            DateTime    @db.Date
+  type            SessionType
+  distanceKm      Decimal?    @map("distance_km") @db.Decimal(4, 1)
+  durationMin     Int?        @map("duration_min") @db.SmallInt
+  paceMinSecPerKm Int?        @map("pace_min_sec_per_km")
+  paceMaxSecPerKm Int?        @map("pace_max_sec_per_km")
+  weekNumber      Int         @map("week_number") @db.SmallInt
+  isSkipped       Boolean     @default(false) @map("is_skipped")
+  original        Json?
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  plan    TrainingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workout WorkoutLog?
+
+  @@index([userId, date])
+  @@map("planned_sessions")
+}
+
+model WorkoutLog {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String        @map("user_id") @db.Uuid
+  date             DateTime      @db.Date
+  distanceKm       Decimal       @map("distance_km") @db.Decimal(5, 2)
+  durationSec      Int           @map("duration_sec")
+  condition        Int?          @db.SmallInt
+  rpe              Int?          @db.SmallInt
+  memo             String?
+  plannedSessionId String?       @unique @map("planned_session_id") @db.Uuid
+  source           WorkoutSource
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plannedSession PlannedSession? @relation(fields: [plannedSessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+  @@map("workout_logs")
+}
+
+model ChatMessage {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String            @map("user_id") @db.Uuid
+  role            ChatRole
+  content         String
+  status          ChatMessageStatus
+  clientMessageId String?           @map("client_message_id") @db.Uuid
+  cardType        ChatCardType?     @map("card_type")
+  cardData        Json?             @map("card_data")
+  proposalId      String?           @map("proposal_id") @db.Uuid
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  proposal ChangeProposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, clientMessageId])
+  @@index([userId, createdAt])
+  @@map("chat_messages")
+}
+
+model ChangeProposal {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String          @map("user_id") @db.Uuid
+  planId          String?         @map("plan_id") @db.Uuid
+  type            ProposalType
+  source          ProposalSource
+  status          ProposalStatus
+  basePlanVersion Int?            @map("base_plan_version")
+  reason          ProposalReason?
+  request         Json
+  payload         Json
+  result          Json?
+  expiresAt       DateTime        @map("expires_at") @db.Timestamptz(3)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  resolvedAt      DateTime?       @map("resolved_at") @db.Timestamptz(3)
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan         TrainingPlan?  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  chatMessages ChatMessage[]
+  changeLog    PlanChangeLog?
+
+  @@map("change_proposals")
+}
+
+model PlanChangeLog {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String         @map("user_id") @db.Uuid
+  planId      String         @map("plan_id") @db.Uuid
+  proposalId  String         @unique @map("proposal_id") @db.Uuid
+  planVersion Int            @map("plan_version")
+  before      Json
+  after       Json
+  reason      String?
+  source      ProposalSource
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan     TrainingPlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  proposal ChangeProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@map("plan_change_logs")
+}
+
+model Subscription {
+  userId    String   @id @map("user_id") @db.Uuid
+  productId String   @map("product_id")
+  store     Store
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  willRenew Boolean  @map("will_renew")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model SubscriptionEvent {
+  eventId    String   @id @map("event_id")
+  userId     String?  @map("user_id") @db.Uuid
+  type       String
+  payload    Json
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
+
+  // 계정을 삭제해도 행은 남긴다(DATABASE.md §7)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("subscription_events")
+}
+
+model UsageCounter {
+  userId          String @map("user_id") @db.Uuid
+  month           String @db.Char(7)
+  chatCount       Int    @default(0) @map("chat_count")
+  rescheduleCount Int    @default(0) @map("reschedule_count")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, month])
+  @@map("usage_counters")
+}
+
+model AiCallLog {
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String?       @map("user_id") @db.Uuid
+  purpose           AiCallPurpose
+  model             String
+  promptVersion     String        @map("prompt_version")
+  inputTokens       Int           @map("input_tokens")
+  outputTokens      Int           @map("output_tokens")
+  cachedInputTokens Int?          @map("cached_input_tokens")
+  costUsd           Decimal       @map("cost_usd") @db.Decimal(10, 6)
+  toolCallCount     Int           @map("tool_call_count") @db.SmallInt
+  success           Boolean
+  errorCode         String?       @map("error_code")
+  latencyMs         Int           @map("latency_ms")
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  // 계정을 삭제해도 행은 남긴다. 본문이 없는 비용 통계다(DATABASE.md §7)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("ai_call_logs")
+}
+
+model WeeklySummary {
+  userId          String   @map("user_id") @db.Uuid
+  weekStart       DateTime @map("week_start") @db.Date
+  plannedCount    Int      @map("planned_count") @db.SmallInt
+  completedCount  Int      @map("completed_count") @db.SmallInt
+  totalDistanceKm Decimal  @map("total_distance_km") @db.Decimal(6, 2)
+  aiFeedback      String?  @map("ai_feedback")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, weekStart])
+  @@map("weekly_summaries")
+}
+
+model NotificationSetting {
+  userId          String  @id @map("user_id") @db.Uuid
+  workoutReminder Boolean @default(true) @map("workout_reminder")
+  reminderHour    Int     @default(8) @map("reminder_hour") @db.SmallInt
+  missedNotice    Boolean @default(true) @map("missed_notice")
+  weeklySummary   Boolean @default(true) @map("weekly_summary")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_settings")
+}
+
+model PushToken {
+  token     String       @id
+  userId    String       @map("user_id") @db.Uuid
+  platform  PushPlatform
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_tokens")
+}
+
+model NotificationLog {
+  userId String           @map("user_id") @db.Uuid
+  type   NotificationType
+  date   DateTime         @db.Date
+  sentAt DateTime         @default(now()) @map("sent_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, type, date])
+  @@map("notification_logs")
+}

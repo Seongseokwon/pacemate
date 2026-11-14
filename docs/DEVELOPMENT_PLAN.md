@@ -60,7 +60,7 @@
 | T-101 | 모노레포 구성: pnpm 워크스페이스, TypeScript, 린트, Jest, CI. `AGENTS.md`의 명령어 절 작성 | `AD-01`, `AD-12` | - | 빈 패키지 4개에서 타입 검사·린트·테스트가 CI로 돈다 | 검토 (Claude Code) |
 | T-102 | `packages/shared` 뼈대: 열거형, 오류 코드, 공통 객체 스키마, 설정 상수 | `AD-04`, API_SPEC §1~2 | T-101 | API_SPEC §2의 객체가 zod 스키마로 있다 | 검토 (Claude Code) |
 | T-103 | `services/api` 뼈대: NestJS, 토큰 검증 가드, 오류 형식, 입력 검증, 앱 버전 확인, 요청 제한, `/health` | ARCHITECTURE §5.3, `F11-R06` | T-102 | 인증 없는 요청이 `401`, 낮은 앱 버전이 `426`으로 응답한다(`AC-F11-04`) | 검토 (Claude Code) |
-| T-104 | DB 연결과 마이그레이션: Prisma, 로컬 DB, 전체 테이블, 제약, 부분 유일 인덱스, 행 수준 보안, `/health`의 DB 확인 | DATABASE 전체, `AD-03` | T-103 | DATABASE §5의 인덱스가 모두 있고, 공개 키로 어떤 테이블도 조회되지 않는다. `/health`가 DB 연결을 확인한다 | 대기 |
+| T-104 | DB 연결과 마이그레이션: Prisma, 로컬 DB, 전체 테이블, 제약, 부분 유일 인덱스, 행 수준 보안, `/health`의 DB 확인 | DATABASE 전체, `AD-03` | T-103 | DATABASE §5의 인덱스가 모두 있고, 공개 키로 어떤 테이블도 조회되지 않는다. `/health`가 DB 연결을 확인한다 | 검토 (Claude Code) |
 | T-105 | `apps/mobile` 뼈대: Expo, 화면 묶음 구조, API 호출 함수, 공통 로딩·오류 상태, 개발 빌드 | `AD-02`, ARCHITECTURE §8 | T-102 | iOS·Android 개발 빌드가 실행되고 `/health`를 호출한다 | 대기 |
 | T-106 | 로그인과 계정: Apple·Google 로그인, 동의 화면, `/v1/me` 3종, 계정 삭제 | F01 | T-103, T-104, T-109, D-A1 | `AC-F01-01`~`04` | 대기 |
 | T-107 | 온보딩과 프로필: 온보딩 화면, `/v1/profile` | F02 | T-106 | `AC-F02-01`~`03` | 대기 |

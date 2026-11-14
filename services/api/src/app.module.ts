@@ -9,6 +9,7 @@ import { AppVersionGuard } from './common/app-version.guard.js';
 import { ErrorFilter } from './common/error.filter.js';
 import { UserThrottlerGuard } from './common/user-throttler.guard.js';
 import { APP_CONFIG, type AppConfig, loadConfig } from './config.js';
+import { PrismaService } from './db/prisma.service.js';
 import { HealthController } from './health/health.controller.js';
 
 @Module({
@@ -21,6 +22,7 @@ import { HealthController } from './health/health.controller.js';
       useFactory: (config: AppConfig) => createRemoteJWKSet(new URL(config.AUTH_JWKS_URL)),
       inject: [APP_CONFIG],
     },
+    PrismaService,
     TokenVerifier,
     { provide: APP_FILTER, useClass: ErrorFilter },
     // 순서가 곧 실행 순서다: 앱 버전 → 인증 → 요청 제한(사용자 ID로 센다)
