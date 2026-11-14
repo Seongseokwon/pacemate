@@ -74,10 +74,25 @@
 - 작업 하나는 한 도구가 맡는다. 다른 도구가 "진행" 중인 작업의 파일을 고치지 않는다.
 - 다른 도구가 작성한 코드를 임의로 덮어쓰지 않는다. 고쳐야 하면 이유를 보고한다.
 - 작업마다 브랜치를 쓴다: `task/T-nnn-짧은-설명`. 커밋 메시지에 작업 ID와 요구사항 ID를 넣는다.
-- 커밋, 푸시, 병합은 개발자가 요청할 때만 한다.
+- 작업이 끝나 상태를 "검토"로 바꾸면 작업 브랜치에 커밋하고 푸시한 뒤 `main`으로 PR을 올린다. PR 본문에 작업 ID, 요구사항 ID, 테스트 결과, 남은 문제를 적는다.
+- `main`에 직접 커밋하거나 푸시하지 않는다. 병합은 개발자가 한다.
 - 한 도구가 구현한 작업은 다른 도구가 PRD §11의 인수 기준으로 검토한다.
 - 기본 역할 분담은 다음과 같고, 고정된 것은 아니다. Claude Code: 설계, 복잡한 기능, 문서 관리. Codex CLI: 기능 구현, 테스트 작성, 코드 검토.
 
 ## 명령어
 
-프로젝트가 아직 만들어지지 않았다. 작업 `T-101`에서 설치·실행·테스트·린트 명령을 이 절에 적는다.
+저장소 루트에서 실행한다. Node 22 이상과 pnpm이 필요하다(pnpm 버전은 `package.json`의 `packageManager`를 따른다).
+
+| 명령 | 하는 일 |
+|---|---|
+| `pnpm install` | 의존성 설치 |
+| `pnpm typecheck` | 모든 패키지의 타입 검사 |
+| `pnpm lint` | 저장소 전체 린트 |
+| `pnpm test` | 모든 패키지의 테스트 |
+| `pnpm check` | 위 세 검사를 차례로 실행. 작업을 끝내기 전에 통과시킨다 |
+| `pnpm --filter @pacemate/shared test` | 한 패키지만 실행(패키지 이름을 바꿔 쓴다) |
+
+- 패키지: `@pacemate/shared`(`packages/shared`), `@pacemate/training-engine`(`packages/training-engine`), `@pacemate/api`(`services/api`), `@pacemate/mobile`(`apps/mobile`). 뒤의 둘은 자리만 있고 `T-103`, `T-105`에서 구성한다.
+- TypeScript는 6 버전을 쓴다. 7 버전은 typescript-eslint와 ts-jest가 지원하지 않는다.
+- 설치 스크립트가 있는 의존성을 추가하면 `pnpm install`이 실패한다. `pnpm-workspace.yaml`의 `allowBuilds`에 그 패키지의 허용 여부를 적는다.
+- 테스트 파일은 대상 파일 옆에 `*.test.ts`로 둔다.
