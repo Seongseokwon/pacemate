@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { apiErrorSchema, ERROR_STATUS } from './errors';
+import { fileURLToPath } from 'node:url';
+import { apiErrorSchema, ERROR_STATUS } from './errors.js';
+import { expect, test } from 'vitest';
 
 test('오류 코드와 HTTP 상태가 API_SPEC §1.1의 표와 같다', () => {
-  const doc = readFileSync(resolve(__dirname, '../../../docs/API_SPEC.md'), 'utf8');
+  const doc = readFileSync(fileURLToPath(new URL('../../../docs/API_SPEC.md', import.meta.url)), 'utf8');
   const section = doc.slice(doc.indexOf('### 1.1 오류 응답'), doc.indexOf('## 2. 공통 객체'));
   const documented = Object.fromEntries(
     [...section.matchAll(/^\| (\d{3}) \| `([A-Z_]+)` \|/gm)].map((m) => [m[2], Number(m[1])]),

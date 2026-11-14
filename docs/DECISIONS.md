@@ -94,3 +94,15 @@ Astryx 디자인 시스템(https://astryx.atmeta.com/)의 적용을 검토했다
 | UX-06 | 하단 시트는 화면 이동 라이브러리의 시트 표시 방식을 쓴다 |
 
 함께 반영한 사항: PRD `AI-10`(AI 응답에 마크다운을 쓰지 않음), 작업 `T-109`(디자인 토큰과 공통 컴포넌트) 추가, `AGENTS.md`의 화면 코드 규칙.
+
+## 2026-11-14 — 테스트 도구와 모듈 형식 변경 (AD-12)
+
+`T-103`에서 NestJS 최신 버전(12)의 기본 구성이 ESM + Vitest임을 확인했다. AD-12(Jest 하나로 통일)의 근거였던 "NestJS와 Expo 모두 Jest가 기본"이 더 이상 맞지 않는다.
+
+개발자가 **NestJS 12의 기본 구성을 따르기로** 결정했다.
+
+- `services/api`, `packages/shared`, `packages/training-engine`: ESM, Vitest
+- `apps/mobile`: Expo 기본인 Jest
+- 불변식 테스트의 fast-check는 그대로다.
+
+함께 정한 것: 패키지는 `dist`로 빌드해 쓰고(`pnpm build`), 린트는 저장소 공통 ESLint를 유지한다(NestJS 기본인 oxlint를 쓰지 않는다).

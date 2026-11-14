@@ -23,3 +23,6 @@ export const WORKOUT_LIMITS = {
 
 /** 목록 조회 개수(API_SPEC §1). */
 export const LIST_PAGE = { defaultLimit: 30, maxLimit: 100 } as const;
+
+/** 사용자별 분당 요청 수 제한(API_SPEC §1). */
+export const RATE_LIMIT_PER_MINUTE = { default: 60, chat: 10 } as const;

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { usageSchema } from './schemas';
+import { usageSchema } from './schemas.js';
 
 /** 오류 코드와 HTTP 상태(API_SPEC §1.1). 문서의 표와 같은지 테스트가 확인한다. */
 export const ERROR_STATUS = {

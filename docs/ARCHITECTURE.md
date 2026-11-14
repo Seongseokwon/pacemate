@@ -92,7 +92,7 @@
 | 분석 | PostHog | 확정 (`AD-10`) |
 | 오류 모니터링 | Sentry | 확정 (`AD-10`) |
 | 예약 작업 | 플랫폼 예약 실행기 + 내부 작업 엔드포인트 | 확정 (`AD-11`) |
-| 테스트 | Jest + fast-check | 확정 (`AD-12`) |
+| 테스트 | Vitest(API, 패키지) + Jest(앱) + fast-check | 확정 (`AD-12`, 2026-11-14 변경) |
 | 앱 빌드 · 제출 | EAS Build / EAS Submit | 확정 (`AD-13`) |
 | 디자인 시스템 | 자체 디자인 시스템. 토큰과 컴포넌트를 `apps/mobile/src/ui/`에 직접 구현 | 확정 (`UI_UX.md` `UX-00`) |
 | LLM | 미선정 | `D-03` |
@@ -514,7 +514,7 @@ API는 인증 서비스를 로그인 수단으로만 쓴다. 앱이 인증 서�
 | AD-09 | Expo 알림 서비스 | iOS·Android를 한 API로 발송. Expo 앱에서 설정이 가장 적다. | FCM·APNs 직접: 설정과 코드가 늘어난다. |
 | AD-10 | PostHog + Sentry | PostHog는 퍼널·재방문 분석과 서버 전송을 지원한다. Sentry는 앱과 서버를 함께 지원한다. | Firebase Analytics: 광고 플랫폼이 Google이면 연동이 유리하다. Amplitude: 기능은 비슷하다. |
 | AD-11 | 플랫폼 예약 실행기 + 내부 작업 엔드포인트 | 호스팅을 바꿔도 그대로 쓴다. 인스턴스 수와 무관하다. | 프로세스 내 타이머: 상시 인스턴스가 정확히 1개여야 한다. |
-| AD-12 | Jest + fast-check | NestJS와 Expo 모두 Jest가 기본이라 테스트 도구가 하나다. fast-check는 불변식 테스트용이다. | Vitest: Engine에는 더 빠르지만 도구가 둘이 된다. |
+| AD-12 | API와 패키지는 Vitest, 앱은 Jest, 불변식 테스트는 fast-check | 각 프레임워크의 기본 구성을 따른다. NestJS 12는 ESM + Vitest가, Expo는 Jest가 기본이다. 처음에는 Jest 하나로 정했으나 NestJS 12의 기본이 바뀌어 2026-11-14에 변경했다. | NestJS 11로 고정해 Jest 하나로 통일: 이전 메이저 버전으로 시작하게 된다. |
 | AD-13 | EAS Build / Submit | 맥 없이도 iOS 빌드가 가능하고 인증서 관리를 대신한다. | 로컬 빌드: 무료지만 인증서와 빌드 환경을 직접 관리한다. |
 | AD-14 | 환경은 로컬 + 운영 | 관리할 환경이 줄어든다. | 스테이징 추가: §18의 시점에 도입 |
 

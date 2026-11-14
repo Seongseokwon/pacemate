@@ -2,16 +2,18 @@
   "name": "@pacemate/training-engine",
   "version": "0.0.0",
   "private": true,
-  "main": "src/index.ts",
-  "scripts": {
-    "typecheck": "tsc --noEmit",
-    "test": "jest --passWithNoTests"
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   },
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node",
-    "roots": [
-      "<rootDir>/src"
-    ]
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
   }
 }
