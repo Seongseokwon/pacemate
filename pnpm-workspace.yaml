@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - services/*
+  - packages/*
+
+# 설치 스크립트 실행 여부를 패키지별로 명시한다. 목록에 없는 패키지가 스크립트를 가지면 설치가 실패한다.
+allowBuilds:
+  # jest의 파일 감시용 선택 의존성. 미리 빌드된 바이너리가 있어 스크립트가 필요 없다.
+  '@parcel/watcher': false
