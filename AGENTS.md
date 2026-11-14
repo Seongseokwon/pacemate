@@ -86,13 +86,18 @@
 | 명령 | 하는 일 |
 |---|---|
 | `pnpm install` | 의존성 설치 |
+| `pnpm build` | 모든 패키지 빌드. 의존 순서대로 실행된다 |
 | `pnpm typecheck` | 모든 패키지의 타입 검사 |
-| `pnpm lint` | 저장소 전체 린트 |
+| `pnpm lint` | 저장소 전체 린트(ESLint) |
 | `pnpm test` | 모든 패키지의 테스트 |
-| `pnpm check` | 위 세 검사를 차례로 실행. 작업을 끝내기 전에 통과시킨다 |
-| `pnpm --filter @pacemate/shared test` | 한 패키지만 실행(패키지 이름을 바꿔 쓴다) |
+| `pnpm check` | 빌드 → 타입 검사 → 린트 → 테스트. 작업을 끝내기 전에 통과시킨다 |
+| `pnpm --filter @pacemate/api test` | 한 패키지만 실행(패키지 이름을 바꿔 쓴다) |
+| `pnpm --filter @pacemate/api dev` | API를 감시 모드로 실행. `services/api/.env`가 필요하다(`.env.example` 참고) |
 
-- 패키지: `@pacemate/shared`(`packages/shared`), `@pacemate/training-engine`(`packages/training-engine`), `@pacemate/api`(`services/api`), `@pacemate/mobile`(`apps/mobile`). 뒤의 둘은 자리만 있고 `T-103`, `T-105`에서 구성한다.
-- TypeScript는 6 버전을 쓴다. 7 버전은 typescript-eslint와 ts-jest가 지원하지 않는다.
+- 패키지: `@pacemate/shared`(`packages/shared`), `@pacemate/training-engine`(`packages/training-engine`), `@pacemate/api`(`services/api`), `@pacemate/mobile`(`apps/mobile`). 앱은 자리만 있고 `T-105`에서 구성한다.
+- **`packages/*`를 고친 뒤에는 `pnpm build`를 다시 실행한다.** API는 패키지의 소스가 아니라 빌드 결과(`dist`)를 쓴다. 빌드하지 않으면 API의 타입 검사와 테스트가 이전 내용을 본다.
+- API와 패키지는 ESM이다. 상대 경로 import에 `.js` 확장자를 붙인다(`import { x } from './file.js'`).
+- 테스트는 API와 패키지가 Vitest, 앱이 Jest다(`AD-12`). 테스트 함수는 `vitest`에서 직접 import한다.
+- 테스트 파일은 대상 파일 옆에 `*.test.ts`로 둔다. API의 HTTP 수준 테스트는 `services/api/test/`에 둔다.
+- TypeScript는 6 버전을 쓴다. 7 버전은 typescript-eslint가 지원하지 않는다.
 - 설치 스크립트가 있는 의존성을 추가하면 `pnpm install`이 실패한다. `pnpm-workspace.yaml`의 `allowBuilds`에 그 패키지의 허용 여부를 적는다.
-- 테스트 파일은 대상 파일 옆에 `*.test.ts`로 둔다.

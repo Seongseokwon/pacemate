@@ -10,7 +10,7 @@ import {
   sessionTypeSchema,
   tierSchema,
   workoutSourceSchema,
-} from './enums';
+} from './enums.js';
 
 // API_SPEC §2의 공통 객체. 엔드포인트별 요청·응답 스키마는 각 기능 작업에서 추가한다.
 

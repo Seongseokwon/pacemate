@@ -1,4 +1,4 @@
-import type { SessionType } from './enums';
+import type { SessionType } from './enums.js';
 
 /** 훈련 종류의 화면 표시 이름과 체감 안내 문구(UI_UX §8.1). 응답에는 `type`만 담고 문구는 여기서 찾는다. */
 export const SESSION_TYPE_LABELS: Record<SessionType, { name: string; guidance: string }> = {
