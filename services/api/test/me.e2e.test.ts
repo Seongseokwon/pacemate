@@ -78,8 +78,7 @@ afterAll(async () => {
 });
 
 const call = async (method: 'get' | 'post' | 'delete', path: string, user = USER_A, body?: object) =>
-  request(app.getHttpServer())
-    [method](path)
+  request(app.getHttpServer())[method](path)
     .set({ 'X-App-Version': '1.0.0', 'X-App-Platform': 'ios' })
     .auth(await sign(user), { type: 'bearer' })
     .send(body);

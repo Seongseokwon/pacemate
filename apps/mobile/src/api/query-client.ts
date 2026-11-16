@@ -9,8 +9,13 @@ const REDIRECTS: Partial<Record<ApiClientErrorCode, Href>> = {
   APP_UPDATE_REQUIRED: '/update',
 };
 
+const redirectOf = (error: unknown) => (error instanceof ApiClientError ? REDIRECTS[error.code] : undefined);
+
+/** 다른 화면으로 보내는 오류인지. 그런 오류는 화면이 따로 안내하지 않는다. */
+export const isRedirectError = (error: unknown): boolean => redirectOf(error) !== undefined;
+
 export function redirectOnApiError(error: unknown): void {
-  const href = error instanceof ApiClientError ? REDIRECTS[error.code] : undefined;
+  const href = redirectOf(error);
   if (!href) return;
   // 위에 쌓인 화면을 걷어 내야 뒤로 가기로 원래 화면에 돌아가지 않는다
   if (router.canDismiss()) router.dismissAll();
