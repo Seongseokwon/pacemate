@@ -29,3 +29,25 @@ test('이용량 증가는 호출 측 트랜잭션 롤백에 포함된다', async
   })).rejects.toThrow('rollback');
   expect((await usage.get(userId, '2026-11-16')).chat.used).toBe(0);
 });
+
+
+test('F10-R03 구독 만료에 따라 이용 한도를 적용하고 사용량을 유지한다', async () => {
+  const date = '2026-11-16';
+  expect((await usage.get(userId, date)).tier).toBe('free');
+  await prisma.subscription.create({ data: { userId, productId: 'monthly', store: 'app_store', expiresAt: new Date('2100-01-01'), willRenew: false } });
+  expect(await usage.get(userId, date)).toMatchObject({ tier: 'pro', chat: { limit: 100 }, reschedule: { limit: 30 } });
+  for (let i = 0; i < 3; i++) {
+    expect(await prisma.$transaction((tx) => usage.increment(tx, userId, 'reschedule', date))).toBe(true);
+  }
+  await prisma.subscription.update({ where: { userId }, data: { expiresAt: new Date('2000-01-01') } });
+  expect(await usage.get(userId, date)).toMatchObject({ tier: 'free', reschedule: { used: 3, limit: 2 } });
+  expect(await prisma.$transaction((tx) => usage.increment(tx, userId, 'reschedule', date))).toBe(false);
+});
+
+test('DI-12 동시 채팅 이용량은 무료 한도까지 증가한다', async () => {
+  const results = await Promise.all(Array.from({ length: 15 }, () =>
+    prisma.$transaction((tx) => usage.increment(tx, userId, 'chat', '2026-11-16')),
+  ));
+  expect(results.filter(Boolean)).toHaveLength(10);
+  expect((await usage.get(userId, '2026-11-16')).chat).toEqual({ used: 10, limit: 10 });
+});
