@@ -43,6 +43,9 @@ export type EngineSession = {
   weekNumber: number;
 };
 
+// 수준 분류(TE-G01). 프로필을 저장할 때와 계획을 만들 때 같은 기준을 쓴다
+export type ClassifyLevel = (profile: EngineProfile) => RunnerLevel;
+
 // 생성기
 export type GenerateInput = { profile: EngineProfile; goal: EngineGoal; today: DateString };
 
