@@ -32,6 +32,7 @@
 3. 구현하고 테스트를 작성해 실행한다.
 4. 작업의 완료 조건을 확인하고 상태를 "검토"로 바꾼다. "완료"는 개발자가 정한다.
 5. 구현한 요구사항 ID, 테스트 결과, 남은 문제를 보고한다. 실패한 테스트나 건너뛴 부분을 숨기지 않는다.
+   기기에서 봐야 하는 것이 있으면 `docs/DEVELOPMENT_PLAN.md` §7에 확인 요청을 적는다.
 6. 구현하다가 문서와 다르게 해야 할 이유가 생기면 멈추고 문서 수정을 먼저 제안한다.
 
 ## 반드시 지킬 구조 규칙
@@ -78,7 +79,8 @@
 - 작업이 끝나 상태를 "검토"로 바꾸면 작업 브랜치에 커밋하고 푸시한 뒤 `main`으로 PR을 올린다. PR 본문에 작업 ID, 요구사항 ID, 테스트 결과, 남은 문제를 적는다.
 - `main`에 직접 커밋하거나 푸시하지 않는다. 병합은 개발자가 한다.
 - 한 도구가 구현한 작업은 다른 도구가 PRD §11의 인수 기준으로 검토한다.
-- 기본 역할 분담은 다음과 같고, 고정된 것은 아니다. Claude Code: 설계, 복잡한 기능, 문서 관리. Codex CLI: 기능 구현, 테스트 작성, 코드 검토.
+- 작업별 담당은 `docs/DEVELOPMENT_PLAN.md` §5에 있다. 자기 담당이 아닌 작업은 시작하지 않는다. 담당을 바꾸려면 개발자에게 제안한다.
+- **앱 빌드와 기기 확인은 개발자가 한다.** 도구는 개발 빌드(`ios`, `android`), 시뮬레이터·에뮬레이터 실행, EAS 빌드를 돌리지 않는다. `pnpm check`는 도구가 돌린다. 기기에서 봐야 하는 것은 `docs/DEVELOPMENT_PLAN.md` §7에 준비·순서·기대 결과를 적어 요청하고, 확인을 기다리지 않고 "검토"로 넘긴다.
 
 ## 명령어
 
@@ -96,8 +98,8 @@
 | `pnpm --filter @pacemate/api dev` | API를 감시 모드로 실행. `services/api/.env`가 필요하다(`.env.example` 참고) |
 | `docker compose up -d` | 로컬 PostgreSQL 실행(포트 5433). API 실행과 API 테스트에 필요하다 |
 | `pnpm --filter @pacemate/api db:migrate` | 스키마 변경으로 새 마이그레이션을 만들고 개발 DB에 적용 |
-| `pnpm --filter @pacemate/mobile ios` | iOS 개발 빌드를 만들어 시뮬레이터에서 실행. CocoaPods가 필요하다 |
-| `pnpm --filter @pacemate/mobile android` | Android 개발 빌드를 만들어 에뮬레이터에서 실행. 아래 환경 변수가 필요하다 |
+| `pnpm --filter @pacemate/mobile ios` | iOS 개발 빌드를 만들어 시뮬레이터에서 실행. CocoaPods가 필요하다. 개발자가 실행한다 |
+| `pnpm --filter @pacemate/mobile android` | Android 개발 빌드를 만들어 에뮬레이터에서 실행. 아래 환경 변수가 필요하다. 개발자가 실행한다 |
 | `pnpm --filter @pacemate/mobile dev` | 이미 설치된 개발 빌드에 연결할 번들러만 실행 |
 
 - 패키지: `@pacemate/shared`(`packages/shared`), `@pacemate/training-engine`(`packages/training-engine`), `@pacemate/api`(`services/api`), `@pacemate/mobile`(`apps/mobile`).
