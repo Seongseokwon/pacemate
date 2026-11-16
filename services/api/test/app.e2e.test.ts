@@ -6,6 +6,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { z } from 'zod';
 import { AppModule } from '../src/app.module.js';
+import { AllowUnregistered } from '../src/auth/consent.guard.js';
 import { CurrentUserId } from '../src/auth/current-user.decorator.js';
 import { JWKS } from '../src/auth/token-verifier.js';
 import { ZodPipe } from '../src/common/zod.pipe.js';
@@ -26,7 +27,9 @@ const USER_B = '22222222-2222-4222-8222-222222222222';
 const OK_VERSION = { 'X-App-Version': '1.2.0', 'X-App-Platform': 'ios' };
 
 // 실제 엔드포인트가 아직 없어서, 인증이 필요한 경로를 테스트용으로 붙인다
+// 가입 여부와 관계없는 공통 처리를 보는 경로다. 필수 동의는 me.e2e.test.ts에서 본다
 @Controller('probe')
+@AllowUnregistered()
 class ProbeController {
   @Get('me')
   me(@CurrentUserId() userId: string) {
@@ -45,7 +48,8 @@ class ProbeController {
 }
 
 let app: INestApplication;
-let sign: (claims?: { sub?: string; iss?: string; aud?: string; exp?: string }) => Promise<string>;
+type Claims = { sub?: string; iss?: string; aud?: string; exp?: string; provider?: string };
+let sign: (claims?: Claims) => Promise<string>;
 let signWithOtherKey: () => Promise<string>;
 
 beforeAll(async () => {
@@ -53,8 +57,8 @@ beforeAll(async () => {
   const other = await generateKeyPair('ES256');
   const jwk = { ...(await exportJWK(publicKey)), kid: 'test', alg: 'ES256' };
 
-  const token = (key: CryptoKey, c: { sub?: string; iss?: string; aud?: string; exp?: string }) =>
-    new SignJWT({})
+  const token = (key: CryptoKey, c: Claims) =>
+    new SignJWT({ app_metadata: { provider: c.provider ?? 'apple' } })
       .setProtectedHeader({ alg: 'ES256', kid: 'test' })
       .setSubject(c.sub ?? USER_A)
       .setIssuer(c.iss ?? config.AUTH_ISSUER)
@@ -123,6 +127,7 @@ describe('인증', () => {
     ['다른 발급자의 토큰', () => sign({ iss: 'https://evil.test' })],
     ['대상이 다른 토큰', () => sign({ aud: 'service_role' })],
     ['사용자 ID가 uuid가 아닌 토큰', () => sign({ sub: 'admin' })],
+    ['Apple·Google이 아닌 수단으로 로그인한 토큰', () => sign({ provider: 'email' })],
   ])('%s은 401이다', async (_name, makeToken) => {
     const res = await api().get('/v1/probe/me').set(OK_VERSION).auth(await makeToken(), { type: 'bearer' });
     expect(res.status).toBe(401);
