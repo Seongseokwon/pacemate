@@ -33,3 +33,29 @@ export type ChatRole = z.infer<typeof chatRoleSchema>;
 
 export const chatMessageStatusSchema = z.enum(['processing', 'done', 'failed']);
 export type ChatMessageStatus = z.infer<typeof chatMessageStatusSchema>;
+
+export const authProviderSchema = z.enum(['apple', 'google']);
+export type AuthProvider = z.infer<typeof authProviderSchema>;
+
+export const experienceSchema = z.enum(['none', 'under_6m', 'under_2y', 'over_2y']);
+export type Experience = z.infer<typeof experienceSchema>;
+
+export const continuousRunSchema = z.enum(['under_10m', 'under_30m', 'under_60m', 'over_60m']);
+export type ContinuousRun = z.infer<typeof continuousRunSchema>;
+
+/** 입문 / 초급 / 중급. 서버가 분류한다(TE-G01). */
+export const runnerLevelSchema = z.enum(['beginner', 'novice', 'intermediate']);
+export type RunnerLevel = z.infer<typeof runnerLevelSchema>;
+
+/** 완주 준비 계획 / 기초 훈련 계획(PRD §7.3). */
+export const planKindSchema = z.enum(['race_prep', 'base_building']);
+export type PlanKind = z.infer<typeof planKindSchema>;
+
+export const proposalReasonSchema = z.enum(['schedule', 'fatigue', 'pain']);
+export type ProposalReason = z.infer<typeof proposalReasonSchema>;
+
+export const storeSchema = z.enum(['app_store', 'play_store']);
+export type Store = z.infer<typeof storeSchema>;
+
+export const pushPlatformSchema = z.enum(['ios', 'android']);
+export type PushPlatform = z.infer<typeof pushPlatformSchema>;

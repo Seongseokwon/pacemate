@@ -12,15 +12,15 @@ import {
   workoutSourceSchema,
 } from './enums.js';
 
-// API_SPEC §2의 공통 객체. 엔드포인트별 요청·응답 스키마는 각 기능 작업에서 추가한다.
+// API_SPEC §2의 공통 객체. 엔드포인트별 요청·응답 스키마는 `api.ts`에 있다.
 
 /** `YYYY-MM-DD`. 시간대가 없는 날짜다(ARCHITECTURE §13). */
 export const dateSchema = z.iso.date();
 /** ISO 8601 UTC 시각 */
 export const dateTimeSchema = z.iso.datetime();
 
-const idSchema = z.uuid();
-const countSchema = z.int().nonnegative();
+export const idSchema = z.uuid();
+export const countSchema = z.int().nonnegative();
 
 // §2.1 Usage
 const usageCounterSchema = z.object({ used: countSchema, limit: countSchema });
@@ -75,7 +75,7 @@ export const workoutSchema = workoutContentSchema.extend({
 export type Workout = z.infer<typeof workoutSchema>;
 
 // §2.4 Proposal
-const goalSchema = z.object({
+export const goalSchema = z.object({
   goalDistance: goalDistanceSchema,
   goalTimeSec: z.int().positive().nullable(),
   raceDate: dateSchema.nullable(),

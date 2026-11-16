@@ -136,3 +136,19 @@ Astryx 디자인 시스템(https://astryx.atmeta.com/)의 적용을 검토했다
 함께 승인된 의존성: `@react-native-community/datetimepicker`(`DateInput`이 기기의 날짜 선택기를 띄운다), `@testing-library/react-native`(앱의 컴포넌트 테스트, 개발 의존성).
 
 함께 바뀐 문서: `UI_UX.md` §3.6·§3.8(눌림 표시, 여러 줄 입력창 높이, 토스트 시간의 초기값), §4.1, §12.
+
+---
+
+## 2026-11-14 — 구조 규칙 검사와 계약 (T-110)
+
+개발자가 구조 점검 결과의 일곱 항목을 승인했고 `T-110`으로 묶어 구현했다.
+
+| 항목 | 결정 |
+|---|---|
+| 구조 규칙 검사 | 패키지 의존 규칙(ARCHITECTURE §4), Training Engine의 순수성(§6), 훈련 수정 위치(`DI-01`), 앱의 색상 값 금지(UI_UX §3)를 ESLint 규칙으로 검사한다. 규칙마다 `eslint.config.test.ts`에 사례가 있다 |
+| 의존성 추가 | `eslint-plugin-react-hooks`(개발용). 앱의 훅 사용 규칙을 검사한다 |
+| 목록 응답 형식 | 이어서 조회하는 목록은 `{ items, hasMore }`, 그 밖의 목록은 `{ items }`다. `API_SPEC.md` §1에 적었다 |
+| 비밀값 전달 | 웹훅과 내부 작업의 호출자는 `Authorization: Bearer <비밀값>`을 보낸다. 비밀값이 없는 서버는 그 경로의 모든 요청을 거절한다 |
+| 스토어 주소 | 업데이트 안내 화면의 버튼이 여는 주소는 환경 변수(`EXPO_PUBLIC_IOS_STORE_URL`, `EXPO_PUBLIC_ANDROID_STORE_URL`)로 받는다. 스토어 등록(`D-A6`) 전에는 버튼을 보이지 않는다 |
+
+Training Engine의 입출력 타입은 `T-202`, `T-203`, `T-401`에서 구현하며 고칠 수 있다. 목표 변경으로 계획을 다시 계산할 때의 입력과, 실제 기록을 검증기에 넘기는 방식(`TE-S13`, `D-04`)은 정하지 않았다.

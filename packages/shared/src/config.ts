@@ -21,6 +21,18 @@ export const WORKOUT_LIMITS = {
   memoMaxLength: 500,
 } as const;
 
+/** 프로필 입력 범위(API_SPEC §3.2). */
+export const PROFILE_LIMITS = {
+  recentWeeklyKm: { min: 0, max: 100 },
+  weeklyRunCount: { min: 2, max: 5 },
+} as const;
+
+/** 훈련 목록을 한 번에 조회할 수 있는 최대 일수(API_SPEC §3.3). */
+export const SESSION_QUERY_MAX_DAYS = 62;
+
+/** 예정 운동 알림을 받을 수 있는 시각(API_SPEC §3.8, F09-R06). */
+export const REMINDER_HOUR = { min: 8, max: 20 } as const;
+
 /** 목록 조회 개수(API_SPEC §1). */
 export const LIST_PAGE = { defaultLimit: 30, maxLimit: 100 } as const;
 
