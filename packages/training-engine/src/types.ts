@@ -3,6 +3,7 @@ import type {
   Experience,
   GoalDistance,
   PlanKind,
+  PlanWarning,
   ProposalAction,
   ProposalReason,
   RunnerLevel,
@@ -57,8 +58,7 @@ export type PlanOption = {
   endDate: DateString;
   totalWeeks: number;
   sessions: EngineSession[];
-  /** 경고 코드 */
-  warnings: string[];
+  warnings: PlanWarning[];
 };
 
 export type GenerateResult = {
