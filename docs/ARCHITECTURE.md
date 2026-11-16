@@ -106,8 +106,8 @@
 ```text
 project-root/
 ├── PROJECT_CONTEXT.md
-├── CLAUDE.md                  # Claude Code 지침 (docs를 참조만 한다)
-├── AGENTS.md                  # Codex CLI 지침 (docs를 참조만 한다)
+├── CLAUDE.md                  # Claude Code 전용 지침. AGENTS.md를 불러온다
+├── AGENTS.md                  # 두 도구의 공통 작업 지침 (docs를 참조만 한다)
 ├── docs/
 ├── apps/
 │   └── mobile/                # Expo 앱
