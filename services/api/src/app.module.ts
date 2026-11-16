@@ -11,6 +11,7 @@ import { UserThrottlerGuard } from './common/user-throttler.guard.js';
 import { APP_CONFIG, type AppConfig, loadConfig } from './config.js';
 import { PrismaService } from './db/prisma.service.js';
 import { HealthController } from './health/health.controller.js';
+import { UsageService } from './usage/usage.service.js';
 
 @Module({
   imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: RATE_LIMIT_PER_MINUTE.default }])],
@@ -23,6 +24,7 @@ import { HealthController } from './health/health.controller.js';
       inject: [APP_CONFIG],
     },
     PrismaService,
+    UsageService,
     TokenVerifier,
     { provide: APP_FILTER, useClass: ErrorFilter },
     // 순서가 곧 실행 순서다: 앱 버전 → 인증 → 요청 제한(사용자 ID로 센다)
