@@ -45,9 +45,7 @@ describe('PUT /v1/profile (F02)', () => {
   });
 
   test('"잘 모르겠어요"는 0과 구분해 빈 값으로 저장한다 (F02-R03, TE-G05)', async () => {
-    const { recentWeeklyKm: _, ...withoutWeeklyKm } = PROFILE;
-
-    expect((await save(withoutWeeklyKm)).body.recentWeeklyKm).toBeNull();
+    expect((await save({ ...PROFILE, recentWeeklyKm: undefined })).body.recentWeeklyKm).toBeNull();
     expect((await save({ ...PROFILE, recentWeeklyKm: 0 })).body.recentWeeklyKm).toBe(0);
   });
 

@@ -2,7 +2,7 @@
 export { Button, IconButton } from './button';
 export { Badge, Banner, Chip, EmptyState, ProgressBar, showToast, Skeleton, Spinner, StatusDot, Toast } from './feedback';
 export { Icon, type IconName } from './icon';
-export { DateInput, Field, formatDate, NumberInput, ScaleInput, Selector, Switch, TextArea, TextInput } from './inputs';
+export { DateInput, Field, formatDate, NumberInput, ScaleInput, Selector, Switch, TextArea, TextInput, WeekdayPicker } from './inputs';
 export { Card, ClickableCard, Divider, Section, SelectableCard, Stack } from './layout';
 export { List, ListItem } from './list';
 export { Screen, SegmentedControl, Stepper, TabBar } from './navigation';
