@@ -8,7 +8,7 @@
 
 ## 현재 상태
 
-설계 문서가 끝났고 애플리케이션 코드는 아직 없다. 진행 상황은 `docs/DEVELOPMENT_PLAN.md`의 작업 표가 기준이다.
+설계 문서와 기반 코드(모노레포, 공용 스키마, API와 앱의 뼈대, DB, 공통 컴포넌트)가 있고 기능은 아직 없다. 진행 상황은 `docs/DEVELOPMENT_PLAN.md`의 작업 표가 기준이다.
 
 ## 문서
 
@@ -68,6 +68,7 @@
 - 새 로직에는 테스트를 붙인다. Training Engine은 규칙마다 테스트를 두고 테스트 이름에 규칙 ID(`TE-S01` 등)를 넣는다. 트랜잭션과 유일 제약은 실제 PostgreSQL로 검증한다.
 - 사용자에게 보이는 문구는 쉬운 한국어 존댓말로 쓴다. 러닝 전문 용어를 그대로 노출하지 않는다(UI_UX §9).
 - 화면 코드에 색상 값과 크기 숫자를 직접 쓰지 않는다. `apps/mobile/src/ui`의 컴포넌트와 토큰을 쓴다(UI_UX §3, §4).
+- 구조 규칙의 일부(패키지 의존 규칙, Training Engine의 순수성, 훈련 수정 위치, 앱의 색상 값)는 린트가 검사한다(`eslint.config.mjs`). 걸리면 규칙을 끄지 말고 구조를 고친다. 규칙을 바꿀 때는 `eslint.config.test.ts`에 사례를 더한다.
 
 ## 두 도구의 협업
 
@@ -103,7 +104,7 @@
 - **`packages/*`를 고친 뒤에는 `pnpm build`를 다시 실행한다.** API는 패키지의 소스가 아니라 빌드 결과(`dist`)를 쓴다. 빌드하지 않으면 API의 타입 검사와 테스트가 이전 내용을 본다.
 - API와 패키지는 ESM이다. 상대 경로 import에 `.js` 확장자를 붙인다(`import { x } from './file.js'`).
 - 테스트는 API와 패키지가 Vitest, 앱이 Jest다(`AD-12`). 테스트 함수는 `vitest`에서 직접 import한다. 앱의 컴포넌트 테스트는 `@testing-library/react-native`로 쓴다.
-- 테스트 파일은 대상 파일 옆에 `*.test.ts`로 둔다. API의 HTTP 수준 테스트는 `services/api/test/`에 둔다.
+- 테스트 파일은 대상 파일 옆에 `*.test.ts`로 둔다. API의 HTTP 수준 테스트는 `services/api/test/`에 둔다. 앱의 `src/app/` 안에는 테스트를 두지 않는다. 그 폴더의 파일은 모두 화면으로 묶여 앱이 뜨지 않는다. 화면 테스트는 `apps/mobile/src/__tests__/`에 둔다.
 - TypeScript는 6 버전을 쓴다. 7 버전은 typescript-eslint가 지원하지 않는다.
 - Prisma는 7 버전을 쓴다. npm의 `latest`가 8의 출시 후보(RC)를 가리키므로 버전을 지정해 설치한다.
 - API 테스트는 `pacemate_test` DB를 쓰고 테스트마다 테이블을 비운다. 마이그레이션은 테스트 시작 때 자동으로 적용된다. 이름이 `_test`로 끝나지 않는 DB에서는 테스트가 실행되지 않는다.
@@ -114,5 +115,10 @@
   - 네이티브 모듈이 있는 패키지는 `pnpm --filter @pacemate/mobile exec expo install <패키지>`로 추가한다. Expo SDK에 맞는 버전이 설치된다.
   - `ios/`와 `android/` 폴더는 빌드 때 생성되며 커밋하지 않는다. 네이티브 설정은 `app.json`과 설정 플러그인으로 한다.
   - API는 `src/api/client.ts`의 `apiFetch`로만 호출한다. 응답은 `packages/shared`의 스키마로 검증된다.
+  - `401`, `426`, `CONSENT_REQUIRED` 오류는 `src/api/query-client.ts`가 로그인·업데이트·동의 화면으로 보낸다. 화면마다 따로 처리하지 않는다.
+  - 내부 테스트와 스토어 빌드는 EAS로 만든다(`eas.json`). 계정과 서명 설정은 `T-504`에서 한다.
+- 엔드포인트의 요청·응답 스키마는 `packages/shared/src/api.ts`에 있다. 엔드포인트와 화면은 이 스키마를 쓰고, 형식을 바꿀 때는 `docs/API_SPEC.md`를 먼저 고친다.
+- API에서 "오늘" 날짜는 `services/api/src/common/today.ts`의 `today()`로만 구한다.
+- 웹훅과 내부 작업 엔드포인트에는 `@Public()`과 `@UseGuards(secretGuard(...))`를 함께 붙인다(`services/api/src/common/secret.guard.ts`).
 - 테이블을 추가하거나 바꿀 때는 `docs/DATABASE.md`를 먼저 고친다. 새 테이블의 마이그레이션에는 `ENABLE ROW LEVEL SECURITY`를 넣는다. 부분 유일 인덱스와 체크 제약은 마이그레이션 SQL에 직접 쓴다.
 - 설치 스크립트가 있는 의존성을 추가하면 `pnpm install`이 실패한다. `pnpm-workspace.yaml`의 `allowBuilds`에 그 패키지의 허용 여부를 적는다.

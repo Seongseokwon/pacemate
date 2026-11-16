@@ -28,7 +28,7 @@
 | 거리 | km 숫자 |
 | 시간 길이 | 초 단위 정수 |
 | 사용자 지정 | 경로와 본문에 사용자 ID를 넣지 않는다. 서버가 토큰에서 얻는다(`DI-07`). |
-| 목록 | 최신순. `before`(이전 응답의 마지막 항목 ID)와 `limit`(기본 30, 최대 100)으로 이어서 조회한다. 응답에 `hasMore`가 있다. |
+| 목록 | 최신순. `before`(이전 응답의 마지막 항목 ID)와 `limit`(기본 30, 최대 100)으로 이어서 조회한다. 응답은 `{ items, hasMore }`다. 이어서 조회하지 않는 목록(기간의 훈련, 연결 후보)은 `{ items }`다. |
 | 요청 제한 | 사용자별 분당 60회, 채팅 전송은 분당 10회(초기값) |
 
 ### 1.1 오류 응답
@@ -218,7 +218,7 @@
 
 **`GET /v1/plan`** 응답: `id`, `kind`, `goalDistance`, `goalTimeSec`, `raceDate`, `startDate`, `endDate`, `version`, `warnings`, `progress`(`{ completed, total }`), `isFinished`(종료일이 지났는지).
 
-**`GET /v1/sessions/{id}`** 응답: Session 필드에 더해 `workout`(Workout 또는 null), `changes`(이 훈련이 바뀐 이력: 시각, 사유, 변경 전후).
+**`GET /v1/sessions/{id}`** 응답: Session 필드에 더해 `workout`(Workout 또는 null), `changes`(이 훈련이 바뀐 이력의 배열: `changedAt`, `reason`, `before`, `after`. `before`·`after`는 `{ date, type, distanceKm, durationMin }` 또는 null).
 
 **`GET /v1/home`** 응답
 
@@ -235,7 +235,7 @@
 | 메서드 · 경로 | 설명 |
 |---|---|
 | `GET /v1/workouts?before=&limit=` | 기록 목록 |
-| `GET /v1/workouts/stats` | 이번 주·이번 달의 거리와 횟수 |
+| `GET /v1/workouts/stats` | 이번 주·이번 달의 거리와 횟수. 응답: `{ week, month }`, 각각 `{ distanceKm, count }` |
 | `GET /v1/workouts/link-candidates?date=` | 그 날짜의 기록에 연결할 수 있는 훈련 후보 |
 | `POST /v1/workouts` | 기록 저장 |
 | `GET /v1/workouts/{id}` | 기록 상세 |
@@ -331,7 +331,7 @@
 |---|---|
 | `GET /v1/summaries/weekly?weekStart=` | 주간 요약. `weekStart`는 월요일. 생략하면 이번 주 |
 
-응답: `weekStart`, `plannedCount`, `completedCount`, `totalDistanceKm`, `completionRate`, `nextSession`(Session 또는 null), `aiFeedback`(문자열 또는 null), `aiFeedbackAvailable`.
+응답: `weekStart`, `plannedCount`, `completedCount`, `totalDistanceKm`, `completionRate`(0~1), `nextSession`(Session 또는 null), `aiFeedback`(문자열 또는 null), `aiFeedbackAvailable`.
 
 - 수치는 요청 시점의 데이터로 계산한다.
 - `aiFeedback`은 Pro 사용자이고 그 주의 피드백이 생성되어 있을 때만 값이 있다. 이 요청은 LLM을 호출하지 않는다(`F08-R02`).
@@ -363,7 +363,7 @@
 
 ## 4. 웹훅과 내부 작업
 
-앱이 호출하지 않는다. 사용자 토큰 대신 각각의 비밀값으로 검증한다.
+앱이 호출하지 않는다. 사용자 토큰 대신 각각의 비밀값으로 검증한다. 호출자는 `Authorization: Bearer <비밀값>`을 보내고, 웹훅과 내부 작업의 비밀값은 서로 다르다.
 
 | 메서드 · 경로 | 호출자 | 설명 |
 |---|---|---|

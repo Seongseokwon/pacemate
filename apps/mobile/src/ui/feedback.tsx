@@ -1,5 +1,5 @@
 import type { SessionType } from '@pacemate/shared';
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Animated, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from './button';
@@ -69,7 +69,7 @@ export function Toast() {
     },
     () => toast,
   );
-  const opacity = useRef(new Animated.Value(0)).current;
+  const opacity = useState(() => new Animated.Value(0))[0];
 
   useEffect(() => {
     if (!current) return;
@@ -171,7 +171,7 @@ export function ProgressBar({ value, accessibilityLabel }: { value: number; acce
   const t = useTheme();
   const reduce = useReduceMotion();
   const ratio = Math.min(1, Math.max(0, value));
-  const filled = useRef(new Animated.Value(0)).current;
+  const filled = useState(() => new Animated.Value(0))[0];
 
   useEffect(() => {
     Animated.timing(filled, {
@@ -206,7 +206,7 @@ export function ProgressBar({ value, accessibilityLabel }: { value: number; acce
 export function Skeleton({ shape = 'line', short = false }: { shape?: 'line' | 'block' | 'circle'; short?: boolean }) {
   const t = useTheme();
   const reduce = useReduceMotion();
-  const opacity = useRef(new Animated.Value(1)).current;
+  const opacity = useState(() => new Animated.Value(1))[0];
 
   useEffect(() => {
     if (reduce) return;

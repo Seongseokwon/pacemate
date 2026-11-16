@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { Animated, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, IconButton } from './button';
@@ -13,7 +13,7 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const reduce = useReduceMotion();
-  const offset = useRef(new Animated.Value(0)).current;
+  const offset = useState(() => new Animated.Value(0))[0];
 
   useEffect(() => {
     if (!visible || reduce) return;
