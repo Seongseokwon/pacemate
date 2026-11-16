@@ -152,3 +152,15 @@ Astryx 디자인 시스템(https://astryx.atmeta.com/)의 적용을 검토했다
 | 스토어 주소 | 업데이트 안내 화면의 버튼이 여는 주소는 환경 변수(`EXPO_PUBLIC_IOS_STORE_URL`, `EXPO_PUBLIC_ANDROID_STORE_URL`)로 받는다. 스토어 등록(`D-A6`) 전에는 버튼을 보이지 않는다 |
 
 Training Engine의 입출력 타입은 `T-202`, `T-203`, `T-401`에서 구현하며 고칠 수 있다. 목표 변경으로 계획을 다시 계산할 때의 입력과, 실제 기록을 검증기에 넘기는 방식(`TE-S13`, `D-04`)은 정하지 않았다.
+
+---
+
+## 2026-11-16 — 두 도구의 작업 방식
+
+기반 작업이 "검토"에 들어가 개발자가 아래와 같이 정했다. 자세한 규칙은 `AGENTS.md`의 "두 도구의 협업"과 `DEVELOPMENT_PLAN.md` §5, §7에 있다.
+
+| 항목 | 결정 |
+|---|---|
+| 빌드와 기기 확인 | 개발 빌드, 시뮬레이터·에뮬레이터 실행, EAS 빌드는 개발자가 한다. 도구는 `pnpm check`까지 돌리고, 기기에서 봐야 하는 것을 `DEVELOPMENT_PLAN.md` §7에 적어 요청한다 |
+| 작업 담당 | 작업별 담당을 `DEVELOPMENT_PLAN.md` §5의 표로 정한다. 기능 하나는 API와 화면을 한 도구가 맡고, 채팅(F04)만 서버와 화면을 나눈다 |
+| 작업 폴더 | Claude Code는 `pacemate`, Codex CLI는 `pacemate-codex`(같은 저장소의 git worktree)에서 작업한다. 로컬 DB 컨테이너는 함께 쓰고 DB 이름을 나눈다 |
