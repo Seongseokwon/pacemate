@@ -126,6 +126,7 @@
   - 내부 테스트와 스토어 빌드는 EAS로 만든다(`eas.json`). 계정과 서명 설정은 `T-504`에서 한다.
 - 엔드포인트의 요청·응답 스키마는 `packages/shared/src/api.ts`에 있다. 엔드포인트와 화면은 이 스키마를 쓰고, 형식을 바꿀 때는 `docs/API_SPEC.md`를 먼저 고친다.
 - API에서 "오늘" 날짜는 `services/api/src/common/today.ts`의 `today()`로만 구한다.
+- LLM은 `services/api/src/chat/llm/llm-gateway.ts`의 `LlmGateway`로만 호출한다. 호출 기록은 게이트웨이가 남긴다. 테스트에서는 `FakeLlmProvider`에 응답 대본을 준다. `chat` 모듈만 쓰는 (초기값) 수치는 `services/api/src/chat/chat.config.ts`에 둔다.
 - 웹훅과 내부 작업 엔드포인트에는 `@Public()`과 `@UseGuards(secretGuard(...))`를 함께 붙인다(`services/api/src/common/secret.guard.ts`).
 - 테이블을 추가하거나 바꿀 때는 `docs/DATABASE.md`를 먼저 고친다. 새 테이블의 마이그레이션에는 `ENABLE ROW LEVEL SECURITY`를 넣는다. 부분 유일 인덱스와 체크 제약은 마이그레이션 SQL에 직접 쓴다.
 - 설치 스크립트가 있는 의존성을 추가하면 `pnpm install`이 실패한다. `pnpm-workspace.yaml`의 `allowBuilds`에 그 패키지의 허용 여부를 적는다.
