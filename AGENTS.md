@@ -75,6 +75,11 @@
 
 - 작업 하나는 한 도구가 맡는다. 다른 도구가 "진행" 중인 작업의 파일을 고치지 않는다.
 - 다른 도구가 작성한 코드를 임의로 덮어쓰지 않는다. 고쳐야 하면 이유를 보고한다.
+- **작업 폴더는 도구마다 다르다.** Claude Code는 `pacemate`, Codex CLI는 그 옆의 `pacemate-codex`에서 작업한다. 둘은 같은 저장소의 git worktree다. 상대 도구의 폴더에서 파일을 고치거나 브랜치를 바꾸지 않는다.
+  - 한 브랜치는 한 폴더에서만 열리므로 로컬 `main`을 체크아웃하지 않는다. 새 작업은 `git fetch origin` 뒤 `git switch -c task/T-nnn-짧은-설명 origin/main`으로 시작한다.
+  - `node_modules`, 빌드 결과, `.env`는 폴더마다 따로 있다.
+  - 로컬 DB 컨테이너는 하나를 함께 쓰고 DB 이름만 나눈다. 같은 DB를 쓰면 동시에 돌린 테스트가 서로의 데이터를 지운다. Codex는 `services/api/.env`의 `DATABASE_URL`에 `pacemate_codex`를 쓰고, 테스트와 `pnpm check` 앞에 `TEST_DATABASE_URL=postgresql://pacemate:pacemate@localhost:5433/pacemate_codex_test`를 붙인다.
+  - 컨테이너는 어느 폴더에서든 `docker compose -f ../pacemate/docker-compose.yml up -d`로 띄운다. `pacemate-codex`에서 `docker compose up -d`를 실행하면 컨테이너가 하나 더 생겨 포트가 겹친다.
 - 작업마다 브랜치를 쓴다: `task/T-nnn-짧은-설명`. 커밋 메시지에 작업 ID와 요구사항 ID를 넣는다.
 - 작업이 끝나 상태를 "검토"로 바꾸면 작업 브랜치에 커밋하고 푸시한 뒤 `main`으로 PR을 올린다. PR 본문에 작업 ID, 요구사항 ID, 테스트 결과, 남은 문제를 적는다.
 - `main`에 직접 커밋하거나 푸시하지 않는다. 병합은 개발자가 한다.
@@ -96,7 +101,7 @@
 | `pnpm check` | 빌드 → 타입 검사 → 린트 → 테스트. 작업을 끝내기 전에 통과시킨다 |
 | `pnpm --filter @pacemate/api test` | 한 패키지만 실행(패키지 이름을 바꿔 쓴다) |
 | `pnpm --filter @pacemate/api dev` | API를 감시 모드로 실행. `services/api/.env`가 필요하다(`.env.example` 참고) |
-| `docker compose up -d` | 로컬 PostgreSQL 실행(포트 5433). API 실행과 API 테스트에 필요하다 |
+| `docker compose up -d` | 로컬 PostgreSQL 실행(포트 5433). API 실행과 API 테스트에 필요하다. `pacemate` 폴더에서만 이렇게 실행한다("두 도구의 협업" 참고) |
 | `pnpm --filter @pacemate/api db:migrate` | 스키마 변경으로 새 마이그레이션을 만들고 개발 DB에 적용 |
 | `pnpm --filter @pacemate/mobile ios` | iOS 개발 빌드를 만들어 시뮬레이터에서 실행. CocoaPods가 필요하다. 개발자가 실행한다 |
 | `pnpm --filter @pacemate/mobile android` | Android 개발 빌드를 만들어 에뮬레이터에서 실행. 아래 환경 변수가 필요하다. 개발자가 실행한다 |
