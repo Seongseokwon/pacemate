@@ -20,7 +20,7 @@ export class AuthGuard implements CanActivate {
     if (scheme !== 'Bearer' || !token) throw unauthenticated();
 
     try {
-      request.userId = await this.verifier.verify(token);
+      Object.assign(request, await this.verifier.verify(token));
     } catch {
       // 실패 이유(만료, 서명 불일치 등)는 응답에 구분해 넣지 않는다
       throw unauthenticated();
