@@ -130,6 +130,7 @@
 - API에서 "오늘" 날짜는 `services/api/src/common/today.ts`의 `today()`로만 구한다.
 - LLM은 `services/api/src/chat/llm/llm-gateway.ts`의 `LlmGateway`로만 호출한다. 호출 기록은 게이트웨이가 남긴다. 테스트에서는 `FakeLlmProvider`에 응답 대본을 준다. `chat` 모듈만 쓰는 (초기값) 수치는 `services/api/src/chat/chat.config.ts`에 둔다.
 - 필수 동의를 마치지 않은 계정의 요청은 `ConsentGuard`가 `CONSENT_REQUIRED`로 거절한다. 동의 전에도 호출할 수 있어야 하는 경로(`/v1/me`)에만 `@AllowUnregistered()`를 붙인다(`services/api/src/auth/consent.guard.ts`).
+- 계획 생성(`generate`)과 수준 분류(`classifyLevel`)의 수치는 `packages/training-engine/src/safety-config.ts`의 `PLAN`에, 검증기의 수치는 같은 파일의 `SAFETY`에 있다. 생성기는 검증기를 통과한 계획만 돌려주지만, 저장하기 전에 API가 `validate`를 다시 부른다(`TE-S12`). 경고 코드와 문구는 `packages/shared`의 `planWarningSchema`, `PLAN_WARNING_LABELS`에 있다.
 - 수준 분류(`TE-G01`) 같은 훈련 판단은 API에 직접 쓰지 않고 `packages/training-engine`의 함수를 주입받는다(`services/api/src/profile/level-classifier.ts`).
 - API의 HTTP 수준 테스트는 `services/api/test/test-app.ts`의 `createTestApp`으로 앱을 띄운다.
 - 웹훅과 내부 작업 엔드포인트에는 `@Public()`과 `@UseGuards(secretGuard(...))`를 함께 붙인다(`services/api/src/common/secret.guard.ts`).

@@ -1,4 +1,4 @@
-import type { SessionType } from './enums.js';
+import type { PlanWarning, SessionType } from './enums.js';
 
 /** 훈련 종류의 화면 표시 이름과 체감 안내 문구(UI_UX §8.1). 응답에는 `type`만 담고 문구는 여기서 찾는다. */
 export const SESSION_TYPE_LABELS: Record<SessionType, { name: string; guidance: string }> = {
@@ -7,4 +7,11 @@ export const SESSION_TYPE_LABELS: Record<SessionType, { name: string; guidance: 
   tempo: { name: '조금 빠르게 달리기', guidance: '숨이 조금 차지만 유지할 수 있는 속도예요' },
   long: { name: '길게 달리기', guidance: '편한 속도로 평소보다 오래 달려요' },
   race: { name: '대회', guidance: '대회 날이에요' },
+};
+
+/** 계획 경고의 화면 문구(TE-G06, F03-R06). */
+export const PLAN_WARNING_LABELS: Record<PlanWarning, string> = {
+  RACE_PREP_NOT_REACHABLE: '지금 달리는 양으로는 기간 안에 완주 준비를 마치기 어려워요. 먼저 기초를 다지는 계획으로 시작해요.',
+  GOAL_TIME_TOO_FAST: '목표 기록이 최근 기록보다 많이 빨라요. 계획은 무리하지 않게 완주에 맞춰 만들었어요.',
+  GOAL_TIME_NOT_CHECKED: '최근 기록이 없어서 목표 기록이 알맞은지 확인하지 못했어요. 계획은 완주에 맞춰 만들었어요.',
 };

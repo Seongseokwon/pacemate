@@ -1,6 +1,6 @@
 import type { ClassifyLevel } from '@pacemate/training-engine';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
-import { LEVEL_CLASSIFIER, unavailableLevelClassifier } from '../src/profile/level-classifier.js';
+import { LEVEL_CLASSIFIER } from '../src/profile/level-classifier.js';
 import { createTestApp } from './test-app.js';
 import { createTestPrisma, resetDatabase } from './test-db.js';
 
@@ -107,6 +107,14 @@ describe('GET /v1/profile', () => {
   });
 });
 
-test('분류 함수가 없는 기본 구현은 임의의 수준을 돌려주지 않는다', () => {
-  expect(() => unavailableLevelClassifier({ ...PROFILE, recentPaceSecPerKm: null } as never)).toThrow();
+test('TE-G01 기본 구성은 Training Engine의 기준으로 수준을 분류한다', async () => {
+  const real = await createTestApp();
+  try {
+    const res = await real.call('put', '/v1/profile', USER_A, { ...PROFILE, experience: 'over_2y', continuousRun: 'over_60m' });
+    // 주간 12.5km라 세 항목 중 가장 낮은 초급이다
+    expect(res.body).toMatchObject({ level: 'novice' });
+    expect((await real.call('put', '/v1/profile', USER_A, PROFILE)).body).toMatchObject({ level: 'beginner' });
+  } finally {
+    await real.app.close();
+  }
 });

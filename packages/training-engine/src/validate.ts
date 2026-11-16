@@ -88,6 +88,14 @@ export const validate: Validate = ({ plan, today, change }) => {
     if (sessions.some((session) => session.type === 'race') && exceeds(km, peakKm(week) * (1 - SAFETY.taperMinReduction))) violations.add('TE-S08');
   }
 
+  // 대회가 월~수요일이면 대회가 있는 주에 훈련이 거의 없어, 그 전 주도 줄었는지 본다(TE-S08).
+  for (const race of active.filter((session) => session.type === 'race')) {
+    const before = weekOf(race.date) - 1;
+    const weekday = ((dayOf(race.date) + 3) % 7) + 1;
+    if (weekday > SAFETY.taperPreviousWeekUntilWeekday || before < startWeek || before < currentWeek || stats(before).timeBased) continue;
+    if (exceeds(kmOf(before), peakKm(before) * (1 - SAFETY.taperMinReduction))) violations.add('TE-S08');
+  }
+
   // 고점을 넘지 않는 유지 주간에는 회복 주를 요구하지 않는다. 시간 기반 주와 빈 주는 거리가 0이라 회복 주로 센다.
   let sinceRecovery = 0;
   const lastWeek = Math.max(...weeks.keys());

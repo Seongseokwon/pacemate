@@ -156,6 +156,16 @@ test('TE-S08 대회가 있는 주의 훈련 거리는 최근 4주 고점보다 2
   expect(check([...week1, ...raceWeek(3.1).slice(0, 3)])).not.toContain('TE-S08');
 });
 
+test('TE-S08 대회가 월~수요일이면 그 전 주도 고점보다 25% 이상 적어야 한다', () => {
+  // 2026-11-18은 수요일, 2026-11-19는 목요일이다. 고점은 첫 주의 12km다.
+  const before = (km: number) => [run('2026-11-10', 'easy', 3), run('2026-11-12', 'easy', 3), run('2026-11-14', 'easy', km)];
+  expect(check([...week1, ...before(3), run('2026-11-18', 'race', 5)])).not.toContain('TE-S08');
+  expect(check([...week1, ...before(3.1), run('2026-11-18', 'race', 5)])).toContain('TE-S08');
+  expect(check([...week1, ...before(3.1), run('2026-11-19', 'race', 5)])).not.toContain('TE-S08');
+  // 그 전 주가 계획 시작 전이면 판정하지 않는다.
+  expect(check([run('2026-11-03', 'race', 5)])).not.toContain('TE-S08');
+});
+
 test('TE-S09 변경 후 주간 거리는 원래 그 주의 계획 거리를 넘지 않는다', () => {
   const skipped = [{ ...week1[0]!, skipped: true }, week1[1]!, week1[2]!];
   expect(checkChange(week1, skipped)).not.toContain('TE-S09');

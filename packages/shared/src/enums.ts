@@ -51,6 +51,10 @@ export type RunnerLevel = z.infer<typeof runnerLevelSchema>;
 export const planKindSchema = z.enum(['race_prep', 'base_building']);
 export type PlanKind = z.infer<typeof planKindSchema>;
 
+/** 계획의 경고 코드(API_SPEC §3.3의 `warnings`). 문구는 `PLAN_WARNING_LABELS`에 있다. */
+export const planWarningSchema = z.enum(['RACE_PREP_NOT_REACHABLE', 'GOAL_TIME_TOO_FAST', 'GOAL_TIME_NOT_CHECKED']);
+export type PlanWarning = z.infer<typeof planWarningSchema>;
+
 export const proposalReasonSchema = z.enum(['schedule', 'fatigue', 'pain']);
 export type ProposalReason = z.infer<typeof proposalReasonSchema>;
 

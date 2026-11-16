@@ -18,5 +18,8 @@
   },
   "dependencies": {
     "@pacemate/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "fast-check": "^4.10.2"
   }
 }
