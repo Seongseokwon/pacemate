@@ -40,6 +40,8 @@ export type EngineSession = {
   distanceKm: number | null;
   durationMin: number | null;
   paceRange: { minSecPerKm: number; maxSecPerKm: number } | null;
+  /** 걷고 달리기에서 한 번에 달리는 시간(분). 시간 기반 걷고 달리기에는 꼭 있다(TE-S14) */
+  runIntervalMin: number | null;
   weekNumber: number;
 };
 

@@ -146,6 +146,7 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | `type` | enum `walk_run` / `easy` / `tempo` / `long` / `race` | ✓ | `race`는 대회 당일 표시(`TE-G08`) |
 | `distance_km` | numeric(4,1) | | 거리 또는 시간 중 하나는 있어야 한다 |
 | `duration_min` | smallint | | `walk_run`처럼 시간 기준인 훈련 |
+| `run_interval_min` | smallint | | 걷고 달리기에서 한 번에 달리는 시간(분). 시간 기준 `walk_run`에는 꼭 있다(`TE-S14`). 마이그레이션은 계획 API를 만드는 `T-204`에서 추가한다 |
 | `pace_min_sec_per_km` | integer | | 권장 페이스 범위(빠른 쪽). 최근 기록이 없으면 비움 |
 | `pace_max_sec_per_km` | integer | | 권장 페이스 범위(느린 쪽) |
 | `week_number` | smallint | ✓ | 계획의 몇 주차인지 |
