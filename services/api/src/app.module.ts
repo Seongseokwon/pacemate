@@ -15,11 +15,14 @@ import { UserThrottlerGuard } from './common/user-throttler.guard.js';
 import { APP_CONFIG, type AppConfig, loadConfig } from './config.js';
 import { PrismaService } from './db/prisma.service.js';
 import { HealthController } from './health/health.controller.js';
+import { LEVEL_CLASSIFIER, unavailableLevelClassifier } from './profile/level-classifier.js';
+import { ProfileController } from './profile/profile.controller.js';
+import { ProfileService } from './profile/profile.service.js';
 import { UsageService } from './usage/usage.service.js';
 
 @Module({
   imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: RATE_LIMIT_PER_MINUTE.default }])],
-  controllers: [HealthController, MeController],
+  controllers: [HealthController, MeController, ProfileController],
   providers: [
     { provide: APP_CONFIG, useFactory: () => loadConfig() },
     {
@@ -31,6 +34,9 @@ import { UsageService } from './usage/usage.service.js';
     UsageService,
     TokenVerifier,
     AccountService,
+    ProfileService,
+    // Training Engine에 수준 분류 함수가 생기면(T-201, T-203) 그 함수로 바꾼다
+    { provide: LEVEL_CLASSIFIER, useValue: unavailableLevelClassifier },
     // 인증 서비스의 관리 키가 생기면(D-A1) 실제 구현으로 바꾼다
     { provide: AUTH_ADMIN, useClass: UnconfiguredAuthAdmin },
     { provide: APP_FILTER, useClass: ErrorFilter },

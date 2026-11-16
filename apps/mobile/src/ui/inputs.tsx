@@ -324,3 +324,43 @@ export function ScaleInput({ value, onChange, max }: ScaleInputProps) {
     </View>
   );
 }
+
+const WEEKDAY_NAMES = ['월', '화', '수', '목', '금', '토', '일'];
+
+type WeekdayPickerProps = { /** 1(월)~7(일) */ value: number[]; onChange: (value: number[]) => void };
+
+/** 요일 7개를 한 줄에 놓고 여러 개를 고른다(§6.2). */
+export function WeekdayPicker({ value, onChange }: WeekdayPickerProps) {
+  const t = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+      {WEEKDAY_NAMES.map((name, index) => {
+        const day = index + 1;
+        const selected = value.includes(day);
+        return (
+          <Press
+            key={day}
+            accessibilityRole="button"
+            accessibilityLabel={`${name}요일`}
+            accessibilityState={{ selected }}
+            onPress={() => onChange(selected ? value.filter((d) => d !== day) : [...value, day])}
+            style={{
+              width: t.size.touch,
+              height: t.size.touch,
+              borderRadius: t.radius.full,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: t.size.border,
+              borderColor: selected ? t.color.accent : t.color.borderEmphasized,
+              backgroundColor: selected ? t.color.accent : t.color.background.surface,
+            }}
+          >
+            <Text variant="label" tone={selected ? 'onAccent' : 'primary'}>
+              {name}
+            </Text>
+          </Press>
+        );
+      })}
+    </View>
+  );
+}

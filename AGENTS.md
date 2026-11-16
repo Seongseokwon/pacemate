@@ -123,12 +123,15 @@
   - `ios/`와 `android/` 폴더는 빌드 때 생성되며 커밋하지 않는다. 네이티브 설정은 `app.json`과 설정 플러그인으로 한다.
   - API는 `src/api/client.ts`의 `apiFetch`로만 호출한다. 응답은 `packages/shared`의 스키마로 검증된다.
   - 앱을 열 때 갈 화면은 `src/app/index.tsx`가 `GET /v1/me`로 정한다. 로그인 세션은 `src/auth/session.ts`만 다룬다(인증 SDK는 `D-A1` 뒤에 여기에 붙인다).
+  - 온보딩 답변은 `src/onboarding/draft.ts`가 기기의 보안 저장소에 둔다. 서버에는 온보딩을 마칠 때 한 번 보낸다.
   - `401`, `426`, `CONSENT_REQUIRED` 오류는 `src/api/query-client.ts`가 로그인·업데이트·동의 화면으로 보낸다. 화면마다 따로 처리하지 않는다.
   - 내부 테스트와 스토어 빌드는 EAS로 만든다(`eas.json`). 계정과 서명 설정은 `T-504`에서 한다.
 - 엔드포인트의 요청·응답 스키마는 `packages/shared/src/api.ts`에 있다. 엔드포인트와 화면은 이 스키마를 쓰고, 형식을 바꿀 때는 `docs/API_SPEC.md`를 먼저 고친다.
 - API에서 "오늘" 날짜는 `services/api/src/common/today.ts`의 `today()`로만 구한다.
 - LLM은 `services/api/src/chat/llm/llm-gateway.ts`의 `LlmGateway`로만 호출한다. 호출 기록은 게이트웨이가 남긴다. 테스트에서는 `FakeLlmProvider`에 응답 대본을 준다. `chat` 모듈만 쓰는 (초기값) 수치는 `services/api/src/chat/chat.config.ts`에 둔다.
 - 필수 동의를 마치지 않은 계정의 요청은 `ConsentGuard`가 `CONSENT_REQUIRED`로 거절한다. 동의 전에도 호출할 수 있어야 하는 경로(`/v1/me`)에만 `@AllowUnregistered()`를 붙인다(`services/api/src/auth/consent.guard.ts`).
+- 수준 분류(`TE-G01`) 같은 훈련 판단은 API에 직접 쓰지 않고 `packages/training-engine`의 함수를 주입받는다(`services/api/src/profile/level-classifier.ts`).
+- API의 HTTP 수준 테스트는 `services/api/test/test-app.ts`의 `createTestApp`으로 앱을 띄운다.
 - 웹훅과 내부 작업 엔드포인트에는 `@Public()`과 `@UseGuards(secretGuard(...))`를 함께 붙인다(`services/api/src/common/secret.guard.ts`).
 - 테이블을 추가하거나 바꿀 때는 `docs/DATABASE.md`를 먼저 고친다. 새 테이블의 마이그레이션에는 `ENABLE ROW LEVEL SECURITY`를 넣는다. 부분 유일 인덱스와 체크 제약은 마이그레이션 SQL에 직접 쓴다.
 - 설치 스크립트가 있는 의존성을 추가하면 `pnpm install`이 실패한다. `pnpm-workspace.yaml`의 `allowBuilds`에 그 패키지의 허용 여부를 적는다.
