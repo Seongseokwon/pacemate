@@ -40,6 +40,8 @@ export type EngineSession = {
   distanceKm: number | null;
   durationMin: number | null;
   paceRange: { minSecPerKm: number; maxSecPerKm: number } | null;
+  /** 걷고 달리기에서 한 번에 달리는 시간(분). 시간 기반 걷고 달리기에는 꼭 있다(TE-S14) */
+  runIntervalMin: number | null;
   weekNumber: number;
 };
 
@@ -85,12 +87,17 @@ export type PlanState = {
   sessions: PlanSessionState[];
 };
 
-// 검증기
+// 검증기. TE-S10(재계산 제안)과 TE-S12(호출하는 쪽의 책임)는 계획의 통과·위반이 아니라서 없다
 export type SafetyRuleId =
   | 'TE-S01' | 'TE-S02' | 'TE-S03' | 'TE-S04' | 'TE-S05' | 'TE-S06' | 'TE-S07'
-  | 'TE-S08' | 'TE-S09' | 'TE-S10' | 'TE-S11' | 'TE-S13' | 'TE-S14';
+  | 'TE-S08' | 'TE-S09' | 'TE-S11' | 'TE-S13' | 'TE-S14';
 
-export type ValidateInput = { plan: PlanState; today: DateString };
+export type ValidateInput = {
+  plan: PlanState;
+  today: DateString;
+  /** 일정 변경(PRD §7.5)의 변경안을 검증할 때 넘긴다. `plan`은 변경을 적용한 뒤의 상태다(TE-S09, TE-S11) */
+  change?: { previous: PlanState; reason: ProposalReason };
+};
 export type ValidateResult = { ok: true } | { ok: false; violations: SafetyRuleId[] };
 export type Validate = (input: ValidateInput) => ValidateResult;
 
