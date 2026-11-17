@@ -57,6 +57,7 @@ Supabase는 `public` 스키마의 테이블을 자동 생성 API로 노출한다
 | `subscriptions` | 구독 상태 | Subscription |
 | `subscription_events` | 구독 서비스 웹훅 수신 기록 | (추가) |
 | `usage_counters` | 월별 이용량 | UsageCounter |
+| `usage_trials` | 가입 체험분의 사용량 | UsageTrial |
 | `ai_call_logs` | LLM 호출 기록 | AiCallLog |
 | `weekly_summaries` | 주간 요약 | WeeklySummary |
 | `notification_settings` | 알림 설정 | NotificationSetting |
@@ -69,6 +70,7 @@ users ─1:N─ training_plans ─1:N─ planned_sessions ─1:0..1─ workout_l
 users ─1:N─ workout_logs
 users ─1:N─ chat_messages ─N:0..1─ change_proposals ─1:0..1─ plan_change_logs
 users ─1:1─ subscriptions, notification_settings
+users ─1:1─ usage_trials
 users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, notification_logs
 ```
 
@@ -220,7 +222,8 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | `user_id` | uuid | ✓ | `users` 참조 |
 | `plan_id` | uuid | | `training_plans` 참조. 활성 계획이 없는 사용자의 기록 등록 제안은 비움 |
 | `type` | enum `reschedule` / `goal_change` / `workout_log` | ✓ | PRD §6.5 |
-| `source` | enum `chat` / `settings` | ✓ | 진입 경로. 이용량 차감 여부는 `type`과 `source`로 정한다 |
+| `source` | enum `chat` / `settings` | ✓ | 진입 경로. 이용량 차감 여부는 `type`, `source`, `quota_exempt`로 정한다 |
+| `quota_exempt` | boolean | ✓ | 놓친 훈련이 많은 주의 일정 변경이라 차감하지 않는 제안(PRD §8.2). 기본값 false. 제안을 만들 때 정한다 |
 | `status` | enum `pending` / `approved` / `cancelled` / `superseded` | ✓ | |
 | `base_plan_version` | integer | | 제안 생성 시점의 계획 버전(`DI-03`) |
 | `reason` | enum `schedule` / `fatigue` / `pain` | | 일정 변경의 사유 |
@@ -299,6 +302,18 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 
 - 달이 바뀌면 새 행이 생긴다. 초기화 작업이 없다.
 - 증가는 "현재 값이 한도 미만일 때만 1 증가"하는 조건부 갱신으로 한다(`DI-12`).
+
+**`usage_trials`** (가입 체험분, PRD §8.2)
+
+| 컬럼 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `user_id` | uuid | ✓ | 기본 키, `users` 참조 |
+| `chat_count` | integer | ✓ | 체험분에서 쓴 AI 대화 수. 기본값 0 |
+| `reschedule_count` | integer | ✓ | 체험분에서 쓴 AI 일정 변경 수. 기본값 0 |
+
+- 행이 없으면 하나도 쓰지 않은 것이다. 처음 차감할 때 만든다.
+- 무료 요금제의 차감은 이 표를 먼저 조건부 갱신하고, 갱신된 행이 없으면(체험분을 다 썼으면) `usage_counters`를 조건부 갱신한다. 둘 다 갱신되지 않으면 한도 초과다(`DI-12`).
+- 체험분의 크기는 설정 상수에 있다. 이 표에는 쓴 횟수만 둔다.
 
 ### 3.12 `ai_call_logs`
 
@@ -419,6 +434,7 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | `planned_sessions` | `distance_km`와 `duration_min` 중 하나 이상 존재 |
 | `workout_logs` | `distance_km` 0.1~100, `duration_sec` 60~43200, `condition` 1~5, `rpe` 1~10, `memo` 500자 이하 |
 | `usage_counters` | `month`는 `YYYY-MM` 형식, 횟수는 0 이상 |
+| `usage_trials` | 횟수는 0 이상 |
 | `notification_settings` | `reminder_hour` 8~20 |
 
 ---
@@ -450,7 +466,7 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 
 | 테이블 | 처리 |
 |---|---|
-| `runner_profiles`, `training_plans`, `planned_sessions`, `workout_logs`, `chat_messages`, `change_proposals`, `plan_change_logs`, `subscriptions`, `usage_counters`, `weekly_summaries`, `notification_settings`, `push_tokens`, `notification_logs` | 연쇄 삭제 |
+| `runner_profiles`, `training_plans`, `planned_sessions`, `workout_logs`, `chat_messages`, `change_proposals`, `plan_change_logs`, `subscriptions`, `usage_counters`, `usage_trials`, `weekly_summaries`, `notification_settings`, `push_tokens`, `notification_logs` | 연쇄 삭제 |
 | `ai_call_logs` | `user_id`를 비우고 행은 남긴다. 본문이 없는 비용 통계다. |
 | `subscription_events` | `user_id`를 비우고 행은 남긴다. 결제 관련 보존 대상 여부는 `D-12`에서 확인한다. |
 
