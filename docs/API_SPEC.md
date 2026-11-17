@@ -207,19 +207,29 @@
 
 | 필드 | 필수 | 값 |
 |---|---|---|
-| `goalDistance` | ✓ | `five_k` / `ten_k` / `half` |
-| `goalTimeSec` | | 목표 기록 |
-| `raceDate` | | 오늘 이후 날짜 |
+| `goalDistance` | ✓ | `five_k` / `ten_k` / `half` / `none`(목표 없음) |
+| `goalTimeSec` | | 목표 기록. `none`이면 보내지 않는다 |
+| `raceDate` | | 오늘 이후 날짜. `none`이면 보내지 않는다 |
 
 - 미리보기 응답: `options` 배열. 항목마다 `kind`(`race_prep` / `base_building`), `startDate`, `endDate`, `totalWeeks`, `sessions`(Session 배열, ID 없음), `warnings`가 있다. 만들 수 있는 계획만 들어 있으므로 항목은 하나 또는 둘이다(`TE-G06`).
 - `warnings`는 경고 코드의 배열이다: `RACE_PREP_NOT_REACHABLE`, `GOAL_TIME_TOO_FAST`, `GOAL_TIME_NOT_CHECKED`. 문구는 `packages/shared`에 있다.
 - `raceDate`는 내일 이후여야 한다. 러닝 프로필이 없으면 `NOT_FOUND`다.
+- `goalDistance`가 `none`인데 `goalTimeSec`이나 `raceDate`가 있으면 `VALIDATION_ERROR`다(`F02-R07`). `none`의 미리보기는 항상 기초 훈련 계획 하나이고 `warnings`가 비어 있다. 확정 요청의 `kind`가 `race_prep`이면 `PLAN_NOT_FEASIBLE`이다(`F03-R09`).
 - 확정 요청에는 고른 계획의 `kind`를 더한다. 그 종류의 계획을 만들 수 없는 입력이면 `PLAN_NOT_FEASIBLE`이다.
 - Training Engine이 결정적이므로 확정 요청은 같은 입력으로 다시 계산해 저장한다. 미리보기 결과를 서버에 보관하지 않는다.
 - 확정 응답은 `GET /v1/plan`과 같다. 활성 계획이 이미 있으면 `PLAN_ALREADY_ACTIVE`. 기간이 끝난 계획은 이 요청에서 종료 처리된다(`F03-R08`).
 - 어떤 계획도 만들 수 없으면 `PLAN_NOT_FEASIBLE`이다. 완주 준비 계획만 만들 수 없는 경우는 오류가 아니다. `options`에 기초 훈련 계획만 담고 그 `warnings`에 이유를 넣는다(`TE-G06`).
 
-**`GET /v1/plan`** 응답: `id`, `kind`, `goalDistance`, `goalTimeSec`, `raceDate`, `startDate`, `endDate`, `version`, `warnings`, `progress`(`{ completed, total }`), `isFinished`(종료일이 지났는지).
+**`GET /v1/plan`** 응답: `id`, `kind`, `goalDistance`, `goalTimeSec`, `raceDate`, `startDate`, `endDate`, `version`, `warnings`, `progress`(`{ completed, total }`), `isFinished`(종료일이 지났는지), `focus`.
+
+`focus`는 목표 없음 계획이 무엇을 향하는지다(`F03-R09`). `goalDistance`가 `none`이 아니면 null이다. 미리보기의 `options` 항목에도 있다. 문구는 `packages/shared`에 둔다.
+
+| 값 | 조건 | 문구 |
+|---|---|---|
+| `continuous_30min` | 시간 기반 계획이고 첫 주의 `runIntervalMin`이 30 미만 | 30분 쉬지 않고 달리기 |
+| `habit` | 그 밖(첫 주의 `runIntervalMin`이 30이거나 거리 기반) | 꾸준히 달리는 습관 만들기 |
+
+계획의 첫 주 훈련으로 판정하므로 DB에 따로 저장하지 않는다.
 
 **`GET /v1/sessions?from=&to=`** 는 끝난 계획의 훈련과 생략된 훈련도 돌려준다. 날짜순이다.
 
@@ -235,7 +245,7 @@
 | `weekSessions` | 이번 주 Session 배열 |
 | `managerMessage` | `{ code, text }`. 서버 규칙으로 만든 템플릿 문구(PRD §5.4). `code`는 `NO_PLAN`, `PLAN_FINISHED`, `PLAN_NOT_STARTED`, `RACE_DAY`, `TODAY_DONE`, `TODAY_SESSION`, `MISSED_SESSION`, `REST_DAY` 중 하나이며 이 순서로 먼저 맞는 것을 쓴다 |
 
-`todaySession`과 `weekSessions`는 활성 계획의 훈련이다. `todaySession`에는 생략된 훈련을 넣지 않는다. `daysToRace`는 대회가 지났으면 null이다.
+`todaySession`과 `weekSessions`는 활성 계획의 훈련이다. `todaySession`에는 생략된 훈련을 넣지 않는다. `daysToRace`는 대회가 지났으면 null이다. 목표 없음 계획이 끝났을 때의 `PLAN_FINISHED` 문구는 다음 목표를 권한다(`F03-R08`). 코드는 같다.
 
 ### 3.4 운동 기록 (F07)
 
@@ -413,7 +423,7 @@ LLM에 제공하는 도구 7개의 입력과 출력이다(PRD §6.2). HTTP 엔�
 
 | 도구 | 입력 | 출력 |
 |---|---|---|
-| `get_runner_profile` | 없음 | 프로필, 수준, 목표(거리·기록·대회 날짜), 대회까지 남은 날. 활성 계획이 없으면 목표는 null |
+| `get_runner_profile` | 없음 | 프로필, 수준, 목표(거리·기록·대회 날짜), 대회까지 남은 날. 활성 계획이 없으면 목표는 null. 목표 없음이면 목표는 `{ goalDistance: 'none', focus }`이고 기록·대회 날짜·남은 날을 넣지 않는다 |
 | `get_training_plan` | `from`, `to` (날짜, 최대 28일) | 계획 요약(주차, 진행률)과 기간 내 훈련 목록: `sessionId`, `date`, 요일, `type`, `distanceKm`, `durationMin`, `status` |
 | `get_workout_history` | `from`, `to` (날짜, 최대 90일) | 기록 목록: `date`, `distanceKm`, `durationSec`, `paceSecPerKm`, `condition`, `rpe`, `memo`, 연결된 훈련의 `type` |
 | `get_weekly_summary` | `weekStart` (월요일) | §3.7의 수치 |
@@ -434,7 +444,7 @@ LLM에 제공하는 도구 7개의 입력과 출력이다(PRD §6.2). HTTP 엔�
 
 훈련의 거리·강도는 입력에 없다. Training Engine이 정한다(PRD §6.1, `AI-03`).
 
-**`propose_goal_change`** 입력: `goalDistance`, `goalTimeSec`, `raceDate` 중 바꿀 값. `goalTimeSec`과 `raceDate`는 null로 보내면 값을 지운다.
+**`propose_goal_change`** 입력: `goalDistance`, `goalTimeSec`, `raceDate` 중 바꿀 값. `goalTimeSec`과 `raceDate`는 null로 보내면 값을 지운다. `goalDistance`를 `none`으로 바꾸면 두 값도 지운다. 바꾼 뒤의 목표가 `none`인데 두 값 중 하나가 남으면 입력 오류다.
 
 **`propose_workout_log`** 입력: `date`, `distanceKm`, `durationSec`(이상 필수), `condition`, `rpe`, `memo`, `sessionId`(연결할 훈련). 사용자가 말하지 않은 `condition`과 `rpe`는 넣지 않는다.
 
