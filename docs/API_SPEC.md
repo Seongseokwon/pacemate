@@ -212,11 +212,13 @@
 | `goalDistance` | ✓ | `five_k` / `ten_k` / `half` / `none`(목표 없음) |
 | `goalTimeSec` | | 목표 기록. `none`이면 보내지 않는다 |
 | `raceDate` | | 오늘 이후 날짜. `none`이면 보내지 않는다 |
+| `continuation` | | `true`면 유지 계획을 만든다(`F03-R10`). 미리보기 요청에만 쓴다. 기본값 `false` |
 
-- 미리보기 응답: `options` 배열. 항목마다 `kind`(`race_prep` / `base_building`), `startDate`, `endDate`, `totalWeeks`, `sessions`(Session 배열, ID 없음), `warnings`가 있다. 만들 수 있는 계획만 들어 있으므로 항목은 하나 또는 둘이다(`TE-G06`).
+- 미리보기 응답: `options` 배열. 항목마다 `kind`(`race_prep` / `base_building` / `maintenance`), `startDate`, `endDate`, `totalWeeks`, `sessions`(Session 배열, ID 없음), `warnings`가 있다. 만들 수 있는 계획만 들어 있으므로 항목은 하나 또는 둘이다(`TE-G06`).
 - `warnings`는 경고 코드의 배열이다: `RACE_PREP_NOT_REACHABLE`, `GOAL_TIME_TOO_FAST`, `GOAL_TIME_NOT_CHECKED`. 문구는 `packages/shared`에 있다.
 - `raceDate`는 내일 이후여야 한다. 러닝 프로필이 없으면 `NOT_FOUND`다.
 - `goalDistance`가 `none`인데 `goalTimeSec`이나 `raceDate`가 있으면 `VALIDATION_ERROR`다(`F02-R07`). `none`의 미리보기는 항상 기초 훈련 계획 하나이고 `warnings`가 비어 있다. 확정 요청의 `kind`가 `race_prep`이면 `PLAN_NOT_FEASIBLE`이다(`F03-R09`).
+- `continuation`이 `true`면 `goalDistance`는 `none`이어야 하고 아니면 `VALIDATION_ERROR`다. 기간이 끝난 계획이 없으면 `NOT_FOUND`, 끝나지 않은 활성 계획이 있으면 `PLAN_ALREADY_ACTIVE`다. 미리보기는 유지 계획(`maintenance`) 하나이고 `warnings`가 비어 있다(`TE-G10`). 확정 요청은 `goalDistance`를 `none`, `kind`를 `maintenance`로 보내며 조건은 같다. `continuation` 없이 만든 미리보기에는 `maintenance`가 들어 있지 않다.
 - 확정 요청에는 고른 계획의 `kind`를 더한다. 그 종류의 계획을 만들 수 없는 입력이면 `PLAN_NOT_FEASIBLE`이다.
 - Training Engine이 결정적이므로 확정 요청은 같은 입력으로 다시 계산해 저장한다. 미리보기 결과를 서버에 보관하지 않는다.
 - 확정 응답은 `GET /v1/plan`과 같다. 활성 계획이 이미 있으면 `PLAN_ALREADY_ACTIVE`. 기간이 끝난 계획은 이 요청에서 종료 처리된다(`F03-R08`).
@@ -229,7 +231,7 @@
 | 값 | 조건 | 문구 |
 |---|---|---|
 | `continuous_30min` | 시간 기반 계획이고 첫 주의 `runIntervalMin`이 30 미만 | 30분 쉬지 않고 달리기 |
-| `habit` | 그 밖(첫 주의 `runIntervalMin`이 30이거나 거리 기반) | 꾸준히 달리는 습관 만들기 |
+| `habit` | 그 밖(첫 주의 `runIntervalMin`이 30이거나 거리 기반). `kind`가 `maintenance`면 첫 주와 관계없이 이 값이다(`F03-R10`) | 꾸준히 달리는 습관 만들기 |
 
 계획의 첫 주 훈련으로 판정하므로 DB에 따로 저장하지 않는다.
 
@@ -247,7 +249,7 @@
 | `weekSessions` | 이번 주 Session 배열 |
 | `managerMessage` | `{ code, text }`. 서버 규칙으로 만든 템플릿 문구(PRD §5.4). `code`는 `NO_PLAN`, `PLAN_FINISHED`, `PLAN_NOT_STARTED`, `RACE_DAY`, `TODAY_DONE`, `TODAY_SESSION`, `MISSED_SESSION`, `REST_DAY` 중 하나이며 이 순서로 먼저 맞는 것을 쓴다 |
 
-`todaySession`과 `weekSessions`는 활성 계획의 훈련이다. `todaySession`에는 생략된 훈련을 넣지 않는다. `daysToRace`는 대회가 지났으면 null이다. 목표 없음 계획이 끝났을 때의 `PLAN_FINISHED` 문구는 다음 목표를 권한다(`F03-R08`). 코드는 같다.
+`todaySession`과 `weekSessions`는 활성 계획의 훈련이다. `todaySession`에는 생략된 훈련을 넣지 않는다. `daysToRace`는 대회가 지났으면 null이다. 목표 없음 계획이 끝났을 때의 `PLAN_FINISHED` 문구는 다음 목표를 권한다(`F03-R08`). 코드는 같다. 계획이 끝났으면 `plan`은 끝난 계획의 요약(`isFinished`가 true)이고, 앱은 이때 [이어서 훈련하기]를 보여 준다. `plan`이 null이면 [새 목표 설정]만 보여 준다.
 
 ### 3.4 운동 기록 (F07)
 
@@ -365,7 +367,7 @@
 | `PUT /v1/push-tokens` | 푸시 토큰 등록. 요청: `token`, `platform` |
 | `DELETE /v1/push-tokens/{token}` | 푸시 토큰 삭제. 로그아웃 직전에 호출 |
 
-알림 설정 필드: `workoutReminder`(boolean), `reminderHour`(8~20), `missedNotice`(boolean), `weeklySummary`(boolean). 설정 행이 없는 사용자는 기본값으로 응답한다.
+알림 설정 필드: `workoutReminder`(boolean), `reminderHour`(8~20), `missedNotice`(boolean), `weeklySummary`(boolean). 설정 행이 없는 사용자는 기본값으로 응답한다. 대회 전날 알림과 계획 종료 알림은 설정 필드를 따로 두지 않고 `workoutReminder`와 `reminderHour`를 따른다(`F09-R08`, `F09-R09`).
 
 ### 3.9 구독 (F10)
 
@@ -387,9 +389,9 @@
 | 메서드 · 경로 | 호출자 | 설명 |
 |---|---|---|
 | `POST /v1/webhooks/subscription` | 구독 서비스 | 구독 이벤트 수신. 이벤트 ID로 중복을 무시한다 |
-| `POST /v1/internal/jobs/workout-reminders` | 예약 실행기 | 예정 운동 알림 발송 |
+| `POST /v1/internal/jobs/workout-reminders` | 예약 실행기 | 예정 운동 알림, 대회 전날 알림, 계획 종료 알림 발송 |
 | `POST /v1/internal/jobs/missed-notices` | 예약 실행기 | 미완료 훈련 안내 발송 |
-| `POST /v1/internal/jobs/weekly-summary` | 예약 실행기 | 주간 요약 생성·발송 |
+| `POST /v1/internal/jobs/weekly-summary` | 예약 실행기 | 주간 요약 생성·발송. 계획한 훈련도 기록도 없는 주에는 알림을 보내지 않는다(`F09-R10`) |
 | `GET /health` | 호스팅 플랫폼 | 상태 확인. 인증 없음, DB 연결 확인 |
 
 - 웹훅은 처리에 성공했거나 이미 처리한 이벤트면 `200`을 돌려준다. 그 밖의 응답이면 구독 서비스가 다시 보낸다.
