@@ -20,10 +20,12 @@
 | `docs/ARCHITECTURE.md` | 시스템 구성, 모듈 경계, 처리 방식 | 새 모듈이나 외부 연동을 다룰 때 |
 | `docs/DATABASE.md` | 테이블, 제약, 인덱스 | DB를 읽거나 쓰는 코드를 다룰 때 |
 | `docs/API_SPEC.md` | HTTP API, LLM 도구 인터페이스 | 엔드포인트, 앱의 API 호출, 도구를 다룰 때 |
-| `docs/UI_UX.md` | 디자인 토큰, 컴포넌트, 화면 설계, 문구 기준 | 화면을 만들거나 고칠 때 |
+| [`docs/UI_UX.md`](docs/UI_UX.md) | 디자인 토큰, 컴포넌트, 화면 설계, 문구 기준, Figma 원본과 프로토타입 링크 | 화면을 만들거나 고칠 때 |
 | `docs/DEVELOPMENT_PLAN.md` | 작업 목록, 순서, 상태 | 작업을 시작하고 끝낼 때 |
 
 문서가 서로 다르면 `PROJECT_CONTEXT.md`의 확정 사항 → `DECISIONS.md` → `PRD.md` → 나머지 순으로 우선한다. 충돌을 발견하면 임의로 고치지 말고 개발자에게 알린다.
+
+UI를 확인하거나 구현할 때는 [`docs/UI_UX.md`의 Figma 참조](docs/UI_UX.md#figma-참조)에서 해당 화면을 연다. 시안과 요구사항이 다르면 차이를 기록하고 위 문서 우선순위를 따른다.
 
 ## 작업 절차
 
