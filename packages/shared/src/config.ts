@@ -4,11 +4,14 @@
 /** 서비스의 기준 시간대. 훈련 날짜와 "오늘"은 모두 이 시간대로 계산한다(PRD §1.5, DI-09). */
 export const TIME_ZONE = 'Asia/Seoul';
 
-/** 요금제별 월 이용 한도(PRD §8.1, D-08). */
+/** 요금제별 월 이용 한도(PRD §8.1, D-08). 무료의 월 한도는 가입 체험분을 다 쓴 뒤에 적용한다. */
 export const PLAN_LIMITS = {
-  free: { chat: 10, reschedule: 2 },
-  pro: { chat: 100, reschedule: 30 },
+  free: { chat: 5, reschedule: 1 },
+  pro: { chat: 300, reschedule: 30 },
 } as const;
+
+/** 무료 요금제의 가입 체험분(PRD §8.1). 한 번만 주고 다시 채우지 않는다. */
+export const TRIAL_LIMITS = { chat: 30, reschedule: 3 } as const;
 
 /** 채팅 메시지 최대 길이(F04-R09). */
 export const CHAT_MESSAGE_MAX_LENGTH = 500;

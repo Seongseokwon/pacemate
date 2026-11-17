@@ -1,5 +1,6 @@
 import { Controller, Get, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { PLAN_LIMITS } from '@pacemate/shared';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
@@ -138,7 +139,7 @@ describe('GET /v1/me', () => {
       onboardingCompleted: false,
       hasActivePlan: false,
       authProvider: 'google',
-      usage: { tier: 'free', chat: { used: 0, limit: 10 } },
+      usage: { tier: 'free', chat: { used: 0, limit: PLAN_LIMITS.free.chat } },
       subscription: null,
     });
     expect(await prisma.user.count()).toBe(0);
@@ -153,7 +154,7 @@ describe('GET /v1/me', () => {
       registered: true,
       onboardingCompleted: true,
       hasActivePlan: true,
-      usage: { tier: 'pro', chat: { used: 3, limit: 100 } },
+      usage: { tier: 'pro', chat: { used: 3, limit: PLAN_LIMITS.pro.chat } },
       subscription: { productId: 'pro_monthly', store: 'app_store', expiresAt: '2100-01-01T00:00:00.000Z', willRenew: true },
     });
     expect((await call('get', '/v1/me', USER_B)).body).toMatchObject({

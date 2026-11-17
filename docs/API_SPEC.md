@@ -76,9 +76,11 @@
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | `tier` | `free` / `pro` | |
-| `chat` | `{ used, limit }` | 이번 달 AI 대화 |
-| `reschedule` | `{ used, limit }` | 이번 달 AI 일정 변경 |
-| `resetsOn` | 날짜 | 다음 초기화 날짜 |
+| `chat` | `{ used, limit, pool }` | AI 대화. `pool`은 지금 차감되는 곳이다: `trial`(가입 체험분) 또는 `month`(이번 달 한도). `used`와 `limit`은 그 `pool`의 값이다 |
+| `reschedule` | `{ used, limit, pool }` | AI 일정 변경. 위와 같다. 대화와 `pool`이 다를 수 있다 |
+| `resetsOn` | 날짜 | 월 한도의 다음 초기화 날짜. 체험분은 초기화되지 않는다 |
+
+무료 요금제에서 체험분이 남아 있으면 `pool`은 `trial`, 다 쓰면 `month`다. Pro는 항상 `month`다(PRD §8.2). `LIMIT_REACHED`와 한도 안내 카드는 `month`까지 다 썼을 때만 나온다.
 
 ### 2.2 Session (훈련)
 
@@ -121,7 +123,7 @@
 | `type` | `reschedule` / `goal_change` / `workout_log` | |
 | `status` | `pending` / `approved` / `cancelled` / `superseded` / `expired` | `expired`는 서버가 만료 시각으로 판정한 값 |
 | `expiresAt` | 시각 | |
-| `consumesQuota` | boolean | 승인 시 AI 일정 변경 이용량을 차감하는지 |
+| `consumesQuota` | boolean | 승인 시 AI 일정 변경 이용량을 차감하는지. 놓친 훈련이 많은 주의 일정 변경(PRD §8.2)이면 false다. 제안을 만들 때 정해지고 바뀌지 않는다 |
 | `changes` | 배열 | 훈련별 변경. `{ sessionId, action, before, after }`. `action`은 `move` / `skip` / `modify` / `add` / `remove`. `before`·`after`는 `{ date, type, distanceKm, durationMin }` 또는 null. 새로 추가되는 훈련(`add`)의 `sessionId`는 null이다 |
 | `impact` | 객체 또는 null | `{ weeklyDistanceBeforeKm, weeklyDistanceAfterKm, skippedCount }` |
 | `warnings` | 문자열 배열 | 경고 코드. 문구는 `packages/shared`에 둔다 |
