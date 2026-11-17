@@ -70,7 +70,7 @@ users ─1:N─ training_plans ─1:N─ planned_sessions ─1:0..1─ workout_l
 users ─1:N─ workout_logs
 users ─1:N─ chat_messages ─N:0..1─ change_proposals ─1:0..1─ plan_change_logs
 users ─1:1─ subscriptions, notification_settings
-users ─1:1─ usage_trials
+users ─1:1─ usage_trials (`identity_hash`로 찾는다. 외래 키가 아니다)
 users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, notification_logs
 ```
 
@@ -86,6 +86,7 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 |---|---|---|---|
 | `id` | uuid | ✓ | 기본 키. 인증 서비스의 사용자 ID를 그대로 쓴다. |
 | `auth_provider` | enum `apple` / `google` | ✓ | |
+| `identity_hash` | text | ✓ | 로그인 공급자와 공급자가 준 사용자 식별자를 서버 비밀값으로 HMAC-SHA256한 값. 유일. 같은 Apple·Google 계정이면 탈퇴 뒤 다시 가입해도 같다. `usage_trials`를 찾는 키다 |
 | `terms_agreed_at` | timestamptz | ✓ | 이용약관 동의 시각 |
 | `privacy_agreed_at` | timestamptz | ✓ | 개인정보 처리방침 동의 시각 |
 | `health_data_agreed_at` | timestamptz | ✓ | 운동 데이터 처리 동의 시각 |
@@ -307,13 +308,17 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 
 | 컬럼 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `user_id` | uuid | ✓ | 기본 키, `users` 참조 |
+| `identity_hash` | text | ✓ | 기본 키. `users.identity_hash`와 같은 값. `users`를 참조하지 않는다 |
 | `chat_count` | integer | ✓ | 체험분에서 쓴 AI 대화 수. 기본값 0 |
 | `reschedule_count` | integer | ✓ | 체험분에서 쓴 AI 일정 변경 수. 기본값 0 |
+| `account_deleted_at` | timestamptz | | 계정을 삭제한 시각. 다시 가입하면 비운다 |
 
 - 행이 없으면 하나도 쓰지 않은 것이다. 처음 차감할 때 만든다.
 - 무료 요금제의 차감은 이 표를 먼저 조건부 갱신하고, 갱신된 행이 없으면(체험분을 다 썼으면) `usage_counters`를 조건부 갱신한다. 둘 다 갱신되지 않으면 한도 초과다(`DI-12`).
 - 체험분의 크기는 설정 상수에 있다. 이 표에는 쓴 횟수만 둔다.
+- 계정을 삭제해도 이 행은 남는다. 같은 로그인 계정으로 다시 가입하면 같은 행을 이어 쓰므로 체험분을 새로 받지 못한다(PRD §8.2, `DI-11`).
+- `account_deleted_at`이 1년(초기값)을 넘은 행은 내부 작업이 지운다. 기간은 `D-12`에서 확정한다.
+- 이 행에는 해시와 횟수만 있다. 해시의 비밀값은 다른 비밀값과 같이 호스팅 플랫폼의 비밀값 저장소에 둔다.
 
 ### 3.12 `ai_call_logs`
 
@@ -466,9 +471,10 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 
 | 테이블 | 처리 |
 |---|---|
-| `runner_profiles`, `training_plans`, `planned_sessions`, `workout_logs`, `chat_messages`, `change_proposals`, `plan_change_logs`, `subscriptions`, `usage_counters`, `usage_trials`, `weekly_summaries`, `notification_settings`, `push_tokens`, `notification_logs` | 연쇄 삭제 |
+| `runner_profiles`, `training_plans`, `planned_sessions`, `workout_logs`, `chat_messages`, `change_proposals`, `plan_change_logs`, `subscriptions`, `usage_counters`, `weekly_summaries`, `notification_settings`, `push_tokens`, `notification_logs` | 연쇄 삭제 |
 | `ai_call_logs` | `user_id`를 비우고 행은 남긴다. 본문이 없는 비용 통계다. |
 | `subscription_events` | `user_id`를 비우고 행은 남긴다. 결제 관련 보존 대상 여부는 `D-12`에서 확인한다. |
+| `usage_trials` | 행을 남기고 `account_deleted_at`을 채운다. 체험분을 다시 받지 못하게 하기 위해서다. 1년(초기값) 뒤 지운다. 보존 항목과 기간은 `D-12`에서 확인한다. |
 
 `subscription_events.payload`에는 구독 서비스의 사용자 식별자(우리 사용자 ID)가 들어 있다. 보존 기간과 익명화 필요 여부를 `D-12` 검토 항목에 넣는다.
 
