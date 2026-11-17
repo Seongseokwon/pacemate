@@ -120,7 +120,7 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | `user_id` | uuid | ✓ | `users` 참조 |
 | `status` | enum `active` / `ended` | ✓ | |
 | `kind` | enum `race_prep` / `base_building` | ✓ | 완주 준비 계획 / 기초 훈련 계획(`TE-G06`) |
-| `goal_distance` | enum `five_k` / `ten_k` / `half` | ✓ | |
+| `goal_distance` | enum `five_k` / `ten_k` / `half` / `none` | ✓ | `none`은 목표 없음(`F03-R09`) |
 | `goal_time_sec` | integer | | 목표 기록 |
 | `race_date` | date | | 대회 날짜 |
 | `start_date` | date | ✓ | |
@@ -415,7 +415,7 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | 테이블 | 제약 |
 |---|---|
 | `runner_profiles` | `weekly_run_count` 2~5, `recent_weekly_km` 0~100, `preferred_weekdays`는 1~7이고 개수가 `weekly_run_count` 이상 |
-| `training_plans` | `version` 1 이상, `end_date`가 `start_date` 이후 |
+| `training_plans` | `version` 1 이상, `end_date`가 `start_date` 이후, `goal_distance`가 `none`이면 `kind`는 `base_building`이고 `goal_time_sec`과 `race_date`가 없음 |
 | `planned_sessions` | `distance_km`와 `duration_min` 중 하나 이상 존재 |
 | `workout_logs` | `distance_km` 0.1~100, `duration_sec` 60~43200, `condition` 1~5, `rpe` 1~10, `memo` 500자 이하 |
 | `usage_counters` | `month`는 `YYYY-MM` 형식, 횟수는 0 이상 |
