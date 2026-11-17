@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { RATE_LIMIT_PER_MINUTE } from '@pacemate/shared';
-import { classifyLevel } from '@pacemate/training-engine';
+import { classifyLevel, ENGINE_VERSION, generate, validate } from '@pacemate/training-engine';
 import { createRemoteJWKSet } from 'jose';
 import { AccountService } from './auth/account.service.js';
 import { AUTH_ADMIN, UnconfiguredAuthAdmin } from './auth/auth-admin.js';
@@ -16,6 +16,9 @@ import { UserThrottlerGuard } from './common/user-throttler.guard.js';
 import { APP_CONFIG, type AppConfig, loadConfig } from './config.js';
 import { PrismaService } from './db/prisma.service.js';
 import { HealthController } from './health/health.controller.js';
+import { PlanController } from './plan/plan.controller.js';
+import { PlanService } from './plan/plan.service.js';
+import { TRAINING_ENGINE, type TrainingEngine } from './plan/training-engine.js';
 import { LEVEL_CLASSIFIER } from './profile/level-classifier.js';
 import { ProfileController } from './profile/profile.controller.js';
 import { ProfileService } from './profile/profile.service.js';
@@ -23,7 +26,7 @@ import { UsageService } from './usage/usage.service.js';
 
 @Module({
   imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: RATE_LIMIT_PER_MINUTE.default }])],
-  controllers: [HealthController, MeController, ProfileController],
+  controllers: [HealthController, MeController, ProfileController, PlanController],
   providers: [
     { provide: APP_CONFIG, useFactory: () => loadConfig() },
     {
@@ -37,6 +40,8 @@ import { UsageService } from './usage/usage.service.js';
     AccountService,
     ProfileService,
     { provide: LEVEL_CLASSIFIER, useValue: classifyLevel },
+    PlanService,
+    { provide: TRAINING_ENGINE, useValue: { generate, validate, version: ENGINE_VERSION } satisfies TrainingEngine },
     // 인증 서비스의 관리 키가 생기면(D-A1) 실제 구현으로 바꾼다
     { provide: AUTH_ADMIN, useClass: UnconfiguredAuthAdmin },
     { provide: APP_FILTER, useClass: ErrorFilter },

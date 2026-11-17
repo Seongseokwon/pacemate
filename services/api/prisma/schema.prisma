@@ -50,6 +50,13 @@ enum PlanStatus {
   @@map("plan_status")
 }
 
+enum PlanKind {
+  race_prep
+  base_building
+
+  @@map("plan_kind")
+}
+
 enum GoalDistance {
   five_k
   ten_k
@@ -212,6 +219,7 @@ model TrainingPlan {
   id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId        String       @map("user_id") @db.Uuid
   status        PlanStatus
+  kind          PlanKind
   goalDistance  GoalDistance @map("goal_distance")
   goalTimeSec   Int?         @map("goal_time_sec")
   raceDate      DateTime?    @map("race_date") @db.Date
@@ -239,6 +247,7 @@ model PlannedSession {
   type            SessionType
   distanceKm      Decimal?    @map("distance_km") @db.Decimal(4, 1)
   durationMin     Int?        @map("duration_min") @db.SmallInt
+  runIntervalMin  Int?        @map("run_interval_min") @db.SmallInt
   paceMinSecPerKm Int?        @map("pace_min_sec_per_km")
   paceMaxSecPerKm Int?        @map("pace_max_sec_per_km")
   weekNumber      Int         @map("week_number") @db.SmallInt

@@ -12,7 +12,9 @@ import {
   continuousRunSchema,
   experienceSchema,
   goalDistanceSchema,
+  managerMessageCodeSchema,
   planKindSchema,
+  planWarningSchema,
   pushPlatformSchema,
   runnerLevelSchema,
   storeSchema,
@@ -135,7 +137,7 @@ export const planOptionSchema = z.object({
   totalWeeks: z.int().positive(),
   /** 저장하기 전이라 ID가 없다 */
   sessions: z.array(sessionSchema.omit({ id: true })),
-  warnings: z.array(z.string()),
+  warnings: z.array(planWarningSchema),
 });
 export type PlanOption = z.infer<typeof planOptionSchema>;
 
@@ -153,7 +155,7 @@ export const planSummarySchema = z.object({
   startDate: dateSchema,
   endDate: dateSchema,
   version: z.int().positive(),
-  warnings: z.array(z.string()),
+  warnings: z.array(planWarningSchema),
   progress: z.object({ completed: countSchema, total: countSchema }),
   isFinished: z.boolean(),
 });
@@ -194,7 +196,7 @@ export const homeResponseSchema = z.object({
   todaySession: sessionSchema.nullable(),
   weekSessions: z.array(sessionSchema),
   /** 서버 규칙으로 만든 템플릿 문구(PRD §5.4) */
-  managerMessage: z.object({ code: z.string(), text: z.string() }),
+  managerMessage: z.object({ code: managerMessageCodeSchema, text: z.string() }),
 });
 export type HomeResponse = z.infer<typeof homeResponseSchema>;
 
