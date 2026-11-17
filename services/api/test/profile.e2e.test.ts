@@ -82,6 +82,7 @@ describe('PUT /v1/profile (F02)', () => {
       data: {
         userId: USER_A,
         status: 'active',
+        kind: 'race_prep',
         goalDistance: 'half',
         startDate: new Date('2026-11-16'),
         endDate: new Date('2027-02-07'),

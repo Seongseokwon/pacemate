@@ -1,3 +1,6 @@
+/** 이 파일의 값을 바꾸면 올린다. 계획에 함께 저장해 어떤 값으로 만든 계획인지 남긴다(DATABASE §3.3). */
+export const ENGINE_VERSION = '2026-11-16';
+
 /** 훈련 안전 규칙의 초기값(PRD §7.4). `D-04`를 확정할 때 값만 바꾼다. */
 export const SAFETY = {
   /** TE-S01, TE-S14: 주간 거리·시간은 최근 `peakWeeks`주 고점의 이 배수를 넘지 않는다 */

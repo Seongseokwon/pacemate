@@ -89,6 +89,7 @@
 | `type` | `walk_run` / `easy` / `tempo` / `long` / `race` | |
 | `distanceKm` | 숫자 또는 null | |
 | `durationMin` | 정수 또는 null | |
+| `runIntervalMin` | 정수 또는 null | 걷고 달리기에서 한 번에 달리는 시간(분). 시간 기준 `walk_run`에만 있다(`TE-S14`) |
 | `paceRange` | `{ minSecPerKm, maxSecPerKm }` 또는 null | 권장 페이스 범위 |
 | `weekNumber` | 정수 | |
 | `status` | `planned` / `completed` / `missed` / `skipped` | 서버가 판정(`DATABASE.md` §3.4) |
@@ -211,12 +212,16 @@
 | `raceDate` | | 오늘 이후 날짜 |
 
 - 미리보기 응답: `options` 배열. 항목마다 `kind`(`race_prep` / `base_building`), `startDate`, `endDate`, `totalWeeks`, `sessions`(Session 배열, ID 없음), `warnings`가 있다. 만들 수 있는 계획만 들어 있으므로 항목은 하나 또는 둘이다(`TE-G06`).
+- `warnings`는 경고 코드의 배열이다: `RACE_PREP_NOT_REACHABLE`, `GOAL_TIME_TOO_FAST`, `GOAL_TIME_NOT_CHECKED`. 문구는 `packages/shared`에 있다.
+- `raceDate`는 내일 이후여야 한다. 러닝 프로필이 없으면 `NOT_FOUND`다.
 - 확정 요청에는 고른 계획의 `kind`를 더한다. 그 종류의 계획을 만들 수 없는 입력이면 `PLAN_NOT_FEASIBLE`이다.
 - Training Engine이 결정적이므로 확정 요청은 같은 입력으로 다시 계산해 저장한다. 미리보기 결과를 서버에 보관하지 않는다.
 - 확정 응답은 `GET /v1/plan`과 같다. 활성 계획이 이미 있으면 `PLAN_ALREADY_ACTIVE`. 기간이 끝난 계획은 이 요청에서 종료 처리된다(`F03-R08`).
 - 어떤 계획도 만들 수 없으면 `PLAN_NOT_FEASIBLE`이다. 완주 준비 계획만 만들 수 없는 경우는 오류가 아니다. `options`에 기초 훈련 계획만 담고 그 `warnings`에 이유를 넣는다(`TE-G06`).
 
 **`GET /v1/plan`** 응답: `id`, `kind`, `goalDistance`, `goalTimeSec`, `raceDate`, `startDate`, `endDate`, `version`, `warnings`, `progress`(`{ completed, total }`), `isFinished`(종료일이 지났는지).
+
+**`GET /v1/sessions?from=&to=`** 는 끝난 계획의 훈련과 생략된 훈련도 돌려준다. 날짜순이다.
 
 **`GET /v1/sessions/{id}`** 응답: Session 필드에 더해 `workout`(Workout 또는 null), `changes`(이 훈련이 바뀐 이력의 배열: `changedAt`, `reason`, `before`, `after`. `before`·`after`는 `{ date, type, distanceKm, durationMin }` 또는 null).
 
@@ -228,7 +233,9 @@
 | `daysToRace` | 대회까지 남은 날 또는 null |
 | `todaySession` | Session 또는 null |
 | `weekSessions` | 이번 주 Session 배열 |
-| `managerMessage` | `{ code, text }`. 서버 규칙으로 만든 템플릿 문구(PRD §5.4) |
+| `managerMessage` | `{ code, text }`. 서버 규칙으로 만든 템플릿 문구(PRD §5.4). `code`는 `NO_PLAN`, `PLAN_FINISHED`, `PLAN_NOT_STARTED`, `RACE_DAY`, `TODAY_DONE`, `TODAY_SESSION`, `MISSED_SESSION`, `REST_DAY` 중 하나이며 이 순서로 먼저 맞는 것을 쓴다 |
+
+`todaySession`과 `weekSessions`는 활성 계획의 훈련이다. `todaySession`에는 생략된 훈련을 넣지 않는다. `daysToRace`는 대회가 지났으면 null이다.
 
 ### 3.4 운동 기록 (F07)
 

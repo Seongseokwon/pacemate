@@ -24,6 +24,7 @@ const createPlan = (status: 'active' | 'ended' = 'active') =>
     data: {
       userId: USER,
       status,
+      kind: 'race_prep',
       goalDistance: 'half',
       startDate: day('2026-11-16'),
       endDate: day('2027-02-07'),

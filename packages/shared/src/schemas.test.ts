@@ -17,6 +17,7 @@ const session = {
   distanceKm: 12,
   durationMin: null,
   paceRange: { minSecPerKm: 380, maxSecPerKm: 420 },
+  runIntervalMin: null,
   weekNumber: 3,
   status: 'planned',
   workoutId: null,

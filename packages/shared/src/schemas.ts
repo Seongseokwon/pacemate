@@ -44,6 +44,8 @@ export type SessionSnapshot = z.infer<typeof sessionSnapshotSchema>;
 
 export const sessionSchema = sessionSnapshotSchema.extend({
   id: idSchema,
+  /** 걷고 달리기에서 한 번에 달리는 시간(분). 시간 기준 걷고 달리기에만 있다(TE-S14) */
+  runIntervalMin: z.int().positive().nullable(),
   paceRange: z
     .object({ minSecPerKm: z.int().positive(), maxSecPerKm: z.int().positive() })
     .nullable(),

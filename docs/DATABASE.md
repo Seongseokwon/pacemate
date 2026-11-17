@@ -119,7 +119,7 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | `id` | uuid | ✓ | 기본 키 |
 | `user_id` | uuid | ✓ | `users` 참조 |
 | `status` | enum `active` / `ended` | ✓ | |
-| `kind` | enum `race_prep` / `base_building` | ✓ | 완주 준비 계획 / 기초 훈련 계획(`TE-G06`). 마이그레이션은 계획 API를 만드는 `T-204`에서 추가한다 |
+| `kind` | enum `race_prep` / `base_building` | ✓ | 완주 준비 계획 / 기초 훈련 계획(`TE-G06`) |
 | `goal_distance` | enum `five_k` / `ten_k` / `half` | ✓ | |
 | `goal_time_sec` | integer | | 목표 기록 |
 | `race_date` | date | | 대회 날짜 |
@@ -146,7 +146,7 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | `type` | enum `walk_run` / `easy` / `tempo` / `long` / `race` | ✓ | `race`는 대회 당일 표시(`TE-G08`) |
 | `distance_km` | numeric(4,1) | | 거리 또는 시간 중 하나는 있어야 한다 |
 | `duration_min` | smallint | | `walk_run`처럼 시간 기준인 훈련 |
-| `run_interval_min` | smallint | | 걷고 달리기에서 한 번에 달리는 시간(분). 시간 기준 `walk_run`에는 꼭 있다(`TE-S14`). 마이그레이션은 계획 API를 만드는 `T-204`에서 추가한다 |
+| `run_interval_min` | smallint | | 걷고 달리기에서 한 번에 달리는 시간(분). 시간 기준 `walk_run`에는 꼭 있다(`TE-S14`) |
 | `pace_min_sec_per_km` | integer | | 권장 페이스 범위(빠른 쪽). 최근 기록이 없으면 비움 |
 | `pace_max_sec_per_km` | integer | | 권장 페이스 범위(느린 쪽) |
 | `week_number` | smallint | ✓ | 계획의 몇 주차인지 |
@@ -256,6 +256,7 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | `source` | enum `chat` / `settings` | ✓ | |
 | `created_at` | timestamptz | ✓ | |
 
+- `before`와 `after`의 형식은 `{ sessions: [{ id, date, type, distanceKm, durationMin }], goal: { goalDistance, goalTimeSec, raceDate } 또는 없음 }`이다. 바뀐 훈련만 담는다. 새로 생긴 훈련은 `after`에만, 지워진 훈련은 `before`에만 있다. 훈련 상세의 변경 이력(`GET /v1/sessions/{id}`)이 이 형식으로 읽는다.
 - 추가만 한다(`DI-08`). 수정·삭제하는 코드를 두지 않으며, 계정 삭제 때만 지워진다.
 - `proposal_id` 유일 제약은 한 제안이 두 번 적용되는 것을 DB 차원에서도 막는다.
 - 운동 기록 등록 제안은 계획을 바꾸지 않으므로 이 테이블에 남기지 않는다.
