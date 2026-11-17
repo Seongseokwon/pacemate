@@ -15,6 +15,20 @@
 3. 화면은 §4의 컴포넌트로 조립한다. 목록에 없는 컴포넌트가 필요하면 먼저 제안한다.
 4. 이 문서에서 정해야 하는 선택은 §12에 `UX-nn`으로 모았다. 2026-11-14에 모두 승인되었다.
 
+### Figma 참조
+
+[PaceMate · Mobile UI](https://www.figma.com/design/EOg570LuvtAluAwOcaD1vb)는 화면 배치와 프로토타입을 확인하는 디자인 원본이다. 기능 요구사항은 PRD, 구현의 토큰과 컴포넌트 규칙은 이 문서가 기준이다.
+
+| 확인할 내용 | Figma |
+|---|---|
+| 기본 앱 화면 | [홈과 AI 코치 흐름](https://www.figma.com/design/EOg570LuvtAluAwOcaD1vb?node-id=4-861), [온보딩·기록·설정](https://www.figma.com/design/EOg570LuvtAluAwOcaD1vb?node-id=4-862) |
+| 공통 컴포넌트와 토큰 | [컴포넌트 페이지](https://www.figma.com/design/EOg570LuvtAluAwOcaD1vb?node-id=4-429) |
+| 응원 테마 | [마이에서 시작하는 프로토타입](https://www.figma.com/proto/EOg570LuvtAluAwOcaD1vb?node-id=4-1478&page-id=0%3A1), [응원 테마 설정 프레임](https://www.figma.com/design/EOg570LuvtAluAwOcaD1vb?node-id=13-594), [두 홈 시안](https://www.figma.com/design/EOg570LuvtAluAwOcaD1vb?node-id=10-397), [일러스트와 목표 카드](https://www.figma.com/design/EOg570LuvtAluAwOcaD1vb?node-id=9-416) |
+
+응원 테마의 시안 흐름은 마이 → 설정의 **응원 테마** → **포근한 응원** 또는 **힘찬 응원** → 해당 홈이다. 프로토타입은 화면 이동을 보여 주며 실제 앱에서 선택을 저장하는 기능의 구현 상태를 나타내지 않는다.
+
+Claude Code와 Codex에서 레이어 정보를 읽을 때는 각 도구에 연결된 Figma 계정에 파일 열람 권한이 있어야 한다. 연결이 필요한 경우 [Figma 공식 설정 가이드](https://developers.figma.com/docs/figma-mcp-server/remote-server-installation/)에서 사용하는 도구의 절차를 따른다. 연결 또는 호출 한도 때문에 열 수 없으면 해당 프레임의 최신 스크린샷을 요청한다.
+
 ---
 
 ## 1. 디자인 시스템 방침
