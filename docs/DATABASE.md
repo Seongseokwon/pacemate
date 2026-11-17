@@ -85,8 +85,8 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | 컬럼 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `id` | uuid | ✓ | 기본 키. 인증 서비스의 사용자 ID를 그대로 쓴다. |
-| `auth_provider` | enum `apple` / `google` | ✓ | |
-| `identity_hash` | text | ✓ | 로그인 공급자와 공급자가 준 사용자 식별자를 서버 비밀값으로 HMAC-SHA256한 값. 유일. 같은 Apple·Google 계정이면 탈퇴 뒤 다시 가입해도 같다. `usage_trials`를 찾는 키다 |
+| `auth_provider` | enum `kakao` / `apple` / `google` | ✓ | |
+| `identity_hash` | text | ✓ | 로그인 공급자와 공급자가 준 사용자 식별자를 서버 비밀값으로 HMAC-SHA256한 값. 유일. 같은 카카오·Apple·Google 계정이면 탈퇴 뒤 다시 가입해도 같다. `usage_trials`를 찾는 키다 |
 | `terms_agreed_at` | timestamptz | ✓ | 이용약관 동의 시각 |
 | `privacy_agreed_at` | timestamptz | ✓ | 개인정보 처리방침 동의 시각 |
 | `health_data_agreed_at` | timestamptz | ✓ | 운동 데이터 처리 동의 시각 |
@@ -183,9 +183,9 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | `date` | date | ✓ | 오늘 이전(오늘 포함). 서버에서 검증 |
 | `distance_km` | numeric(5,2) | ✓ | 체크: 0.1~100 |
 | `duration_sec` | integer | ✓ | 체크: 60~43200 |
-| `condition` | smallint | | 체크: 1~5. 선택 입력 |
-| `rpe` | smallint | | 주관적 운동 강도. 체크: 1~10. 선택 입력 |
-| `memo` | text | | 최대 500자 |
+| `condition` | smallint | | 체크: 1~5. MVP의 화면과 채팅은 받지 않아 비어 있다(PRD `F07-R01`). 컬럼은 남겨 둔다 |
+| `rpe` | smallint | | 운동 강도(주관적 운동 강도). 체크: 1~10. 선택 입력 |
+| `memo` | text | | 통증 내용. 기록 화면의 통증 입력칸에서 받는다. 최대 500자 |
 | `planned_session_id` | uuid | | `planned_sessions` 참조, **유일**. 비어 있으면 자유 러닝 |
 | `source` | enum `app` / `chat` | ✓ | 입력 경로 |
 | `created_at` / `updated_at` | timestamptz | ✓ | |
@@ -231,7 +231,7 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | `request` | jsonb | ✓ | 구조화된 요청 내용(변경 유형, 대상, 불가일 등) |
 | `payload` | jsonb | ✓ | 계산된 변경 내용. 카드 표시와 승인 적용에 쓴다 |
 | `result` | jsonb | | 승인 결과. 중복 승인 시 그대로 돌려준다(`DI-04`) |
-| `expires_at` | timestamptz | ✓ | 생성 후 24시간(초기값) |
+| `expires_at` | timestamptz | ✓ | 만든 날의 자정(`Asia/Seoul` 기준 다음 날 0시, 초기값, `DI-05`) |
 | `created_at` | timestamptz | ✓ | |
 | `resolved_at` | timestamptz | | 승인·취소·대체 시각 |
 
@@ -493,3 +493,5 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | `push_tokens`를 별도 테이블로 분리 | 한 사용자가 여러 기기를 쓸 수 있다. |
 | `subscription_events` 추가 | 웹훅 중복 수신 방지와 결제 문의 대응 |
 | 운동 기록의 컨디션·운동 강도를 선택 입력으로 둠 | 채팅으로 기록할 때 사용자가 말하지 않은 값을 AI가 지어내지 않게 한다(`API_SPEC.md` §6에서 추가) |
+| 컨디션을 받지 않고 `memo`를 통증 내용으로 씀 (2026-11-17) | 기록 입력을 줄인다(PRD `F07-R01`). 컬럼은 지우지 않아 마이그레이션이 필요 없다 |
+| 홈의 "어제 훈련 기록" 카드를 닫은 사실을 저장하지 않음 (2026-11-17) | 기기에만 저장한다. 훈련 상태는 연결된 기록으로만 판정하고(§3.4), `planned_sessions`는 제안 승인으로만 바꾼다(`DI-01`) |
