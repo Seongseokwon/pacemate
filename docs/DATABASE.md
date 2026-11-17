@@ -122,7 +122,7 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | `id` | uuid | ✓ | 기본 키 |
 | `user_id` | uuid | ✓ | `users` 참조 |
 | `status` | enum `active` / `ended` | ✓ | |
-| `kind` | enum `race_prep` / `base_building` | ✓ | 완주 준비 계획 / 기초 훈련 계획(`TE-G06`) |
+| `kind` | enum `race_prep` / `base_building` / `maintenance` | ✓ | 완주 준비 계획 / 기초 훈련 계획(`TE-G06`) / 유지 계획(`TE-G10`) |
 | `goal_distance` | enum `five_k` / `ten_k` / `half` / `none` | ✓ | `none`은 목표 없음(`F03-R09`) |
 | `goal_time_sec` | integer | | 목표 기록 |
 | `race_date` | date | | 대회 날짜 |
@@ -362,7 +362,7 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | 컬럼 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `user_id` | uuid | ✓ | 기본 키, `users` 참조 |
-| `workout_reminder` | boolean | ✓ | 예정 운동 알림. 기본값 true |
+| `workout_reminder` | boolean | ✓ | 예정 운동 알림. 대회 전날 알림과 계획 종료 알림도 이 값을 따른다(`F09-R08`, `F09-R09`). 기본값 true |
 | `reminder_hour` | smallint | ✓ | 알림 시각. 8~20, 기본값 8 |
 | `missed_notice` | boolean | ✓ | 미완료 훈련 안내. 기본값 true |
 | `weekly_summary` | boolean | ✓ | 주간 요약 알림. 기본값 true |
@@ -384,7 +384,7 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | 컬럼 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `user_id` | uuid | ✓ | 기본 키(1), `users` 참조 |
-| `type` | enum `workout_reminder` / `missed_notice` / `weekly_summary` | ✓ | 기본 키(2) |
+| `type` | enum `workout_reminder` / `missed_notice` / `weekly_summary` / `race_eve` / `plan_finished` | ✓ | 기본 키(2) |
 | `date` | date | ✓ | 기본 키(3). 발송 기준 날짜 |
 | `sent_at` | timestamptz | ✓ | |
 
@@ -435,7 +435,7 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | 테이블 | 제약 |
 |---|---|
 | `runner_profiles` | `weekly_run_count` 2~5, `recent_weekly_km` 0~100, `preferred_weekdays`는 1~7이고 개수가 `weekly_run_count` 이상 |
-| `training_plans` | `version` 1 이상, `end_date`가 `start_date` 이후, `goal_distance`가 `none`이면 `kind`는 `base_building`이고 `goal_time_sec`과 `race_date`가 없음 |
+| `training_plans` | `version` 1 이상, `end_date`가 `start_date` 이후, `goal_distance`가 `none`이면 `kind`는 `base_building` 또는 `maintenance`이고 `goal_time_sec`과 `race_date`가 없음. `kind`가 `maintenance`면 `goal_distance`는 `none` |
 | `planned_sessions` | `distance_km`와 `duration_min` 중 하나 이상 존재 |
 | `workout_logs` | `distance_km` 0.1~100, `duration_sec` 60~43200, `condition` 1~5, `rpe` 1~10, `memo` 500자 이하 |
 | `usage_counters` | `month`는 `YYYY-MM` 형식, 횟수는 0 이상 |
