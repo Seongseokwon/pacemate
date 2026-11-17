@@ -34,7 +34,7 @@
 ### 1.1 오류 응답
 
 ```json
-{ "code": "PROPOSAL_EXPIRED", "message": "제안이 만료되었어요. 다시 요청해 주세요." }
+{ "code": "PROPOSAL_EXPIRED", "message": "이 제안은 만료됐어요. 다시 물어봐 주세요." }
 ```
 
 `code`는 앱이 분기하는 고정 값이고, `message`는 사용자에게 그대로 보여 줄 수 있는 한국어 문장이다.
@@ -60,6 +60,7 @@
 | 422 | `PACE_OUT_OF_RANGE` | 계산된 페이스가 비정상 범위. `confirmPace`로 다시 보내면 저장 |
 | 422 | `SAFETY_CHECK_FAILED` | 안전 규칙 위반으로 적용 불가 |
 | 422 | `PLAN_NOT_FEASIBLE` | 조건에 맞는 계획·변경안을 만들 수 없음 |
+| 422 | `RECENT_DISTANCE_REQUIRED` | 목표 변경에 쓸 기록이 2주(초기값) 치가 안 되어 최근 주간 거리가 필요함. 앱은 주간 거리를 묻고 `profile.recentWeeklyKm`을 붙여 다시 보낸다(PRD `F02-R09`) |
 | 426 | `APP_UPDATE_REQUIRED` | 지원하지 않는 앱 버전 |
 | 429 | `RATE_LIMITED` | 요청 제한 초과 |
 | 500 | `INTERNAL_ERROR` | 서버 오류 |
@@ -80,7 +81,7 @@
 | `reschedule` | `{ used, limit, pool }` | AI 일정 변경. 위와 같다. 대화와 `pool`이 다를 수 있다 |
 | `resetsOn` | 날짜 | 월 한도의 다음 초기화 날짜. 체험분은 초기화되지 않는다 |
 
-무료 요금제에서 체험분이 남아 있으면 `pool`은 `trial`, 다 쓰면 `month`다. Pro는 항상 `month`다(PRD §8.2). `LIMIT_REACHED`와 한도 안내 카드는 `month`까지 다 썼을 때만 나온다.
+무료 요금제에서 체험분이 남아 있으면 `pool`은 `trial`, 다 쓰면 `month`다. Pro는 항상 `month`다(PRD §8.2). `LIMIT_REACHED`와 한도 안내 카드는 `month`까지 다 썼을 때만 나온다. 화면 표시("체험 대화 N회 남음", "이번 달 n/5")와 체험분을 다 쓴 순간의 한 줄 안내는 앱이 이 객체로 만든다(`UI_UX.md` §7.1, §7.3).
 
 ### 2.2 Session (훈련)
 
@@ -109,9 +110,9 @@
 | `distanceKm` | 숫자 | |
 | `durationSec` | 정수 | |
 | `paceSecPerKm` | 정수 | 서버가 계산 |
-| `condition` | 1~5 또는 null | |
-| `rpe` | 1~10 또는 null | |
-| `memo` | 문자열 또는 null | |
+| `condition` | 1~5 또는 null | MVP의 화면과 채팅은 받지 않는다(PRD `F07-R01`). 필드는 남겨 둔다 |
+| `rpe` | 1~10 또는 null | 운동 강도 |
+| `memo` | 문자열 또는 null | 통증 내용. 기록 화면의 통증 입력칸에서 받는다 |
 | `plannedSessionId` | uuid 또는 null | |
 | `source` | `app` / `chat` | |
 
@@ -122,7 +123,8 @@
 | `id` | uuid | |
 | `type` | `reschedule` / `goal_change` / `workout_log` | |
 | `status` | `pending` / `approved` / `cancelled` / `superseded` / `expired` | `expired`는 서버가 만료 시각으로 판정한 값 |
-| `expiresAt` | 시각 | |
+| `expiresAt` | 시각 | 제안을 만든 날의 자정(`Asia/Seoul` 기준 다음 날 0시, PRD `DI-05`) |
+| `reasonLine` | 문자열 또는 null | 카드에 보여 줄 이유 한 줄. 서버가 제안의 사유와 요청 내용으로 만든 템플릿 문구다(PRD `F05-R03`). LLM의 문장이 아니다 |
 | `consumesQuota` | boolean | 승인 시 AI 일정 변경 이용량을 차감하는지. 놓친 훈련이 많은 주의 일정 변경(PRD §8.2)이면 false다. 제안을 만들 때 정해지고 바뀌지 않는다 |
 | `changes` | 배열 | 훈련별 변경. `{ sessionId, action, before, after }`. `action`은 `move` / `skip` / `modify` / `add` / `remove`. `before`·`after`는 `{ date, type, distanceKm, durationMin }` 또는 null. 새로 추가되는 훈련(`add`)의 `sessionId`는 null이다 |
 | `impact` | 객체 또는 null | `{ weeklyDistanceBeforeKm, weeklyDistanceAfterKm, skippedCount }` |
@@ -164,7 +166,7 @@
 | `registered` | 필수 동의를 마쳤는지. false면 동의 화면으로 |
 | `onboardingCompleted` | 프로필이 있는지. false면 온보딩으로 |
 | `hasActivePlan` | 활성 계획이 있는지 |
-| `authProvider` | `apple` / `google` |
+| `authProvider` | `kakao` / `apple` / `google` |
 | `usage` | Usage 객체 |
 | `subscription` | `{ productId, store, expiresAt, willRenew }` 또는 null |
 
@@ -246,7 +248,10 @@
 | `plan` | `GET /v1/plan`과 같은 요약 또는 null |
 | `daysToRace` | 대회까지 남은 날 또는 null |
 | `todaySession` | Session 또는 null |
-| `weekSessions` | 이번 주 Session 배열 |
+| `weekSessions` | 이번 주 Session 배열. 계획이 시작 전이면 첫 주의 Session 배열 |
+| `daysToStart` | 계획 시작일까지 남은 날 또는 null. 계획이 시작 전일 때만 값이 있다(첫 홈의 "다음 주 시작" 상태, PRD §5.4) |
+| `yesterdaySession` | 어제의 미완료 훈련(생략 제외) 또는 null. 홈의 어제 훈련 기록 카드에 쓴다. 이틀 전 훈련은 넣지 않는다 |
+| `weekMissedCount` | 이번 주 미완료 훈련 수. 2 이상이면 앱이 [코치와 일정 조정하기]를 보여 준다(PRD `F05-R14`) |
 | `managerMessage` | `{ code, text }`. 서버 규칙으로 만든 템플릿 문구(PRD §5.4). `code`는 `NO_PLAN`, `PLAN_FINISHED`, `PLAN_NOT_STARTED`, `RACE_DAY`, `TODAY_DONE`, `TODAY_SESSION`, `MISSED_SESSION`, `REST_DAY` 중 하나이며 이 순서로 먼저 맞는 것을 쓴다 |
 
 `todaySession`과 `weekSessions`는 활성 계획의 훈련이다. `todaySession`에는 생략된 훈련을 넣지 않는다. `daysToRace`는 대회가 지났으면 null이다. 목표 없음 계획이 끝났을 때의 `PLAN_FINISHED` 문구는 다음 목표를 권한다(`F03-R08`). 코드는 같다. 계획이 끝났으면 `plan`은 끝난 계획의 요약(`isFinished`가 true)이고, 앱은 이때 [이어서 훈련하기]를 보여 준다. `plan`이 null이면 [새 목표 설정]만 보여 준다.
@@ -271,13 +276,14 @@
 | `distanceKm` | ✓ | 0.1~100 |
 | `durationSec` | ✓ | 60~43200 |
 | `condition` | | 1~5 |
-| `rpe` | | 1~10 |
-| `memo` | | 최대 500자 |
+| `rpe` | | 1~10. 운동 강도 |
+| `memo` | | 최대 500자. 통증 내용 |
 | `plannedSessionId` | | 연결할 훈련. 없으면 자유 러닝 |
 | `confirmDuplicate` | | true면 중복 확인을 건너뛴다 |
 | `confirmPace` | | true면 페이스 범위 확인을 건너뛴다 |
 
-- 응답: `201`과 Workout.
+- `condition`은 받지만 앱은 보내지 않는다(PRD `F07-R01`).
+- 응답: `201`과 `{ workout, weekProgress, coachLine }`. `workout`은 Workout, `weekProgress`는 `{ completed, planned }`(이번 주 완료·계획 훈련 수, 활성 계획이 없으면 null), `coachLine`은 `{ code, text }`로 서버 규칙의 템플릿 문구다. LLM을 호출하지 않는다(PRD `F07-R10`). 코드와 문구는 `packages/shared`에 둔다.
 - `WORKOUT_DUPLICATE`, `PACE_OUT_OF_RANGE`는 앱이 확인 창을 띄우고 해당 확인 필드를 붙여 다시 보낸다(`F07-R03`). 중복 확인은 연타나 재전송으로 같은 기록이 두 번 저장되는 것도 막는다.
 - `PATCH`는 같은 필드를 선택적으로 받는다. `plannedSessionId: null`은 연결 해제다.
 
@@ -344,7 +350,10 @@
 
 **`POST /v1/proposals/{id}/cancel`**: 대기 중이면 취소하고 Proposal을 돌려준다. 이미 취소된 제안이면 그대로 돌려준다. 승인된 제안은 `PROPOSAL_NOT_PENDING`.
 
-**`POST /v1/proposals/goal-change`** 요청: `goal`(`goalDistance`, `goalTimeSec`, `raceDate` 중 바꿀 값)과 `profile`(§3.2의 필드 중 바꿀 값) 중 하나 이상. 응답은 Proposal이다. 앱은 채팅의 제안 카드와 같은 화면으로 보여 주고 승인·취소한다. 이 경로의 제안은 `consumesQuota`가 false다(PRD §6.5).
+**`POST /v1/proposals/goal-change`** 요청: `goal`(`goalDistance`, `goalTimeSec`, `raceDate` 중 바꿀 값)과 `profile`(§3.2의 필드 중 바꿀 값) 중 하나 이상. 응답은 Proposal이다.
+
+- `goal`을 바꾸면 서버는 최근 기록(초기값: 최근 3주)으로 최근 주간 거리를 구해 계획을 다시 계산한다. 기록이 있는 기간이 2주(초기값) 미만이고 `profile.recentWeeklyKm`이 없으면 `RECENT_DISTANCE_REQUIRED`를 돌려준다. 앱은 주간 거리 한 문항을 묻고 다시 보낸다(PRD `F02-R09`). 계산 방법의 세부는 `T-403`에서 정해 `DECISIONS.md`에 기록한다.
+- 목표 변경 횟수는 제한하지 않는다. 앱은 채팅의 제안 카드와 같은 화면으로 보여 주고 승인·취소한다. 이 경로의 제안은 `consumesQuota`가 false다(PRD §6.5).
 
 ### 3.7 주간 요약 (F08)
 
@@ -390,7 +399,7 @@
 |---|---|---|
 | `POST /v1/webhooks/subscription` | 구독 서비스 | 구독 이벤트 수신. 이벤트 ID로 중복을 무시한다 |
 | `POST /v1/internal/jobs/workout-reminders` | 예약 실행기 | 예정 운동 알림, 대회 전날 알림, 계획 종료 알림 발송 |
-| `POST /v1/internal/jobs/missed-notices` | 예약 실행기 | 미완료 훈련 안내 발송 |
+| `POST /v1/internal/jobs/missed-notices` | 예약 실행기 | 미완료 훈련 안내 발송. 어제 훈련이 미완료인 사용자에게 하루 한 번(PRD `F09-R11`) |
 | `POST /v1/internal/jobs/weekly-summary` | 예약 실행기 | 주간 요약 생성·발송. 계획한 훈련도 기록도 없는 주에는 알림을 보내지 않는다(`F09-R10`) |
 | `GET /health` | 호스팅 플랫폼 | 상태 확인. 인증 없음, DB 연결 확인 |
 
@@ -429,7 +438,7 @@ LLM에 제공하는 도구 7개의 입력과 출력이다(PRD §6.2). HTTP 엔�
 |---|---|---|
 | `get_runner_profile` | 없음 | 프로필, 수준, 목표(거리·기록·대회 날짜), 대회까지 남은 날. 활성 계획이 없으면 목표는 null. 목표 없음이면 목표는 `{ goalDistance: 'none', focus }`이고 기록·대회 날짜·남은 날을 넣지 않는다 |
 | `get_training_plan` | `from`, `to` (날짜, 최대 28일) | 계획 요약(주차, 진행률)과 기간 내 훈련 목록: `sessionId`, `date`, 요일, `type`, `distanceKm`, `durationMin`, `status` |
-| `get_workout_history` | `from`, `to` (날짜, 최대 90일) | 기록 목록: `date`, `distanceKm`, `durationSec`, `paceSecPerKm`, `condition`, `rpe`, `memo`, 연결된 훈련의 `type` |
+| `get_workout_history` | `from`, `to` (날짜, 최대 90일) | 기록 목록: `date`, `distanceKm`, `durationSec`, `paceSecPerKm`, `rpe`(운동 강도), `memo`(통증 내용), 연결된 훈련의 `type` |
 | `get_weekly_summary` | `weekStart` (월요일) | §3.7의 수치 |
 
 ### 제안 도구
@@ -442,15 +451,15 @@ LLM에 제공하는 도구 7개의 입력과 출력이다(PRD §6.2). HTTP 엔�
 | `reason` | ✓ | `schedule` / `fatigue` / `pain` |
 | `sessionId` | `move`, `ease`에 필수 | 대상 훈련 |
 | `targetDate` | `move`에 필수 | 옮길 날짜 |
-| `unavailableDates` | `unavailable_dates`에 필수 | 날짜 배열, 최대 14일(`TE-R05`) |
+| `unavailableDates` | `unavailable_dates`에 필수 | 날짜 배열, 최대 14일(`TE-R05`). 이번 주와 다음 주 안의 날짜만(`TE-R10`) |
 | `weekStart`, `maxSessions` | `reduce_count`에 필수 | 대상 주와 그 주에 가능한 횟수 |
 | `easeOption` | `ease`에 필수 | `rest`(쉬기) / `lighter`(더 가볍게) |
 
 훈련의 거리·강도는 입력에 없다. Training Engine이 정한다(PRD §6.1, `AI-03`).
 
-**`propose_goal_change`** 입력: `goalDistance`, `goalTimeSec`, `raceDate` 중 바꿀 값. `goalTimeSec`과 `raceDate`는 null로 보내면 값을 지운다. `goalDistance`를 `none`으로 바꾸면 두 값도 지운다. 바꾼 뒤의 목표가 `none`인데 두 값 중 하나가 남으면 입력 오류다.
+**`propose_goal_change`** 입력: `goalDistance`, `goalTimeSec`, `raceDate` 중 바꿀 값과, 선택으로 `recentWeeklyKm`(0~100). `recentWeeklyKm`은 `RECENT_DISTANCE_REQUIRED`를 받은 뒤 사용자에게 "요즘 일주일에 얼마나 달려요?"를 묻고 그 답으로만 넣는다. `goalTimeSec`과 `raceDate`는 null로 보내면 값을 지운다. `goalDistance`를 `none`으로 바꾸면 두 값도 지운다. 바꾼 뒤의 목표가 `none`인데 두 값 중 하나가 남으면 입력 오류다.
 
-**`propose_workout_log`** 입력: `date`, `distanceKm`, `durationSec`(이상 필수), `condition`, `rpe`, `memo`, `sessionId`(연결할 훈련). 사용자가 말하지 않은 `condition`과 `rpe`는 넣지 않는다.
+**`propose_workout_log`** 입력: `date`, `distanceKm`, `durationSec`(이상 필수), `rpe`, `memo`, `sessionId`(연결할 훈련). `condition`은 받지 않는다(PRD `F07-R01`). 사용자가 말하지 않은 `rpe`는 넣지 않는다. `memo`에는 사용자가 말한 통증 내용만 넣는다.
 
 **제안 도구의 출력** (세 도구 공통)
 
@@ -466,6 +475,8 @@ LLM에 제공하는 도구 7개의 입력과 출력이다(PRD §6.2). HTTP 엔�
 | `NO_ACTIVE_PLAN` | 활성 계획 없음 | |
 | `TARGET_NOT_CHANGEABLE` | 대상이 완료되었거나 과거 훈련 | `TE-R01` |
 | `OUT_OF_WEEK` | 다른 주로 옮기려 함 | `TE-R02` |
+| `OUT_OF_RANGE` | 다음 주보다 뒤의 훈련이나 날짜를 바꾸려 함 | `TE-R10` |
+| `RECENT_DISTANCE_REQUIRED` | 목표 변경에 쓸 기록이 2주 치가 안 되고 `recentWeeklyKm`이 없음 | `F02-R09` |
 | `RACE_DAY_FIXED` | 대회 당일 일정 | `TE-R06` |
 | `PERIOD_TOO_LONG` | 불가 기간이 14일 초과 | `TE-R05` |
 | `NO_SAFE_OPTION` | 안전한 배치가 없음. 생략안도 만들 수 없는 경우 | `TE-R08` |
@@ -505,3 +516,4 @@ LLM에 제공하는 도구 7개의 입력과 출력이다(PRD §6.2). HTTP 엔�
 | 채팅 재전송 방식 | 상태 조회 엔드포인트 없이 같은 `clientMessageId`로 다시 보낸다. | §3.5 |
 | 기록 중복·페이스 확인 방식 | 서버가 오류를 돌려주고 앱이 확인 필드를 붙여 다시 보낸다. | §3.4 |
 | 홈 전용 엔드포인트 | 홈 화면 데이터를 한 번에 받는다. 매니저 메시지가 서버 규칙이라 어차피 서버 호출이 필요하다. | §3.3 |
+| 화면 흐름 확정에 따른 변경 (2026-11-17) | 카카오 로그인(`authProvider`), 홈의 `daysToStart`·`yesterdaySession`·`weekMissedCount`, 기록 저장 응답의 `weekProgress`·`coachLine`, Proposal의 `reasonLine`과 만료 시각(만든 날 자정), 목표 변경의 `RECENT_DISTANCE_REQUIRED`, 일정 변경 범위의 `OUT_OF_RANGE`, 채팅 기록 등록에서 `condition` 제외 | §2, §3.1, §3.3, §3.4, §3.6, §6. `packages/shared`의 스키마는 각 구현 작업에서 고친다(`DEVELOPMENT_PLAN.md`) |
