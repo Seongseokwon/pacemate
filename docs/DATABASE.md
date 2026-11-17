@@ -86,6 +86,7 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 |---|---|---|---|
 | `id` | uuid | ✓ | 기본 키. 인증 서비스의 사용자 ID를 그대로 쓴다. |
 | `auth_provider` | enum `kakao` / `apple` / `google` | ✓ | |
+| `coach` | enum `oni` / `suri` / `bungae` | ✓ | 고른 AI 코치(PRD `F04-R11`). 기본값 `oni`(제안, PRD `D-15`). AI 응답의 말투만 정한다 |
 | `identity_hash` | text | ✓ | 로그인 공급자와 공급자가 준 사용자 식별자를 서버 비밀값으로 HMAC-SHA256한 값. 유일. 같은 카카오·Apple·Google 계정이면 탈퇴 뒤 다시 가입해도 같다. `usage_trials`를 찾는 키다 |
 | `terms_agreed_at` | timestamptz | ✓ | 이용약관 동의 시각 |
 | `privacy_agreed_at` | timestamptz | ✓ | 개인정보 처리방침 동의 시각 |
@@ -495,3 +496,4 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | 운동 기록의 컨디션·운동 강도를 선택 입력으로 둠 | 채팅으로 기록할 때 사용자가 말하지 않은 값을 AI가 지어내지 않게 한다(`API_SPEC.md` §6에서 추가) |
 | 컨디션을 받지 않고 `memo`를 통증 내용으로 씀 (2026-11-17) | 기록 입력을 줄인다(PRD `F07-R01`). 컬럼은 지우지 않아 마이그레이션이 필요 없다 |
 | 홈의 "어제 훈련 기록" 카드를 닫은 사실을 저장하지 않음 (2026-11-17) | 기기에만 저장한다. 훈련 상태는 연결된 기록으로만 판정하고(§3.4), `planned_sessions`는 제안 승인으로만 바꾼다(`DI-01`) |
+| `users.coach` 추가 (2026-11-18) | 사용자당 하나뿐인 설정이고 계정과 수명이 같아 `users`에 둔다. 바꾼 이력은 남기지 않는다. 이전 대화는 그대로 두고 다음 답변부터 말투만 바뀌기 때문이다(PRD `F04-R13`) |
