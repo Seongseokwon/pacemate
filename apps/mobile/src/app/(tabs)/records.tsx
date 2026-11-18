@@ -1,6 +1,8 @@
 import { SESSION_TYPE_LABELS, WORKOUT_LIMITS, type CreateWorkoutRequest, type CreateWorkoutResponse, type Workout } from '@pacemate/shared';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { BottomTabBarHeightContext } from 'expo-router/js-tabs';
 import { useState } from 'react';
+import { Modal } from 'react-native';
 import { ApiClientError } from '@/api/client';
 import { isRedirectError } from '@/api/query-client';
 import { createWorkout, deleteWorkout, getCandidates, getWorkouts, getWorkoutStats, updateWorkout } from '@/api/workouts';
@@ -22,7 +24,6 @@ export default function Records() {
   const stats = useQuery({ queryKey: ['workout-stats'], queryFn: getWorkoutStats });
   const refresh = async () => { await client.invalidateQueries(); };
   const remove = useMutation({ mutationFn: deleteWorkout, onSuccess: async () => { setDeleting(false); setSelected(null); await refresh(); }, onError: (error) => { if (!isRedirectError(error)) { setDeleting(false); setDeleteError(message(error)); } } });
-  if (editing !== null) return <WorkoutForm workout={editing === 'new' ? null : editing} onBack={() => setEditing(null)} onSaved={async (saved) => { setEditing(null); setSelected(null); setResult(saved); await refresh(); }} />;
   const items = list.data?.pages.flatMap((page) => page.items) ?? [];
   const failure = list.error ?? stats.error;
   return (
@@ -37,9 +38,14 @@ export default function Records() {
         {list.hasNextPage && <Button variant="secondary" label="더 보기" loading={list.isFetchingNextPage} onPress={() => { void list.fetchNextPage(); }} />}
         {list.isFetchNextPageError && <Text tone="error">기록을 더 불러오지 못했어요. 다시 시도해 주세요.</Text>}
       </Stack>
-      <BottomSheet visible={selected !== null && !deleting} title="운동 기록" onClose={() => setSelected(null)}><Stack gap={4}>{selected && <><Text>{formatDate(selected.date)} · {selected.distanceKm}km</Text><Text>{durationText(selected.durationSec)} · {paceText(selected.paceSecPerKm)}</Text>{selected.rpe !== null && <Text>운동 강도 {selected.rpe}/10</Text>}{selected.memo && <Text>통증: {selected.memo}</Text>}{deleteError && <Text tone="error">{deleteError}</Text>}<Button label="수정하기" onPress={() => { setEditing(selected); setDeleteError(null); }} /><Button variant="danger" label="삭제하기" onPress={() => setDeleting(true)} /></>}</Stack></BottomSheet>
+      <BottomSheet visible={selected !== null && !deleting && editing === null} title="운동 기록" onClose={() => { setSelected(null); setDeleteError(null); }}><Stack gap={4}>{selected && <><Text>{formatDate(selected.date)} · {selected.distanceKm}km</Text><Text>{durationText(selected.durationSec)} · {paceText(selected.paceSecPerKm)}</Text>{selected.rpe !== null && <Text>운동 강도 {selected.rpe}/10</Text>}{selected.memo && <Text>통증: {selected.memo}</Text>}{deleteError && <Text tone="error">{deleteError}</Text>}<Button label="수정하기" onPress={() => { setEditing(selected); setDeleteError(null); }} /><Button variant="danger" label="삭제하기" onPress={() => setDeleting(true)} /></>}</Stack></BottomSheet>
       <Dialog visible={deleting} title="기록을 삭제할까요?" message="연결된 훈련의 완료 표시도 사라져요." danger confirmLabel="삭제" onCancel={() => setDeleting(false)} onConfirm={() => { if (selected && !remove.isPending) remove.mutate(selected.id); }} />
-      <BottomSheet visible={result !== null} title="기록을 저장했어요" onClose={() => setResult(null)}><Stack gap={4}>{result && <><Text>{result.coachLine.text}</Text>{result.weekProgress && <><Text>이번 주 {result.weekProgress.completed}/{result.weekProgress.planned}회</Text><ProgressBar value={result.weekProgress.planned ? result.weekProgress.completed / result.weekProgress.planned : 0} accessibilityLabel="이번 주 훈련 진행률" /></>}<Button label="확인" onPress={() => setResult(null)} /></>}</Stack></BottomSheet>
+      <Modal visible={editing !== null} animationType="slide" onRequestClose={() => { setEditing(null); setSelected(null); setResult(null); }}>
+        <BottomTabBarHeightContext.Provider value={undefined}>
+        {editing !== null && <WorkoutForm workout={editing === 'new' ? null : editing} onBack={() => setEditing(null)} onSaved={async (saved) => { if (saved) setResult(saved); else { setEditing(null); setSelected(null); } await refresh(); }} />}
+        <BottomSheet visible={result !== null} title="기록을 저장했어요" onClose={() => { setResult(null); setEditing(null); setSelected(null); }}><Stack gap={4}>{result && <><Text>{result.coachLine.text}</Text>{result.weekProgress && <><Text>이번 주 {result.weekProgress.completed}/{result.weekProgress.planned}회</Text><ProgressBar value={result.weekProgress.planned ? result.weekProgress.completed / result.weekProgress.planned : 0} accessibilityLabel="이번 주 훈련 진행률" /></>}<Button label="확인" onPress={() => { setResult(null); setEditing(null); setSelected(null); }} /></>}</Stack></BottomSheet>
+        </BottomTabBarHeightContext.Provider>
+      </Modal>
     </Screen>
   );
 }

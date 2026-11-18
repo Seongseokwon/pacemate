@@ -29,6 +29,8 @@ test('거리와 시간을 입력하고 저장하면 코치 문구와 진행률�
   expect(await screen.findByText('수고하셨어요.')).toBeOnTheScreen();
   expect(screen.getByText('이번 주 1/3회')).toBeOnTheScreen();
   expect(createWorkout).toHaveBeenCalledWith(expect.objectContaining({ distanceKm: 5, durationSec: 1800, plannedSessionId: null }));
+  await fireEvent.press(screen.getByRole('button', { name: '확인' }));
+  await waitFor(() => expect(screen.queryByText('운동 날짜')).not.toBeOnTheScreen());
 });
 
 test('중복 확인에 동의하면 확인 값을 추가해 다시 저장한다', async () => {
@@ -43,4 +45,22 @@ test('중복 확인에 동의하면 확인 값을 추가해 다시 저장한다'
   await screen.findByText('같은 기록이 있어요');
   await fireEvent.press(screen.getByRole('button', { name: '계속 저장' }));
   await waitFor(() => expect(createWorkout).toHaveBeenLastCalledWith(expect.objectContaining({ confirmDuplicate: true })));
+});
+
+test('같은 날의 훈련을 연결하고 통증을 저장한다', async () => {
+  const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  jest.mocked(getCandidates).mockResolvedValue({ items: [{ id: 'session-1', date, type: 'easy' } as never] });
+  jest.mocked(createWorkout).mockResolvedValue({ workout: {} as never, weekProgress: null, coachLine: { code: 'WORKOUT_PAIN', text: '쉬면서 몸 상태를 살펴봐 주세요.' } });
+  await render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Records /></QueryClientProvider>);
+  await screen.findByText('아직 운동 기록이 없어요.');
+  await fireEvent.press(screen.getAllByRole('button', { name: '기록 추가' })[0]!);
+  await fireEvent.changeText(screen.getByLabelText('거리 (km)'), '5');
+  await fireEvent.changeText(screen.getByLabelText('분'), '30');
+  await fireEvent.press(screen.getByText('있었어요'));
+  await fireEvent.changeText(screen.getByLabelText('통증 내용'), '무릎이 아파요');
+  await waitFor(() => expect(screen.getByRole('button', { name: '저장' })).toBeEnabled());
+  await fireEvent.press(screen.getByRole('button', { name: '저장' }));
+  expect(await screen.findByText('쉬면서 몸 상태를 살펴봐 주세요.')).toBeOnTheScreen();
+  expect(createWorkout).toHaveBeenCalledWith(expect.objectContaining({ plannedSessionId: 'session-1', memo: '무릎이 아파요' }));
+  expect(screen.queryByText(/이번 주 \d+\/\d+회/)).not.toBeOnTheScreen();
 });
