@@ -11,13 +11,14 @@
 
 각 JSON 파일에는 두 카테고리의 토큰이 있다:
 
-### 1. 색상 토큰 (29개)
+### 1. 색상 토큰 (31개)
 - `background`: body, surface, raised, muted
 - `text`: primary, secondary, disabled, accent
 - `icon`: secondary
 - `accent`, `onAccent`, `accentMuted`
 - `border`, `borderEmphasized`
 - `overlay`, `skeleton`
+- 히어로 그라데이션: `hero/from`, `hero/to`
 - 상태 색상: `text.success`, `successMuted`, `text.warning`, `warningMuted`, `text.error`, `errorMuted`, `text.info`, `infoMuted`
 - 훈련 종류 색상: `session.walkRun`, `session.easy`, `session.tempo`, `session.long`, `session.race`
 
@@ -28,11 +29,12 @@
 
 글자 크기와 굵기는 Figma 변수에 없다. `docs/UI_UX.md` §3.5를 따른다.
 
-### Figma 변수와 `docs/UI_UX.md` §3의 차이
+### Figma 변수와 `docs/UI_UX.md` §3의 대응
 
-- `background.raised`, `text.accent`는 Figma 변수에 없고 UI_UX §3.2에만 있다.
-- `hero/from`, `hero/to`는 UI_UX §3.2의 `hero.from`, `hero.to`다.
-- `onAccent`는 Figma가 `#FFFFFF`, UI_UX가 `#0B1018`이다. 흰 글자는 주황 위에서 대비가 4.5:1에 못 미쳐 UI_UX 값을 쓰고, Figma도 남색으로 고친다(`UX-15`). 고친 뒤 JSON을 다시 내보낸다.
+- 색 31개의 이름과 값은 UI_UX §3.2(바탕·글자·상태 색)와 §8.1(훈련 종류 색)의 표와 같다(2026-11-18 확인). 이름의 `/`를 `.`으로 바꾸면 토큰 이름이 된다(`hero/from` → `hero.from`).
+- `background/raised`는 지금 `background/muted`와 같은 값이다.
+- `onAccent`는 접근성을 위해 다크/라이트 모두 `#0B1018`로 확정되었다(2026-11-18, `UX-15`).
+- `session.tempo`는 다크 `#B8E04A` / 라이트 `#567300`로 확정되었다(2026-11-18, `UX-08`).
 
 ## 사용 방법
 
@@ -43,5 +45,4 @@
 ## 주의사항
 
 - MVP는 다크 테마만 적용한다.
-- `tempo` 훈련 종류의 색은 아직 확정되지 않았다. 지금 값은 주황이라 연두 `#B8E04A`(라이트 `#567300`)로 바꾸기를 제안했다(`UX-08`).
 - 컴포넌트 색은 아직 변수에 연결되지 않았으므로, 개발은 토큰 이름·값을 기준으로 한다.

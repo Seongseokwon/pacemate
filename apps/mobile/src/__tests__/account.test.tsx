@@ -63,7 +63,7 @@ describe('동의 화면 (F01-R02)', () => {
 describe('로그인 화면 (F01-R01)', () => {
   test.each([
     ['Apple로 계속하기', 'apple'],
-    ['Google로 계속하기', 'google'],
+    ['Google 계정으로 계속하기', 'google'],
   ])('%s를 누르면 로그인하고 시작 화면으로 간다', async (label, provider) => {
     jest.mocked(signIn).mockResolvedValue();
     await show(<Login />);
