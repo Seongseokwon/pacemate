@@ -44,7 +44,7 @@ export class ProfileService {
 }
 
 /** 기록(거리+시간)은 km당 페이스로 환산한다(DATABASE §3.2). 환산한 페이스도 입력 범위 안이어야 한다(F02-R02). */
-function paceOf(record: SaveProfileRequest['recentRecord']): number | null {
+export function paceOf(record: SaveProfileRequest['recentRecord']): number | null {
   if (!record) return null;
   if ('paceSecPerKm' in record) return record.paceSecPerKm;
   const pace = Math.round(record.durationSec / record.distanceKm);
