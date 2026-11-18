@@ -561,7 +561,13 @@ Training Engine의 입출력 타입은 `T-202`, `T-203`, `T-401`에서 구현하
 문서를 고치면서 Claude Code가 정한 것(개발자 확인 필요):
 
 - `UX-10`, `UX-11`은 "C2 화면대로 개발한다"는 결정에 따라 시안의 내용으로 확정했다.
-- Figma MCP가 Starter 플랜의 호출 한도에 걸려 변수와 컴포넌트를 직접 읽지 못했다. 안내문에 있는 값(바탕, 카드, 주황, 주황 글자, 모서리 5종)만 문서에 넣고, 나머지는 계속 "Figma"로 둔다(`D-A10`).
+- Figma MCP가 Starter 플랜의 호출 한도에 걸려 변수와 컴포넌트를 직접 읽지 못했다. 색 값은 같은 날 병합된 PR #31(`docs/design-tokens/`의 Figma 변수 JSON과 UI_UX §3.2의 값)을 따랐다.
+- PR #31의 값을 확인하면서 고친 것:
+  - Figma의 색 29개는 UI_UX §3.2와 그대로 대응하지 않는다. `background.raised`, `text.accent`는 Figma에 없고(`raised`는 `muted`와 같은 값, `text.accent`는 안내문의 `#FF8A5C`), Figma의 `hero/from`, `hero/to`는 문서에 없었다. 둘을 `hero.from`, `hero.to`로 §3.2에 더했다.
+  - Figma의 `onAccent`는 `#FFFFFF`다. 흰 글자는 주황 위에서 3.12:1이라 문서의 남색 `#0B1018`을 유지하고 Figma 수정 여부를 `UX-15`로 남겼다.
+  - `text.disabled`는 패널 위(다크 4.20:1, 라이트 4.21:1)와 라이트 바탕 위(4.33:1)에서 4.5:1에 못 미친다. 비활성 글자는 대비 기준의 예외라 그대로 두었다. 나머지 글자색은 모두 4.5:1 이상이다.
+  - `tempo`의 Figma 값(`#FF9F4A` / `#D9620A`)은 여전히 주황이라(포인트 색과 1.53:1 / 1.01:1) `UX-08`은 열어 둔다.
+  - `docs/design-tokens/README.md`의 숫자 토큰 목록이 같은 폴더의 JSON과 달라(글자 크기 16·28·36 등 Figma에 없는 값) JSON에 맞춰 고쳤다. 하단 탭 높이 83은 UI_UX §3.6에 더했다.
 - 토큰 이름은 그대로 두고 모서리 값만 바꿨다(`radius.inner` 6→10, `radius.element` 10→14, `radius.chat` 28→18).
 - 코드 컴포넌트 이름을 Figma에 맞춰 `CoachCard`→`CoachSelectCard`, `UsageMeter`→`UsageIndicator`로 바꿨다. 둘 다 아직 코드에 없다. Figma의 `C2/RaceGoalCard`는 §4.3에 더했고 쓰는 화면은 Figma에서 확인한다.
 - Figma의 `C2/Icon`은 22종이고 UI_UX §8.3의 목록은 23개다. `T-112`에서 맞춘다.
@@ -573,6 +579,7 @@ Training Engine의 입출력 타입은 `T-202`, `T-203`, `T-401`에서 구현하
 | UX-12 | 응원 테마와 코치 3명을 하나로 합칠지 따로 둘지 (코치로 합치고 응원 테마는 만들지 않는다) |
 | UX-13 | C2 샘플 화면의 옛 숫자·문구를 Figma에서 고칠지. 구현은 지금 규칙을 따른다 (고친다) |
 | UX-14 | 시안의 로그인 버튼(카카오·Apple)과 PRD `F01-R01`(카카오·Apple·Google)의 차이 (PRD대로 세 개) |
+| UX-15 | Figma 변수의 `onAccent`(`#FFFFFF`)를 남색 `#0B1018`로 고칠지 (고친다) |
 
-함께 바뀐 문서: `UI_UX.md`(머리말, §0, Figma 참조, §3.1, §3.2, §3.4, §4.3, §4.5, §6.1, §6.2, §6.4, §6.7, §6.10, §8.1, §8.3, §11, §12, §13), `PRD.md`(§5 머리말, §5.1, 부록), `DEVELOPMENT_PLAN.md`(`T-112`, `T-411`, `D-A10`, §4).
+함께 바뀐 문서: `UI_UX.md`(머리말, §0, Figma 참조, §3.1, §3.2, §3.4, §4.3, §4.5, §6.1, §6.2, §6.4, §6.7, §6.10, §8.1, §8.3, §11, §12, §13), `PRD.md`(§5 머리말, §5.1, 부록), `DEVELOPMENT_PLAN.md`(`T-112`, `T-411`, `D-A10`, §4), `design-tokens/README.md`.
 
