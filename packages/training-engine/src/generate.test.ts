@@ -250,7 +250,8 @@ const inputs: fc.Arbitrary<GenerateInput> = fc
 test('AC-F03-02 불변식: 만들어진 모든 계획이 검증기를 통과한다', () => {
   fc.assert(
     fc.property(inputs, (input) => {
-      const { level, options } = generate(input);
+      const { level, profile: used, options } = generate(input);
+      expect(used).toBe(input.profile);
       // 기초 훈련 계획은 언제나 만들 수 있어야 한다
       expect(options.some((item) => item.kind === 'base_building')).toBe(true);
       for (const plan of options) {
@@ -269,7 +270,7 @@ test('AC-F03-02 불변식: 만들어진 모든 계획이 검증기를 통과한�
           expect(plan.sessions.some((session) => session.date === dayBefore)).toBe(false);
         }
       }
-      expect(generate(input)).toEqual({ level, options });
+      expect(generate(input)).toEqual({ level, profile: used, options });
     }),
     { numRuns: 1000 },
   );

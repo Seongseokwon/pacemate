@@ -4,6 +4,7 @@ import {
   canProceed,
   clearDraft,
   EMPTY_DRAFT,
+  NEW_GOAL_DRAFT,
   goalTimeSecOf,
   isLastStep,
   loadDraft,
@@ -142,5 +143,19 @@ describe('목표 없음 (F02-R07, AC-F02-05)', () => {
 
   test('미리보기에는 목표 기록과 대회 날짜를 보내지 않는다', () => {
     expect(toGoal({ ...ANSWERED, goalDistance: 'none', goalMin: 30, raceDate: '2027-03-21' })).toEqual({ goalDistance: 'none', goalTimeSec: null, raceDate: null });
+  });
+});
+
+describe('끝난 계획 뒤 새 목표 (F03-R08, UI_UX §6.3)', () => {
+  test('목표 질문만 묻고 목표 거리부터 시작한다', () => {
+    expect(activeSteps(NEW_GOAL_DRAFT)).toEqual(['goalDistance', 'goalTime', 'raceDate']);
+    expect(STEPS[NEW_GOAL_DRAFT.step]).toBe('goalDistance');
+    expect(progressOf(NEW_GOAL_DRAFT)).toEqual({ current: 1, total: 3 });
+    expect(previousStep(NEW_GOAL_DRAFT)).toBe(STEPS.indexOf('goalDistance'));
+  });
+
+  test('목표 없음을 고르면 목표 거리가 마지막 질문이다', () => {
+    expect(isLastStep({ ...NEW_GOAL_DRAFT, goalDistance: 'none' })).toBe(true);
+    expect(activeSteps({ ...NEW_GOAL_DRAFT, goalDistance: 'none' })).toEqual(['goalDistance']);
   });
 });

@@ -7,6 +7,7 @@ import { SessionDetailSheet } from '@/components/session-detail';
 import { advance } from '@/first-run/store';
 import { dismiss, loadDismissed } from '@/home/dismissed';
 import { coachHref, MISSED_SESSIONS_DRAFT, recordHref } from '@/navigation/links';
+import { startNewGoal } from '@/plan/new-goal';
 import {
   addDays,
   Button,
@@ -29,6 +30,7 @@ import {
   SessionRow,
   Skeleton,
   Stack,
+  StatTile,
   StatusChip,
   StatusDot,
   Text,
@@ -49,7 +51,8 @@ const weekOf = (plan: Pick<PlanSummary, 'startDate' | 'endDate'>, date: string) 
 /** "11/16" */
 const monthDaySlash = (date: string) => formatShortDate(date).split(' ')[1];
 
-const KIND_SHORT = { race_prep: '완주 준비', base_building: '기초 훈련' } as const;
+// 유지 계획은 목표 없음이라 목표 문구(focus)를 쓴다
+const KIND_SHORT = { race_prep: '완주 준비', base_building: '기초 훈련', maintenance: '유지' } as const;
 
 /** 목표 이름: "5km 완주 준비", 목표 없음이면 목표 문구(F03-R09) */
 const goalName = (plan: PlanSummary) =>
@@ -139,8 +142,20 @@ export default function Home() {
       );
     }
 
-    // 계획이 끝났으면 종료 안내. [이어서 훈련하기]와 [새 목표 설정]은 유지 계획(T-207)에서 붙인다
-    if (plan.isFinished) return <EmptyState icon="flag" message={data.managerMessage.text} />;
+    // 계획이 끝났으면 종료 안내와 [이어서 훈련하기]·[새 목표 설정](F03-R08, F03-R10, C2 15a·15b)
+    if (plan.isFinished) {
+      return (
+        <Stack gap={4}>
+          <EmptyState icon="flag" message={data.managerMessage.text} />
+          <Stack direction="row" gap={2}>
+            <StatTile value={`${plan.progress.completed}/${plan.progress.total}회`} label="완료한 훈련" />
+            <StatTile value={`${weekOf(plan, plan.endDate).total}주`} label="함께한 기간" />
+          </Stack>
+          <Button size="large" label="이어서 훈련하기" onPress={() => router.push('/plan-continue')} />
+          <Button size="large" variant="secondary" label="새 목표 설정" onPress={() => void startNewGoal()} />
+        </Stack>
+      );
+    }
 
     const yesterday = data.yesterdaySession && !dismissed.includes(data.yesterdaySession.id) ? data.yesterdaySession : null;
     const today = data.todaySession;

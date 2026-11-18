@@ -101,3 +101,19 @@ test('목표 없음이면 선택 카드와 안내 없이 목표 문구를 보여
   expect(screen.getByText('목표: 30분 쉬지 않고 달리기')).toBeOnTheScreen();
   expect(screen.queryByRole('button', { name: /^완주 준비 계획/ })).toBeNull();
 });
+
+test('끝난 계획 뒤 새 목표로 만든 계획은 첫 실행 흐름 없이 홈으로 돌아간다 (F03-R08)', async () => {
+  jest.mocked(previewPlan).mockResolvedValue({ options: [option('base_building')] });
+  jest.mocked(confirmPlan).mockResolvedValue({} as never);
+  jest.mocked(loadDraft).mockResolvedValue({ ...EMPTY_DRAFT, goalDistance: 'ten_k', step: 7, goalOnly: true });
+  await render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
+      <PlanPreview />
+    </QueryClientProvider>,
+  );
+  await fireEvent.press(await screen.findByRole('button', { name: '이 계획으로 시작' }));
+
+  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/(tabs)'));
+  expect(advance).not.toHaveBeenCalled();
+  expect(clearDraft).toHaveBeenCalled();
+});

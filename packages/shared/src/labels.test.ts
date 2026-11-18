@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { coachChoiceSchema, previewPlanRequestSchema } from './api.js';
+import { coachChoiceSchema, confirmPlanRequestSchema, previewPlanRequestSchema } from './api.js';
 import { coachSchema } from './enums.js';
 import { COACH_LABELS, DEFAULT_COACH, planFocusOf } from './labels.js';
 
@@ -34,4 +34,18 @@ test('F04-R13 코치 바꾸기 요청은 정해진 세 값만 받는다', () => 
   expect(coachChoiceSchema.safeParse({ coach: 'suri' }).success).toBe(true);
   expect(coachChoiceSchema.safeParse({ coach: 'other' }).success).toBe(false);
   expect(coachChoiceSchema.safeParse({}).success).toBe(false);
+});
+
+test('F03-R10 유지 계획의 목표 문구는 첫 주와 관계없이 습관 만들기다', () => {
+  expect(planFocusOf('none', [week(5)], 'maintenance')).toBe('habit');
+  expect(planFocusOf('none', [], 'maintenance')).toBe('habit');
+  expect(planFocusOf('none', [week(5)], 'base_building')).toBe('continuous_30min');
+});
+
+test('F03-R10 이어서 훈련하기와 유지 계획 확정은 목표 없음으로만 보낸다', () => {
+  expect(previewPlanRequestSchema.safeParse({ goalDistance: 'none', continuation: true }).success).toBe(true);
+  expect(previewPlanRequestSchema.safeParse({ goalDistance: 'five_k', continuation: true }).success).toBe(false);
+  expect(previewPlanRequestSchema.safeParse({ goalDistance: 'five_k', continuation: false }).success).toBe(true);
+  expect(confirmPlanRequestSchema.safeParse({ goalDistance: 'none', kind: 'maintenance' }).success).toBe(true);
+  expect(confirmPlanRequestSchema.safeParse({ goalDistance: 'half', kind: 'maintenance' }).success).toBe(false);
 });

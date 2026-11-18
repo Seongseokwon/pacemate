@@ -145,6 +145,11 @@ export default function Onboarding() {
 
   const goNext = (patch: Partial<OnboardingDraft> = {}) => {
     if (!last) return void update({ ...patch, step: nextStep({ ...draft, ...patch }) });
+    // 목표만 정할 때는 프로필이 이미 있어 저장하지 않고 미리보기로 간다(UI_UX §6.3)
+    if (draft.goalOnly) {
+      update(patch);
+      return router.replace('/(onboarding)/plan-preview');
+    }
     const profile = toProfileRequest(update(patch));
     if (profile) return save.mutate(profile);
     // 저장해 둔 답이 지금의 입력 범위와 맞지 않는 경우다. 답은 그대로 두고 처음 질문부터 다시 확인하게 한다

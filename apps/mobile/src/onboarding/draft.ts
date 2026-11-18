@@ -33,6 +33,8 @@ export type OnboardingDraft = {
   goalMin: number | null;
   goalSec: number | null;
   raceDate: string | null;
+  /** 끝난 계획 뒤 [새 목표 설정]으로 왔는지. 프로필은 이미 있어 목표만 묻는다(UI_UX §6.3) */
+  goalOnly: boolean;
 };
 
 export const EMPTY_DRAFT: OnboardingDraft = {
@@ -51,6 +53,7 @@ export const EMPTY_DRAFT: OnboardingDraft = {
   goalMin: null,
   goalSec: null,
   raceDate: null,
+  goalOnly: false,
 };
 
 const within = (value: number, { min, max }: { min: number; max: number }) => value >= min && value <= max;
@@ -119,9 +122,14 @@ export function toGoal(draft: OnboardingDraft): PreviewPlanRequest | null {
   return { goalDistance: draft.goalDistance, goalTimeSec: goalTimeSecOf(draft) ?? null, raceDate: draft.raceDate };
 }
 
-/** 지금 답에 따라 묻는 질문. 목표 없음이면 목표 기록과 대회 날짜를 묻지 않는다(F02-R07). */
-export const activeSteps = (draft: Pick<OnboardingDraft, 'goalDistance'>): Step[] =>
-  draft.goalDistance === 'none' ? STEPS.filter((step) => step !== 'goalTime' && step !== 'raceDate') : [...STEPS];
+const GOAL_STEPS: readonly Step[] = ['goalDistance', 'goalTime', 'raceDate'];
+
+/** 지금 답에 따라 묻는 질문. 목표 없음이면 목표 기록과 대회 날짜를 묻지 않는다(F02-R07). 목표만 정할 때는 목표 질문만 묻는다 */
+export const activeSteps = (draft: Pick<OnboardingDraft, 'goalDistance'> & { goalOnly?: boolean }): Step[] =>
+  STEPS.filter((step) => (!draft.goalOnly || GOAL_STEPS.includes(step)) && (draft.goalDistance !== 'none' || (step !== 'goalTime' && step !== 'raceDate')));
+
+/** 끝난 계획 뒤 새 목표를 정하는 답변. 목표 거리 질문부터 시작한다 */
+export const NEW_GOAL_DRAFT: OnboardingDraft = { ...EMPTY_DRAFT, goalOnly: true, step: STEPS.indexOf('goalDistance') };
 
 const positionOf = (draft: OnboardingDraft) => Math.max(0, activeSteps(draft).indexOf(STEPS[draft.step] ?? STEPS[0]));
 

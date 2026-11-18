@@ -71,6 +71,11 @@ export const PLAN = {
     runIntervalLadder: [1, 2, 3, 5, 8, 10, 15, 20, 30],
     startRunInterval: { under_10m: 1, under_30m: 10, under_60m: 30, over_60m: 30 },
   },
+  /**
+   * TE-G03, TE-G10: 유지 계획(2026-11-18 개발자 확인, `DECISIONS.md`). `recentWeeks`주의 주마다 계획 거리와 기록 거리 중 적은 쪽의 평균에서 시작한다.
+   * 대회 뒤 `postRaceDays`일 안에 시작하면 첫 주를 `postRaceFactor`배로 줄이고, 입문 수준이면 첫 주를 쉰다. 그 뒤로는 `singleRunIncrease`만큼씩만 되돌린다.
+   */
+  maintenance: { weeks: 4, recentWeeks: 4, postRaceDays: 14, postRaceFactor: { five_k: 0.7, ten_k: 0.6, half: 0.5 } },
   /** 권장 페이스(최근 페이스 대비 배수). 최근 페이스가 대회 기록일 수 있어 느리게 잡는다 */
   pace: { easy: [1.1, 1.25], long: [1.1, 1.25], tempo: [1, 1.05] },
   /** TE-G06: 목표 페이스가 최근 페이스보다 이 비율을 넘게 빠르면 경고한다 */

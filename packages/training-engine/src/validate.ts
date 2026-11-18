@@ -79,7 +79,7 @@ export const validate: Validate = ({ plan, today, change }) => {
     const runCount = baseStats(week).runs.length;
     if (tempos > SAFETY.maxTempoPerWeek || (tempos > 0 && (plan.level === 'beginner' || runCount < SAFETY.minSessionsForTempo))) violations.add('TE-S07');
     if (mixed) violations.add('TE-S14');
-    const runLimit = SAFETY.continuousRunMin[plan.profile.continuousRun];
+    const runLimit = Math.max(SAFETY.continuousRunMin[plan.profile.continuousRun], plan.profile.recentRunIntervalMin ?? 0);
     if (week === firstWeek && weekRuns.some((session) => exceeds(session.runIntervalMin ?? 0, runLimit))) violations.add('TE-S14');
     if (timeBased) {
       // 계획 시작 전의 주는 시간 기준이 없다. 비교할 주가 없는 첫 주는 상한이 없다.
