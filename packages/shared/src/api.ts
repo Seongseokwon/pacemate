@@ -234,6 +234,14 @@ export type UpdateWorkoutRequest = z.infer<typeof updateWorkoutRequestSchema>;
 export const workoutsResponseSchema = pageOf(workoutSchema);
 export type WorkoutsResponse = z.infer<typeof workoutsResponseSchema>;
 
+export const WORKOUT_COACH_LINE = { code: 'WORKOUT_SAVED', text: '오늘도 달리느라 수고하셨어요.' } as const;
+export const createWorkoutResponseSchema = z.object({
+  workout: workoutSchema,
+  weekProgress: z.object({ completed: countSchema, planned: countSchema }).nullable(),
+  coachLine: z.object({ code: z.literal(WORKOUT_COACH_LINE.code), text: z.string() }),
+});
+export type CreateWorkoutResponse = z.infer<typeof createWorkoutResponseSchema>;
+
 const distanceAndCountSchema = z.object({ distanceKm: z.number().nonnegative(), count: countSchema });
 
 /** `GET /v1/workouts/stats` */
