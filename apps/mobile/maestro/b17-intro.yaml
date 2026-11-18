@@ -1,0 +1,17 @@
+# B-17: 처음 연 앱은 인트로 3장을 보여 주고, 끝까지 본 뒤 다시 열면 인트로 없이 로그인 화면이 뜬다. 앱 데이터를 지운다
+appId: com.pacemate.app
+---
+- runFlow: common/fresh-launch.yaml
+- assertVisible: "나에게 꼭 맞는 계획"
+- takeScreenshot: b17-1
+- swipe: { direction: LEFT }
+- assertVisible: "채팅으로 일정 조정"
+- tapOn: "다음"
+- assertVisible: "다치지 않고 꾸준히"
+- takeScreenshot: b17-3
+- tapOn: "시작하기"
+- assertVisible: "Apple로 계속하기"
+- stopApp
+- launchApp
+- extendedWaitUntil: { visible: "Apple로 계속하기", timeout: 30000 }
+- assertNotVisible: "나에게 꼭 맞는 계획"

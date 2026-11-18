@@ -1,0 +1,8 @@
+# B-16: 아이콘 23개를 찍는다. 모양은 스크린샷을 docs/design/icons/*.svg와 눈으로 비교한다
+appId: com.pacemate.app
+---
+- openLink: pacemate://ui-gallery
+- extendedWaitUntil: { visible: "컴포넌트 예시", timeout: 15000 }
+- scrollUntilVisible: { element: "카드", direction: DOWN, timeout: 30000, centerElement: true }
+- waitForAnimationToEnd
+- takeScreenshot: b16-icons

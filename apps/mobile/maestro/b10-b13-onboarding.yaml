@@ -1,0 +1,63 @@
+# B-10~B-13: 온보딩 질문, 요일 규칙, 앱을 껐다 켠 뒤 이어하기, 대회 날짜. 앱 데이터를 지우고 첫 질문부터 시작한다
+appId: com.pacemate.app
+---
+- runFlow: common/fresh-launch.yaml
+- tapOn: "다음"
+- tapOn: "다음"
+- tapOn: "시작하기"
+- openLink: "pacemate://(onboarding)"
+# B-10
+- extendedWaitUntil: { visible: "달리기를 얼마나 해 보셨어요\\?", timeout: 15000 }
+- assertVisible: { text: "다음", enabled: false }
+- tapOn: "처음이에요.*"
+- assertVisible: { text: "다음", enabled: true }
+- tapOn: "다음"
+- tapOn: "10~30분.*"
+- tapOn: "뒤로"
+- assertVisible: { text: "처음이에요", selected: true }
+- takeScreenshot: b10-back
+- tapOn: "다음"
+- tapOn: "다음"
+- extendedWaitUntil: { visible: "요즘 일주일에.*", timeout: 5000 }
+- takeScreenshot: b10-weekly-km
+- tapOn: "잘 모르겠어요"
+- extendedWaitUntil: { visible: "최근 기록이나.*", timeout: 5000 }
+- tapOn: "잘 모르겠어요"
+# B-11
+- extendedWaitUntil: { visible: "일주일에 몇 번.*", timeout: 5000 }
+- tapOn: "3번.*"
+- tapOn: "월요일.*"
+- tapOn: "수요일.*"
+- assertVisible: "달릴 수 있는 요일을 3개 이상 골라 주세요."
+- assertVisible: { text: "다음", enabled: false }
+- takeScreenshot: b11-two-days
+- tapOn: "금요일.*"
+- assertNotVisible: "달릴 수 있는 요일을 3개 이상 골라 주세요."
+- assertVisible: { text: "다음", enabled: true }
+- tapOn: "다음"
+- extendedWaitUntil: { visible: "어떤 거리를.*", timeout: 5000 }
+- tapOn: "10km.*"
+- tapOn: "다음"
+- extendedWaitUntil: { visible: "목표 기록이 있나요\\?", timeout: 5000 }
+- assertVisible: "건너뛰기"
+# B-12
+- stopApp
+- launchApp
+- extendedWaitUntil: { visible: "Apple로 계속하기", timeout: 30000 }
+- openLink: "pacemate://(onboarding)"
+- extendedWaitUntil: { visible: "목표 기록이 있나요\\?", timeout: 15000 }
+- tapOn: "뒤로"
+- assertVisible: { text: "10km", selected: true }
+- takeScreenshot: b12-resumed
+- tapOn: "다음"
+- tapOn: "건너뛰기"
+# B-13
+- extendedWaitUntil: { visible: "나갈 대회 날짜가.*", timeout: 5000 }
+# shortcut: 날짜 입력칸에 접근성 이름이 없어 위치로 누른다, 이름을 붙이면 글자로 바꾼다
+- tapOn: { point: "50%,30%" }
+- waitForAnimationToEnd
+- takeScreenshot: b13-picker
+- tapOn: { point: "91%,46%" }
+- waitForAnimationToEnd
+- tapOn: "건너뛰기"
+- assertVisible: "Apple로 계속하기"

@@ -1,0 +1,12 @@
+# B-19: 고르기 전에는 버튼이 꺼져 있고, 고르면 켜진다. 로그인 전이라 누르면 로그인 화면으로 간다. 화면 낭독은 개발자가 본다
+appId: com.pacemate.app
+---
+- openLink: pacemate://coach-select
+- extendedWaitUntil: { visible: "이 코치와 시작하기", timeout: 15000 }
+- assertVisible: { text: "이 코치와 시작하기", enabled: false }
+- takeScreenshot: b19-empty
+- tapOn: "수리.*"
+- assertVisible: { text: "이 코치와 시작하기", enabled: true }
+- takeScreenshot: b19-picked
+- tapOn: "이 코치와 시작하기"
+- assertVisible: "Apple로 계속하기"

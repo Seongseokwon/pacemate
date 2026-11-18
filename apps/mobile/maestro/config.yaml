@@ -1,0 +1,12 @@
+# `maestro test apps/mobile/maestro`가 이 순서로 돌린다. common/ 안의 파일은 다른 흐름이 불러 쓰는 조각이다.
+executionOrder:
+  continueOnFailure: true
+  flowsOrder:
+    - b05-login
+    - b07-consent
+    - b08-delete-account
+    - b18-start
+    - b19-coach-select
+    - b16-icons
+    - b17-intro
+    - b10-b13-onboarding

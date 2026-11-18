@@ -1,0 +1,11 @@
+# B-08: 확인 창이 뜨고 "취소"로 닫힌다. "삭제"는 누르지 않는다
+appId: com.pacemate.app
+---
+- openLink: pacemate://delete-account
+- extendedWaitUntil: { visible: "계정을 삭제하면.*", timeout: 15000 }
+- takeScreenshot: b08-screen
+- tapOn: { text: "계정 삭제", index: 1 }
+- assertVisible: "계정을 삭제할까요\\?"
+- takeScreenshot: b08-dialog
+- tapOn: "취소"
+- assertNotVisible: "계정을 삭제할까요\\?"

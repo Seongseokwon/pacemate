@@ -1,0 +1,12 @@
+# B-18: 로그인 전에는 두 버튼 모두 로그인 화면으로 간다
+appId: com.pacemate.app
+---
+- openLink: pacemate://start
+- extendedWaitUntil: { visible: "나중에 할게요", timeout: 15000 }
+- takeScreenshot: b18-screen
+- tapOn: "나중에 할게요"
+- assertVisible: "Apple로 계속하기"
+- openLink: pacemate://start
+- extendedWaitUntil: { visible: "나중에 할게요", timeout: 15000 }
+- tapOn: "시작하기"
+- assertVisible: "Apple로 계속하기"
