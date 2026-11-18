@@ -1,4 +1,4 @@
-import type { GoalDistance, PlanFocus, PlanKind, PlanWarning, SessionStatus, SessionType } from './enums.js';
+import type { Coach, GoalDistance, PlanFocus, PlanKind, PlanWarning, SessionStatus, SessionType } from './enums.js';
 
 /** 훈련 종류의 화면 표시 이름과 체감 안내 문구(UI_UX §8.1). 응답에는 `type`만 담고 문구는 여기서 찾는다. */
 export const SESSION_TYPE_LABELS: Record<SessionType, { name: string; guidance: string }> = {
@@ -23,6 +23,19 @@ export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
   missed: '미완료',
   skipped: '생략',
 };
+
+/**
+ * AI 코치의 이름, 한 줄 소개, 말투 소개 문장, 말투 표시(F04-R11, UI_UX §6.10, C2 08d).
+ * 말투 소개 문장에는 훈련 수치를 넣지 않는다. 세 코치의 차이는 말투뿐이다(AI-11).
+ */
+export const COACH_LABELS: Record<Coach, { name: string; intro: string; sample: string; tags: readonly string[] }> = {
+  oni: { name: '온이', intro: '다정한 러닝 친구', sample: '옆에서 같이 뛰어 주는 친구처럼, 먼저 마음을 알아주고 응원해요.', tags: ['다정한 해요체', '2~3문장', '공감 먼저'] },
+  suri: { name: '수리', intro: '차분한 데이터 코치', sample: '기록과 숫자로 지금 상태를 설명하고, 이유와 함께 다음 할 일을 정리해 줘요.', tags: ['정중한 해요체', '3~4문장', '근거 먼저'] },
+  bungae: { name: '번개', intro: '힘찬 스포츠 코치', sample: '짧고 힘 있게, 핵심만 말하고 바로 다음 행동으로 이끌어요.', tags: ['짧은 해요체', '짧은 문장 3~4개', '핵심만'] },
+};
+
+/** 온보딩을 건너뛰었거나 코치를 고르지 않은 사용자의 코치(F04-R12, D-15). DB 기본값과 같다 */
+export const DEFAULT_COACH: Coach = 'oni';
 
 /** 목표 거리의 화면 표시 이름 */
 export const GOAL_DISTANCE_LABELS: Record<GoalDistance, string> = {

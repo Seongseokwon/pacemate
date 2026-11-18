@@ -78,7 +78,7 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-const call = async (method: 'get' | 'post' | 'delete', path: string, user = USER_A, body?: object) =>
+const call = async (method: 'get' | 'post' | 'put' | 'delete', path: string, user = USER_A, body?: object) =>
   request(app.getHttpServer())[method](path)
     .set({ 'X-App-Version': '1.0.0', 'X-App-Platform': 'ios' })
     .auth(await sign(user), { type: 'bearer' })
@@ -139,6 +139,7 @@ describe('GET /v1/me', () => {
       onboardingCompleted: false,
       hasActivePlan: false,
       authProvider: 'google',
+      coach: null,
       usage: { tier: 'free', chat: { used: 0, limit: PLAN_LIMITS.free.chat } },
       subscription: null,
     });
@@ -180,7 +181,8 @@ describe('POST /v1/me (F01-R02)', () => {
     const res = await register();
 
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ registered: true, onboardingCompleted: false, authProvider: 'google' });
+    // 코치를 고르기 전에는 온이다(F04-R12, D-15)
+    expect(res.body).toMatchObject({ registered: true, onboardingCompleted: false, authProvider: 'google', coach: 'oni' });
     expect(await prisma.user.findUniqueOrThrow({ where: { id: USER_A } })).toMatchObject({
       authProvider: 'google',
       consentVersion: 'v1',
@@ -210,6 +212,54 @@ describe('필수 동의 확인 (AC-F01-02)', () => {
     await register();
     expect((await call('get', '/v1/probe')).body).toEqual({ ok: true });
     expect((await call('get', '/v1/probe', USER_B)).status).toBe(403);
+  });
+});
+
+describe('PUT /v1/me/coach (F04-R11~R13)', () => {
+  test('고른 코치를 저장하고 GET /v1/me에 보인다. 내 계정만 바뀐다 (DI-07)', async () => {
+    await register(USER_A);
+    await register(USER_B);
+
+    const res = await call('put', '/v1/me/coach', USER_A, { coach: 'suri' });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ coach: 'suri' });
+    expect((await call('get', '/v1/me', USER_A)).body.coach).toBe('suri');
+    expect((await call('get', '/v1/me', USER_B)).body.coach).toBe('oni');
+  });
+
+  test('횟수 제한 없이 바꿀 수 있고 이용량이 바뀌지 않는다 (AC-F04-07의 일부)', async () => {
+    await register();
+    await prisma.usageCounter.create({ data: { userId: USER_A, month: '2026-11', chatCount: 3 } });
+    const before = (await call('get', '/v1/me')).body.usage;
+
+    for (const coach of ['suri', 'bungae', 'oni', 'bungae', 'bungae']) {
+      expect((await call('put', '/v1/me/coach', USER_A, { coach })).status).toBe(200);
+    }
+
+    const after = (await call('get', '/v1/me')).body;
+    expect(after.coach).toBe('bungae');
+    expect(after.usage).toEqual(before);
+    expect(await prisma.usageCounter.findMany({ where: { userId: USER_A } })).toMatchObject([{ month: '2026-11', chatCount: 3 }]);
+  });
+
+  test('정해진 세 코치가 아니면 거절하고 바꾸지 않는다', async () => {
+    await register();
+
+    for (const body of [{ coach: 'other' }, {}, { coach: null }]) {
+      const res = await call('put', '/v1/me/coach', USER_A, body);
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe('VALIDATION_ERROR');
+    }
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: USER_A } })).coach).toBe('oni');
+  });
+
+  test('동의 전의 계정은 코치를 바꿀 수 없다 (AC-F01-02)', async () => {
+    const res = await call('put', '/v1/me/coach', USER_A, { coach: 'suri' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('CONSENT_REQUIRED');
+    expect(await prisma.user.count()).toBe(0);
   });
 });
 
@@ -262,12 +312,13 @@ describe('DELETE /v1/me (F01-R05, F01-R06, DI-11)', () => {
 
   test('삭제가 끝나지 않은 계정이 다시 동의하면 새 계정으로 시작한다', async () => {
     await register();
+    await call('put', '/v1/me/coach', USER_A, { coach: 'bungae' });
     authAdmin.failing = true;
     await call('delete', '/v1/me');
 
     const res = await register(USER_A, { ...CONSENT, consentVersion: 'v2' });
 
-    expect(res.body).toMatchObject({ registered: true, onboardingCompleted: false });
+    expect(res.body).toMatchObject({ registered: true, onboardingCompleted: false, coach: 'oni' });
     expect(await prisma.user.findUniqueOrThrow({ where: { id: USER_A } })).toMatchObject({
       consentVersion: 'v2',
       deletionRequestedAt: null,

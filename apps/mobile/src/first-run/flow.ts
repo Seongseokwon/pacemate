@@ -1,8 +1,8 @@
 import type { MeResponse } from '@pacemate/shared';
 import type { Href } from 'expo-router';
 
-/** 계획을 확정한 뒤 차례로 거치는 화면. 코치 고르기(T-411)는 알림 권한 앞에 들어간다(PRD §5.1). */
-export type AfterPlanStep = 'notifications';
+/** 계획을 확정한 뒤 차례로 거치는 화면. 코치 고르기는 알림 권한 앞이다(PRD §5.1, F04-R12). */
+export type AfterPlanStep = 'coach' | 'notifications';
 
 /** 첫 실행 흐름에서 기기에 남기는 상태. 서버가 아는 것(가입, 프로필, 계획)은 `GET /v1/me`로 판단한다. */
 export type FirstRunState = {
@@ -32,6 +32,8 @@ export type FirstRunEvent =
   | 'onboardingStarted'
   | 'onboardingDeferred'
   | 'planConfirmed'
+  /** 코치를 고르고 저장까지 마쳤다 */
+  | 'coachSelected'
   | 'notificationsDone';
 
 export function reduce(state: FirstRunState, event: FirstRunEvent): FirstRunState {
@@ -43,13 +45,15 @@ export function reduce(state: FirstRunState, event: FirstRunEvent): FirstRunStat
     case 'onboardingDeferred':
       return { ...state, onboardingDeferred: true, onboardingInProgress: false, onboardingStartPassed: false };
     case 'planConfirmed':
-      return { ...state, onboardingInProgress: false, onboardingStartPassed: false, afterPlan: ['notifications'] };
+      return { ...state, onboardingInProgress: false, onboardingStartPassed: false, afterPlan: ['coach', 'notifications'] };
+    case 'coachSelected':
+      return { ...state, afterPlan: state.afterPlan.filter((step) => step !== 'coach') };
     case 'notificationsDone':
       return { ...state, afterPlan: state.afterPlan.filter((step) => step !== 'notifications') };
   }
 }
 
-const AFTER_PLAN_ROUTES: Record<AfterPlanStep, Href> = { notifications: '/notification-permission' };
+const AFTER_PLAN_ROUTES: Record<AfterPlanStep, Href> = { coach: '/coach-select', notifications: '/notification-permission' };
 
 type Me = Pick<MeResponse, 'registered' | 'onboardingCompleted' | 'hasActivePlan'>;
 

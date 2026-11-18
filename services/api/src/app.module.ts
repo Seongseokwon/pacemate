@@ -8,6 +8,7 @@ import { AccountService } from './auth/account.service.js';
 import { AUTH_ADMIN, UnconfiguredAuthAdmin } from './auth/auth-admin.js';
 import { AuthGuard } from './auth/auth.guard.js';
 import { ConsentGuard } from './auth/consent.guard.js';
+import { CoachController } from './auth/coach.controller.js';
 import { MeController } from './auth/me.controller.js';
 import { JWKS, TokenVerifier } from './auth/token-verifier.js';
 import { AppVersionGuard } from './common/app-version.guard.js';
@@ -28,7 +29,7 @@ import { WorkoutService } from './workout/workout.service.js';
 
 @Module({
   imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: RATE_LIMIT_PER_MINUTE.default }])],
-  controllers: [HealthController, MeController, ProfileController, PlanController, WorkoutController],
+  controllers: [HealthController, MeController, CoachController, ProfileController, PlanController, WorkoutController],
   providers: [
     { provide: APP_CONFIG, useFactory: () => loadConfig() },
     {

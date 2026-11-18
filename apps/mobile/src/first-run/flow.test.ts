@@ -44,11 +44,18 @@ test('온보딩 중 프로필을 저장하면 계획 미리보기로, 온보딩 
   expect(firstRunRoute(seen, me({ onboardingCompleted: true }))).toBe('/(tabs)');
 });
 
-test('계획을 확정하면 알림 권한을 거쳐 홈으로 간다 (F09-R03)', () => {
+test('계획을 확정하면 코치 고르기, 알림 권한을 차례로 거쳐 홈으로 간다 (F04-R12, F09-R03)', () => {
   const confirmed = after('introDone', 'onboardingStarted', 'planConfirmed');
   const withPlan = me({ onboardingCompleted: true, hasActivePlan: true });
-  expect(firstRunRoute(confirmed, withPlan)).toBe('/notification-permission');
-  expect(firstRunRoute(reduce(confirmed, 'notificationsDone'), withPlan)).toBe('/(tabs)');
+  expect(firstRunRoute(confirmed, withPlan)).toBe('/coach-select');
+  const coachChosen = reduce(confirmed, 'coachSelected');
+  expect(firstRunRoute(coachChosen, withPlan)).toBe('/notification-permission');
+  expect(firstRunRoute(reduce(coachChosen, 'notificationsDone'), withPlan)).toBe('/(tabs)');
+});
+
+test('코치 고르기를 마치기 전에 앱을 다시 열면 코치 고르기부터 이어 간다 (F04-R12)', () => {
+  const confirmed = { ...after('introDone', 'onboardingStarted', 'planConfirmed'), onboardingStartPassed: false };
+  expect(firstRunRoute(confirmed, me({ onboardingCompleted: true, hasActivePlan: true }))).toBe('/coach-select');
 });
 
 test('활성 계획이 있으면 홈으로 간다', () => {

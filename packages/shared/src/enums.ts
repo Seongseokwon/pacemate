@@ -38,6 +38,10 @@ export type ChatMessageStatus = z.infer<typeof chatMessageStatusSchema>;
 export const authProviderSchema = z.enum(['apple', 'google']);
 export type AuthProvider = z.infer<typeof authProviderSchema>;
 
+/** 고른 AI 코치(F04-R11). 다른 것은 AI 응답의 말투뿐이다. 이름과 소개는 `COACH_LABELS`에 있다. */
+export const coachSchema = z.enum(['oni', 'suri', 'bungae']);
+export type Coach = z.infer<typeof coachSchema>;
+
 export const experienceSchema = z.enum(['none', 'under_6m', 'under_2y', 'over_2y']);
 export type Experience = z.infer<typeof experienceSchema>;
 

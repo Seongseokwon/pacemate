@@ -13,5 +13,5 @@ export { addDays, deviceToday, firstOfMonth, formatDate, formatDday, formatDurat
 export { MonthGrid, WeekStrip } from './calendar';
 export { RaceGoalCard, TodayCard, WeekGauge } from './home';
 export { originalLine, SessionList, SessionRow, sessionAmount, StatTile, StatusChip } from './session';
-export { CoachAvatar, type CoachId } from './coach';
+export { CoachAvatar, type CoachId, CoachSelectCard } from './coach';
 export { Illustration, type IllustrationName } from './illustration';
