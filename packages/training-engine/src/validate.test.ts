@@ -262,3 +262,38 @@ test('지난 주의 위반은 보고하지 않지만 기준값 계산에는 쓴�
 test('오늘 날짜가 잘못되면 지난 주도 모두 검사한다', () => {
   expect(check([run('2026-11-03', 'easy', 3), run('2026-11-03', 'long', 3)], {}, '')).toContain('TE-S05');
 });
+
+// 변경안 검증의 기준값(PRD §7.4, TE-R08)
+const skip = (session: PlanSessionState) => ({ ...session, skipped: true });
+
+test('TE-S03 변경으로 주간 거리가 줄어든 주에는 길게 달리기 비율을 보지 않는다', () => {
+  const plan = weeksOfKm(12, 13);
+  const after = plan.map((s) => (s.date === day(1) ? skip(s) : s));
+  expect(check(after)).toContain('TE-S03');
+  expect(checkChange(plan, after, 'pain')).not.toContain('TE-S03');
+  // 거리가 그대로인 이동은 비율을 본다
+  const moved = [run(day(1), 'easy', 3), run(day(3), 'easy', 1), run(day(5), 'long', 8)];
+  expect(checkChange([run(day(1), 'easy', 3), run(day(3), 'easy', 1), run(day(6), 'long', 8)], moved)).toContain('TE-S03');
+});
+
+test('TE-S01 TE-S02 변경안의 고점과 회복 주는 변경 전 계획으로 판정한다', () => {
+  // 12 → 13.2(늘리는 주). 첫 주를 생략하면 그 주가 회복 주가 되어 둘째 주가 고점(12)에 묶인다
+  const plan = weeksOfKm(12, 13.2);
+  const after = plan.map((s) => (s.date >= day(0) && s.date <= day(6) && s.type === 'easy' ? skip(s) : s));
+  expect(check(after)).toContain('TE-S01');
+  expect(checkChange(plan, after, 'fatigue')).not.toContain('TE-S01');
+});
+
+test('TE-S13 생략하거나 줄인 훈련은 원래 거리로 최근 최장 거리의 기준에 남는다', () => {
+  const plan = weeksOfKm(12, 13.2);
+  const after = plan.map((s) => (s.date === day(6) ? skip(s) : s));
+  expect(check(after, {}, day(7))).toContain('TE-S13');
+  expect(checkChange(plan, after, 'pain', day(6))).not.toContain('TE-S13');
+});
+
+test('TE-S07 변경안의 주 횟수는 변경 전 계획으로 센다', () => {
+  const plan = [run(day(1), 'tempo', 3), run(day(3), 'easy', 3), run(day(6), 'long', 6)];
+  const after = [plan[0]!, skip(plan[1]!), plan[2]!];
+  expect(check(after)).toContain('TE-S07');
+  expect(checkChange(plan, after, 'pain')).not.toContain('TE-S07');
+});
