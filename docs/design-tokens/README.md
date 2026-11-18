@@ -22,11 +22,17 @@
 - 훈련 종류 색상: `session.walkRun`, `session.easy`, `session.tempo`, `session.long`, `session.race`
 
 ### 2. 숫자 토큰 (21개)
-- `spacing`: xs(8), sm(12), md(16), lg(24), xl(32)
-- `radius`: inner(10), element(14), container(20), page(28), bubble(18), full(9999)
-- `font.size`: xs(12), sm(14), md(16), lg(20), xl(28), xxl(36)
-- `font.weight`: regular(400), medium(500), bold(700)
-- `iconSize`: sm(16), md(20), lg(24)
+- `radius`: inner(10), element(14), container(20), page(28), full(9999), bubble(18). 코드의 `radius.chat`이 `bubble`이다
+- `size`: button(52), buttonSmall(44), touchMin(44), tabBar(83)
+- `space`: 0, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48
+
+글자 크기와 굵기는 Figma 변수에 없다. `docs/UI_UX.md` §3.5를 따른다.
+
+### Figma 변수와 `docs/UI_UX.md` §3의 차이
+
+- `background.raised`, `text.accent`는 Figma 변수에 없고 UI_UX §3.2에만 있다.
+- `hero/from`, `hero/to`는 UI_UX §3.2의 `hero.from`, `hero.to`다.
+- `onAccent`는 Figma가 `#FFFFFF`, UI_UX가 `#0B1018`이다. 흰 글자는 주황 위에서 대비가 4.5:1에 못 미쳐 UI_UX 값을 쓴다(`UX-15`).
 
 ## 사용 방법
 
