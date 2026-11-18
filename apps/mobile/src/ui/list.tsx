@@ -57,7 +57,7 @@ export function ListItem({ title, description, left, right, onPress, accessibili
       {content}
     </Press>
   ) : (
-    <View accessibilityLabel={accessibilityLabel} style={style}>
+    <View accessible={accessibilityLabel !== undefined} accessibilityLabel={accessibilityLabel} style={style}>
       {content}
     </View>
   );

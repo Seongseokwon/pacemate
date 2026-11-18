@@ -1,4 +1,4 @@
-import type { PlanWarning, SessionType } from './enums.js';
+import type { GoalDistance, PlanFocus, PlanKind, PlanWarning, SessionStatus, SessionType } from './enums.js';
 
 /** 훈련 종류의 화면 표시 이름과 체감 안내 문구(UI_UX §8.1). 응답에는 `type`만 담고 문구는 여기서 찾는다. */
 export const SESSION_TYPE_LABELS: Record<SessionType, { name: string; guidance: string }> = {
@@ -15,3 +15,47 @@ export const PLAN_WARNING_LABELS: Record<PlanWarning, string> = {
   GOAL_TIME_TOO_FAST: '목표 기록이 최근 기록보다 많이 빨라요. 계획은 무리하지 않게 완주에 맞춰 만들었어요.',
   GOAL_TIME_NOT_CHECKED: '최근 기록이 없어서 목표 기록이 알맞은지 확인하지 못했어요. 계획은 완주에 맞춰 만들었어요.',
 };
+
+/** 훈련 상태의 칩 문구(UI_UX §8.2) */
+export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
+  planned: '예정',
+  completed: '완료',
+  missed: '미완료',
+  skipped: '생략',
+};
+
+/** 목표 거리의 화면 표시 이름 */
+export const GOAL_DISTANCE_LABELS: Record<GoalDistance, string> = {
+  five_k: '5km',
+  ten_k: '10km',
+  half: '하프마라톤',
+  none: '목표 없음',
+};
+
+/** 계획 종류의 이름과 한 줄 설명(F03-R01, UI_UX §6.2) */
+export const PLAN_KIND_LABELS: Record<PlanKind, { name: string; description: string }> = {
+  race_prep: { name: '완주 준비 계획', description: '대회에서 끝까지 달리는 것을 목표로 해요' },
+  base_building: { name: '기초 훈련 계획', description: '달리기 기초 체력을 차근차근 다져요' },
+};
+
+/** 목표 없음 계획의 목표 문구(F03-R09) */
+export const PLAN_FOCUS_LABELS: Record<PlanFocus, string> = {
+  continuous_30min: '30분 쉬지 않고 달리기',
+  habit: '꾸준히 달리는 습관 만들기',
+};
+
+/** 목표 없음에서 "30분 쉬지 않고 달리기"를 목표로 삼는 기준(분). 첫 주에 한 번에 달리는 시간이 이보다 짧으면 그 목표다 */
+export const FOCUS_CONTINUOUS_RUN_MIN = 30;
+
+/**
+ * 목표 없음 계획의 목표 문구를 계획의 첫 주로 정한다(F03-R09, API_SPEC §3.3). 거리 목표면 null이다.
+ * 시간 기반 계획(걷고 달리기)의 첫 주에 한 번에 달리는 시간이 30분 미만이면 `continuous_30min`, 그 밖에는 `habit`이다.
+ */
+export function planFocusOf(
+  goalDistance: GoalDistance,
+  sessions: readonly { weekNumber: number; runIntervalMin: number | null }[],
+): PlanFocus | null {
+  if (goalDistance !== 'none') return null;
+  const intervals = sessions.filter((session) => session.weekNumber === 1 && session.runIntervalMin !== null).map((session) => session.runIntervalMin as number);
+  return intervals.length > 0 && Math.min(...intervals) < FOCUS_CONTINUOUS_RUN_MIN ? 'continuous_30min' : 'habit';
+}

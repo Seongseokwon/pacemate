@@ -112,11 +112,27 @@ export function toProfileRequest(draft: OnboardingDraft): SaveProfileRequest | n
   return parsed.success ? parsed.data : null;
 }
 
-/** 계획 미리보기에 보낼 목표. 미리보기 화면(T-205)이 쓴다. */
+/** 계획 미리보기에 보낼 목표. 목표 없음이면 목표 기록과 대회 날짜를 보내지 않는다(F02-R07). */
 export function toGoal(draft: OnboardingDraft): PreviewPlanRequest | null {
   if (draft.goalDistance === null) return null;
+  if (draft.goalDistance === 'none') return { goalDistance: 'none', goalTimeSec: null, raceDate: null };
   return { goalDistance: draft.goalDistance, goalTimeSec: goalTimeSecOf(draft) ?? null, raceDate: draft.raceDate };
 }
+
+/** 지금 답에 따라 묻는 질문. 목표 없음이면 목표 기록과 대회 날짜를 묻지 않는다(F02-R07). */
+export const activeSteps = (draft: Pick<OnboardingDraft, 'goalDistance'>): Step[] =>
+  draft.goalDistance === 'none' ? STEPS.filter((step) => step !== 'goalTime' && step !== 'raceDate') : [...STEPS];
+
+const positionOf = (draft: OnboardingDraft) => Math.max(0, activeSteps(draft).indexOf(STEPS[draft.step] ?? STEPS[0]));
+
+/** 진행 표시의 위치와 전체 단계 수. 목표 없음이면 전체가 줄어든다(UI_UX §6.2) */
+export const progressOf = (draft: OnboardingDraft) => ({ current: positionOf(draft) + 1, total: activeSteps(draft).length });
+
+export const isLastStep = (draft: OnboardingDraft): boolean => positionOf(draft) >= activeSteps(draft).length - 1;
+
+/** 다음·이전 질문의 `step`(STEPS의 위치). 묻지 않는 질문은 건너뛴다 */
+export const nextStep = (draft: OnboardingDraft): number => STEPS.indexOf(activeSteps(draft)[positionOf(draft) + 1] ?? STEPS[draft.step] ?? STEPS[0]);
+export const previousStep = (draft: OnboardingDraft): number => STEPS.indexOf(activeSteps(draft)[Math.max(0, positionOf(draft) - 1)] ?? STEPS[0]);
 
 // 답변은 서버에 보내기 전까지 기기에만 둔다(DATABASE §3.1)
 const KEY = 'onboarding-draft';

@@ -21,13 +21,13 @@ type ButtonProps = {
 
 export function Button({ label, onPress, variant = 'primary', size = 'default', loading = false, disabled = false, testID }: ButtonProps) {
   const t = useTheme();
-  const look: Record<typeof variant, { fill?: string; border?: string; text: TextTone }> = {
+  const look: Record<typeof variant, { fill?: string; text: TextTone }> = {
     primary: { fill: t.color.accent, text: 'onAccent' },
-    secondary: { fill: t.color.background.surface, border: t.color.borderEmphasized, text: 'primary' },
+    secondary: { fill: t.color.background.raised, text: 'primary' },
     text: { text: 'primary' },
     danger: { fill: t.color.errorMuted, text: 'error' },
   };
-  const { fill, border, text } = look[variant];
+  const { fill, text } = look[variant];
   const textTone = disabled ? 'disabled' : text;
 
   return (
@@ -46,8 +46,6 @@ export function Button({ label, onPress, variant = 'primary', size = 'default', 
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: t.radius.element,
-        borderWidth: t.size.border,
-        borderColor: border ?? 'transparent',
         backgroundColor: disabled && fill ? t.color.background.muted : fill,
       }}
     >
@@ -62,9 +60,17 @@ export function Button({ label, onPress, variant = 'primary', size = 'default', 
   );
 }
 
-type IconButtonProps = { icon: IconName; accessibilityLabel: string; onPress: () => void; disabled?: boolean; testID?: string };
+type IconButtonProps = {
+  icon: IconName;
+  accessibilityLabel: string;
+  onPress: () => void;
+  disabled?: boolean;
+  /** `filled`는 패널 색의 원 바탕이 있다(C2 캘린더의 주 넘기기) */
+  variant?: 'plain' | 'filled';
+  testID?: string;
+};
 
-export function IconButton({ icon, accessibilityLabel, onPress, disabled = false, testID }: IconButtonProps) {
+export function IconButton({ icon, accessibilityLabel, onPress, disabled = false, variant = 'plain', testID }: IconButtonProps) {
   const t = useTheme();
   return (
     <Press
@@ -76,11 +82,12 @@ export function IconButton({ icon, accessibilityLabel, onPress, disabled = false
       onPress={onPress}
       hitSlop={(t.size.touch - t.size.iconButton) / 2}
       style={{
-        width: t.size.iconButton,
-        height: t.size.iconButton,
+        width: variant === 'filled' ? t.size.touch : t.size.iconButton,
+        height: variant === 'filled' ? t.size.touch : t.size.iconButton,
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: t.radius.full,
+        backgroundColor: variant === 'filled' ? t.color.background.surface : undefined,
       }}
     >
       <Icon name={icon} tone={disabled ? 'disabled' : 'primary'} />

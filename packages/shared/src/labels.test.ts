@@ -1,0 +1,24 @@
+import { expect, test } from 'vitest';
+import { previewPlanRequestSchema } from './api.js';
+import { planFocusOf } from './labels.js';
+
+const week = (runIntervalMin: number | null, weekNumber = 1) => ({ weekNumber, runIntervalMin });
+
+test('F03-R09 목표 없음의 목표 문구는 첫 주로 정한다', () => {
+  expect(planFocusOf('none', [week(1), week(1), week(2, 2)])).toBe('continuous_30min');
+  expect(planFocusOf('none', [week(30), week(30)])).toBe('habit');
+  expect(planFocusOf('none', [week(null), week(null)])).toBe('habit');
+  expect(planFocusOf('none', [week(30), week(10, 2)])).toBe('habit');
+});
+
+test('거리 목표에는 목표 문구가 없다', () => {
+  expect(planFocusOf('five_k', [week(1)])).toBeNull();
+});
+
+test('F02-R07 목표 없음에는 목표 기록과 대회 날짜를 받지 않는다', () => {
+  expect(previewPlanRequestSchema.safeParse({ goalDistance: 'none' }).success).toBe(true);
+  expect(previewPlanRequestSchema.safeParse({ goalDistance: 'none', goalTimeSec: null, raceDate: null }).success).toBe(true);
+  expect(previewPlanRequestSchema.safeParse({ goalDistance: 'none', goalTimeSec: 1800 }).success).toBe(false);
+  expect(previewPlanRequestSchema.safeParse({ goalDistance: 'none', raceDate: '2027-01-10' }).success).toBe(false);
+  expect(previewPlanRequestSchema.safeParse({ goalDistance: 'five_k', goalTimeSec: 1800, raceDate: '2027-01-10' }).success).toBe(true);
+});

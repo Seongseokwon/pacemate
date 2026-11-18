@@ -18,6 +18,7 @@ import {
   TextInput,
   Toast,
 } from '.';
+import { Icon, ICON_NAMES } from './icon';
 
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 
@@ -36,6 +37,18 @@ describe('Button', () => {
     expect(onPress).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
   });
+});
+
+test('UI_UX §8.3의 아이콘 23개가 모두 선 아이콘으로 그려진다', async () => {
+  expect(ICON_NAMES).toHaveLength(23);
+  await render(
+    <>
+      {ICON_NAMES.map((name) => (
+        <Icon key={name} name={name} />
+      ))}
+    </>,
+  );
+  for (const name of ICON_NAMES) expect(screen.getByTestId(`icon-${name}`, { includeHiddenElements: true })).toBeTruthy();
 });
 
 test('IconButton은 접근성 이름으로 찾을 수 있다', async () => {

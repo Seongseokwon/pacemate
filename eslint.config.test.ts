@@ -68,6 +68,19 @@ test('색상이 아닌 글자는 막지 않는다', async () => {
   expect(await violations('apps/mobile/src/app/x.tsx', code)).toEqual([]);
 });
 
+test.each([
+  ["export const title = '오늘도 화이팅 🏃';"],
+  ['export const line = `완료했어요 ✅`;'],
+  ['export const Label = () => <Text>좋아요 👍</Text>;'],
+])('화면 코드에 이모지를 쓰지 못한다: %s (UI_UX §9.1)', async (code) => {
+  expect(await violations('apps/mobile/src/app/x.tsx', code)).toEqual(['no-restricted-syntax']);
+});
+
+test('이모지가 없는 문구와 기호는 막지 않는다', async () => {
+  const code = "export const labels = ['5km · 편하게', '6\\'24\"/km', '토 11/21 → 목 11/19'];";
+  expect(await violations('apps/mobile/src/app/x.tsx', code)).toEqual([]);
+});
+
 test('앱 코드는 훅을 조건문 안에서 부르지 못한다', async () => {
   const code = `
     import { useState } from 'react';

@@ -13,6 +13,7 @@ import {
   experienceSchema,
   goalDistanceSchema,
   managerMessageCodeSchema,
+  planFocusSchema,
   planKindSchema,
   planWarningSchema,
   pushPlatformSchema,
@@ -122,12 +123,20 @@ const goalInputSchema = z.object({
   raceDate: dateSchema.nullable().optional(),
 });
 
+/** 목표 없음이면 목표 기록과 대회 날짜를 받지 않는다(F02-R07) */
+const noGoalHasNoTarget = (goal: z.infer<typeof goalInputSchema>, ctx: z.RefinementCtx) => {
+  if (goal.goalDistance !== 'none') return;
+  const message = '목표가 없으면 넣을 수 없어요.';
+  if (goal.goalTimeSec != null) ctx.addIssue({ code: 'custom', path: ['goalTimeSec'], message });
+  if (goal.raceDate != null) ctx.addIssue({ code: 'custom', path: ['raceDate'], message });
+};
+
 /** `POST /v1/plan/preview` */
-export const previewPlanRequestSchema = goalInputSchema;
+export const previewPlanRequestSchema = goalInputSchema.superRefine(noGoalHasNoTarget);
 export type PreviewPlanRequest = z.infer<typeof previewPlanRequestSchema>;
 
 /** `POST /v1/plan`. 미리보기에서 고른 계획의 종류를 더한다. */
-export const confirmPlanRequestSchema = goalInputSchema.extend({ kind: planKindSchema });
+export const confirmPlanRequestSchema = goalInputSchema.extend({ kind: planKindSchema }).superRefine(noGoalHasNoTarget);
 export type ConfirmPlanRequest = z.infer<typeof confirmPlanRequestSchema>;
 
 export const planOptionSchema = z.object({
@@ -138,6 +147,8 @@ export const planOptionSchema = z.object({
   /** 저장하기 전이라 ID가 없다 */
   sessions: z.array(sessionSchema.omit({ id: true })),
   warnings: z.array(planWarningSchema),
+  /** 목표 없음 계획의 목표 문구. 거리 목표면 null이다(F03-R09) */
+  focus: planFocusSchema.nullable(),
 });
 export type PlanOption = z.infer<typeof planOptionSchema>;
 
@@ -158,6 +169,8 @@ export const planSummarySchema = z.object({
   warnings: z.array(planWarningSchema),
   progress: z.object({ completed: countSchema, total: countSchema }),
   isFinished: z.boolean(),
+  /** 목표 없음 계획의 목표 문구. 거리 목표면 null이다(F03-R09) */
+  focus: planFocusSchema.nullable(),
 });
 export type PlanSummary = z.infer<typeof planSummarySchema>;
 
@@ -194,7 +207,14 @@ export const homeResponseSchema = z.object({
   plan: planSummarySchema.nullable(),
   daysToRace: countSchema.nullable(),
   todaySession: sessionSchema.nullable(),
+  /** 이번 주 훈련. 계획이 시작 전이면 첫 주의 훈련 */
   weekSessions: z.array(sessionSchema),
+  /** 계획 시작일까지 남은 날. 계획이 시작 전일 때만 값이 있다(PRD §5.4) */
+  daysToStart: countSchema.nullable(),
+  /** 어제의 미완료 훈련(생략 제외). 홈의 어제 훈련 기록 카드에 쓴다 */
+  yesterdaySession: sessionSchema.nullable(),
+  /** 이번 주 미완료 훈련 수. 2 이상이면 [코치와 일정 조정하기]를 보여 준다(F05-R14) */
+  weekMissedCount: countSchema,
   /** 서버 규칙으로 만든 템플릿 문구(PRD §5.4) */
   managerMessage: z.object({ code: managerMessageCodeSchema, text: z.string() }),
 });

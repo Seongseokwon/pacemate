@@ -12,7 +12,8 @@ export type SessionType = z.infer<typeof sessionTypeSchema>;
 export const sessionStatusSchema = z.enum(['planned', 'completed', 'missed', 'skipped']);
 export type SessionStatus = z.infer<typeof sessionStatusSchema>;
 
-export const goalDistanceSchema = z.enum(['five_k', 'ten_k', 'half']);
+/** `none`은 목표 없음이다(F03-R09). */
+export const goalDistanceSchema = z.enum(['five_k', 'ten_k', 'half', 'none']);
 export type GoalDistance = z.infer<typeof goalDistanceSchema>;
 
 export const workoutSourceSchema = z.enum(['app', 'chat']);
@@ -65,6 +66,10 @@ export const planKindSchema = z.enum(['race_prep', 'base_building']);
 export type PlanKind = z.infer<typeof planKindSchema>;
 
 /** 계획의 경고 코드(API_SPEC §3.3의 `warnings`). 문구는 `PLAN_WARNING_LABELS`에 있다. */
+/** 목표 없음 계획이 무엇을 향하는지(API_SPEC §3.3의 `focus`). 문구는 `PLAN_FOCUS_LABELS`에 있다. */
+export const planFocusSchema = z.enum(['continuous_30min', 'habit']);
+export type PlanFocus = z.infer<typeof planFocusSchema>;
+
 export const planWarningSchema = z.enum(['RACE_PREP_NOT_REACHABLE', 'GOAL_TIME_TOO_FAST', 'GOAL_TIME_NOT_CHECKED']);
 export type PlanWarning = z.infer<typeof planWarningSchema>;
 

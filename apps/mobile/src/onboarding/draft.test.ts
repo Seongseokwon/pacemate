@@ -1,5 +1,22 @@
 import * as SecureStore from 'expo-secure-store';
-import { canProceed, clearDraft, EMPTY_DRAFT, goalTimeSecOf, loadDraft, type OnboardingDraft, recentRecordOf, saveDraft, STEPS, toGoal, toProfileRequest } from './draft';
+import {
+  activeSteps,
+  canProceed,
+  clearDraft,
+  EMPTY_DRAFT,
+  goalTimeSecOf,
+  isLastStep,
+  loadDraft,
+  nextStep,
+  type OnboardingDraft,
+  previousStep,
+  progressOf,
+  recentRecordOf,
+  saveDraft,
+  STEPS,
+  toGoal,
+  toProfileRequest,
+} from './draft';
 
 jest.mock('expo-secure-store', () => {
   const store = new Map<string, string>();
@@ -103,5 +120,27 @@ describe('기기 저장 (AC-F02-03)', () => {
   test('읽을 수 없는 내용이 저장돼 있으면 처음부터 시작한다', async () => {
     await SecureStore.setItemAsync('onboarding-draft', '{깨진 내용');
     expect(await loadDraft()).toEqual(EMPTY_DRAFT);
+  });
+});
+
+describe('목표 없음 (F02-R07, AC-F02-05)', () => {
+  const none = (step: (typeof STEPS)[number]) => at(step, { ...ANSWERED, goalDistance: 'none' });
+
+  test('목표 기록과 대회 날짜를 묻지 않고, 전체 단계 수가 줄어든다', () => {
+    expect(activeSteps({ goalDistance: 'none' })).not.toContain('goalTime');
+    expect(activeSteps({ goalDistance: 'none' })).not.toContain('raceDate');
+    expect(progressOf(none('goalDistance'))).toEqual({ current: 6, total: 6 });
+    expect(progressOf(at('goalDistance', ANSWERED))).toEqual({ current: 6, total: 8 });
+  });
+
+  test('목표 거리가 마지막 질문이 된다', () => {
+    expect(isLastStep(none('goalDistance'))).toBe(true);
+    expect(isLastStep(at('goalDistance', ANSWERED))).toBe(false);
+    expect(nextStep(at('goalDistance', ANSWERED))).toBe(STEPS.indexOf('goalTime'));
+    expect(previousStep(none('goalDistance'))).toBe(STEPS.indexOf('schedule'));
+  });
+
+  test('미리보기에는 목표 기록과 대회 날짜를 보내지 않는다', () => {
+    expect(toGoal({ ...ANSWERED, goalDistance: 'none', goalMin: 30, raceDate: '2027-03-21' })).toEqual({ goalDistance: 'none', goalTimeSec: null, raceDate: null });
   });
 });

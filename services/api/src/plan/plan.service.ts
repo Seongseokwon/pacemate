@@ -1,16 +1,17 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import type {
-  ConfirmPlanRequest,
-  HomeResponse,
-  PlanSummary,
-  PlanWarning,
-  PreviewPlanRequest,
-  PreviewPlanResponse,
-  RunnerLevel,
-  SessionDetailResponse,
-  SessionSnapshot,
-  SessionsQuery,
-  SessionsResponse,
+import {
+  planFocusOf,
+  type ConfirmPlanRequest,
+  type HomeResponse,
+  type PlanSummary,
+  type PlanWarning,
+  type PreviewPlanRequest,
+  type PreviewPlanResponse,
+  type RunnerLevel,
+  type SessionDetailResponse,
+  type SessionSnapshot,
+  type SessionsQuery,
+  type SessionsResponse,
 } from '@pacemate/shared';
 import type { EngineGoal, EngineProfile, PlanOption } from '@pacemate/training-engine';
 import { AppError } from '../common/app-error.js';
@@ -44,6 +45,7 @@ export class PlanService {
       options: options.map((option) => ({
         ...option,
         sessions: option.sessions.map((session) => ({ ...session, status: 'planned', workoutId: null, original: null })),
+        focus: planFocusOf(input.goalDistance, option.sessions),
       })),
     };
   }
@@ -140,15 +142,33 @@ export class PlanService {
     const date = today();
     const active = await this.prisma.trainingPlan.findFirst({ where: { userId, status: 'active' } });
     if (!active) {
-      return { plan: null, daysToRace: null, todaySession: null, weekSessions: [], managerMessage: managerMessage({ plan: null, today: date, todaySession: null, weekSessions: [] }) };
+      return {
+        plan: null,
+        daysToRace: null,
+        todaySession: null,
+        weekSessions: [],
+        daysToStart: null,
+        yesterdaySession: null,
+        weekMissedCount: 0,
+        managerMessage: managerMessage({ plan: null, today: date, todaySession: null, weekSessions: [] }),
+      };
     }
-    const weekStart = mondayOf(date);
+    const startDate = toDateString(active.startDate);
+    const notStarted = startDate > date;
+    // 시작 전이면 첫 주를 보여 준다(PRD §5.4의 "다음 주 시작")
+    const weekStart = mondayOf(notStarted ? startDate : date);
+    const yesterday = addDays(date, -1);
     const rows = await this.prisma.plannedSession.findMany({
-      where: { planId: active.id, userId, date: { gte: toDbDate(weekStart), lte: toDbDate(addDays(weekStart, 6)) } },
+      where: {
+        planId: active.id,
+        userId,
+        OR: [{ date: { gte: toDbDate(weekStart), lte: toDbDate(addDays(weekStart, 6)) } }, { date: toDbDate(yesterday) }],
+      },
       include: withWorkoutId,
       orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
     });
-    const weekSessions = rows.map((row) => toSession(row, date));
+    const sessions = rows.map((row) => toSession(row, date));
+    const weekSessions = sessions.filter((session) => session.date >= weekStart && session.date <= addDays(weekStart, 6));
     const todaySession = weekSessions.find((session) => session.date === date && session.status !== 'skipped') ?? null;
     const plan = await this.summarize(active, date);
     return {
@@ -156,6 +176,10 @@ export class PlanService {
       daysToRace: plan.raceDate !== null && plan.raceDate >= date ? daysBetween(date, plan.raceDate) : null,
       todaySession,
       weekSessions,
+      daysToStart: notStarted ? daysBetween(date, startDate) : null,
+      // 이틀 전 훈련은 넣지 않는다. 미완료 상태에 이미 생략과 기록 연결이 반영되어 있다
+      yesterdaySession: sessions.find((session) => session.date === yesterday && session.status === 'missed') ?? null,
+      weekMissedCount: weekSessions.filter((session) => session.status === 'missed').length,
       managerMessage: managerMessage({ plan, today: date, todaySession, weekSessions }),
     };
   }
@@ -204,9 +228,13 @@ export class PlanService {
   private async summarize(plan: TrainingPlan, date: string): Promise<PlanSummary> {
     // 진행률은 대회와 생략한 훈련을 세지 않는다(DATABASE §3.4)
     const counted = { planId: plan.id, userId: plan.userId, isSkipped: false, type: { not: 'race' } } as const;
-    const [total, completed] = await Promise.all([
+    const [total, completed, firstWeek] = await Promise.all([
       this.prisma.plannedSession.count({ where: counted }),
       this.prisma.plannedSession.count({ where: { ...counted, workout: { isNot: null } } }),
+      // 목표 문구는 계획의 첫 주로 정하므로 저장하지 않는다(API_SPEC §3.3)
+      plan.goalDistance === 'none'
+        ? this.prisma.plannedSession.findMany({ where: { planId: plan.id, userId: plan.userId, weekNumber: 1 }, select: { weekNumber: true, runIntervalMin: true } })
+        : Promise.resolve([]),
     ]);
     return {
       id: plan.id,
@@ -220,6 +248,7 @@ export class PlanService {
       warnings: plan.warnings as PlanWarning[],
       progress: { completed, total },
       isFinished: isFinished(plan, date),
+      focus: planFocusOf(plan.goalDistance, firstWeek),
     };
   }
 }

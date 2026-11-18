@@ -5,7 +5,19 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { ME_KEY } from '@/api/me';
 import { saveProfile } from '@/api/profile';
 import { isRedirectError } from '@/api/query-client';
-import { canProceed, loadDraft, type OnboardingDraft, saveDraft, type Step, STEPS, toProfileRequest } from '@/onboarding/draft';
+import {
+  canProceed,
+  isLastStep,
+  loadDraft,
+  nextStep,
+  type OnboardingDraft,
+  previousStep,
+  progressOf,
+  saveDraft,
+  type Step,
+  STEPS,
+  toProfileRequest,
+} from '@/onboarding/draft';
 import {
   Button,
   DateInput,
@@ -28,7 +40,7 @@ const QUESTIONS: Record<Step, string> = {
   weeklyKm: '요즘 일주일에 몇 km 정도 달리세요?',
   recentRecord: '최근 기록이나 평소 속도를 알려 주세요',
   schedule: '일주일에 몇 번, 무슨 요일에 달릴 수 있나요?',
-  goalDistance: '어떤 거리를 목표로 하세요?',
+  goalDistance: '어떤 거리를 목표로 할까요?',
   goalTime: '목표 기록이 있나요?',
   raceDate: '나갈 대회 날짜가 정해져 있나요?',
 };
@@ -45,10 +57,12 @@ const CONTINUOUS_RUNS: [ContinuousRun, string][] = [
   ['under_60m', '30~60분'],
   ['over_60m', '60분 이상'],
 ];
-const GOAL_DISTANCES: [GoalDistance, string][] = [
+const GOAL_DISTANCES: [GoalDistance, string, string?][] = [
   ['five_k', '5km'],
   ['ten_k', '10km'],
   ['half', '하프마라톤 (21.1km)'],
+  // 목표 없음(F02-R07, UI_UX §6.2)
+  ['none', '아직 목표가 없어요', '가볍게 시작하고 싶어요'],
 ];
 const RUN_COUNTS = (['2', '3', '4', '5'] as const).map((value) => ({ value, label: `${value}번` }));
 
@@ -60,12 +74,22 @@ const SKIPS: Partial<Record<Step, { label: string; clear: Partial<OnboardingDraf
   raceDate: { label: '건너뛰기', clear: { raceDate: null } },
 };
 
-function Choices<T extends string>({ options, value, onChange }: { options: [T, string][]; value: T | null; onChange: (value: T) => void }) {
+function Choices<T extends string>({ options, value, onChange }: { options: [T, string, string?][]; value: T | null; onChange: (value: T) => void }) {
   return (
     <Stack>
-      {options.map(([option, label]) => (
-        <SelectableCard key={option} accessibilityLabel={label} selected={value === option} onPress={() => onChange(option)}>
+      {options.map(([option, label, description]) => (
+        <SelectableCard
+          key={option}
+          accessibilityLabel={description ? `${label}, ${description}` : label}
+          selected={value === option}
+          onPress={() => onChange(option)}
+        >
           <Text variant="label">{label}</Text>
+          {description && (
+            <Text variant="supporting" tone="secondary">
+              {description}
+            </Text>
+          )}
         </SelectableCard>
       ))}
     </Stack>
@@ -98,7 +122,8 @@ export default function Onboarding() {
     mutationFn: saveProfile,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ME_KEY });
-      router.replace('/(onboarding)/plan-preview');
+      // 다음 화면(계획 미리보기)은 시작 경로가 정한다(F01-R09)
+      router.replace('/');
     },
     onError: (error) => {
       if (!isRedirectError(error)) showToast(error.message);
@@ -108,7 +133,7 @@ export default function Onboarding() {
   if (!draft) return <Screen loading />;
 
   const step = STEPS[draft.step] ?? STEPS[0];
-  const last = draft.step >= STEPS.length - 1;
+  const last = isLastStep(draft);
   const skip = SKIPS[step];
 
   const update = (patch: Partial<OnboardingDraft>) => {
@@ -119,7 +144,7 @@ export default function Onboarding() {
   };
 
   const goNext = (patch: Partial<OnboardingDraft> = {}) => {
-    if (!last) return void update({ ...patch, step: draft.step + 1 });
+    if (!last) return void update({ ...patch, step: nextStep({ ...draft, ...patch }) });
     const profile = toProfileRequest(update(patch));
     if (profile) return save.mutate(profile);
     // 저장해 둔 답이 지금의 입력 범위와 맞지 않는 경우다. 답은 그대로 두고 처음 질문부터 다시 확인하게 한다
@@ -171,7 +196,16 @@ export default function Onboarding() {
         )}
       </Stack>
     ),
-    goalDistance: <Choices options={GOAL_DISTANCES} value={draft.goalDistance} onChange={(goalDistance) => update({ goalDistance })} />,
+    goalDistance: (
+      <Choices
+        options={GOAL_DISTANCES}
+        value={draft.goalDistance}
+        // 목표 없음이면 목표 기록과 대회 날짜를 남기지 않는다(F02-R07)
+        onChange={(goalDistance) =>
+          update(goalDistance === 'none' ? { goalDistance, goalHour: null, goalMin: null, goalSec: null, raceDate: null } : { goalDistance })
+        }
+      />
+    ),
     goalTime: (
       <Stack direction="row">
         <NumberField label="시간" value={draft.goalHour} onChange={(goalHour) => update({ goalHour })} />
@@ -188,7 +222,11 @@ export default function Onboarding() {
 
   return (
     <Screen
-      onBack={draft.step > 0 ? () => update({ step: draft.step - 1 }) : undefined}
+      onBack={draft.step > 0 ? () => update({ step: previousStep(draft) }) : undefined}
+      // C2: 머리글 오른쪽에 "7 / 9"
+      headerRight={
+        <Text variant="supporting" tone="secondary" tabular>{`${progressOf(draft).current} / ${progressOf(draft).total}`}</Text>
+      }
       footer={
         <Stack>
           {skip && <Button variant="text" label={skip.label} disabled={save.isPending} onPress={() => goNext(skip.clear)} />}
@@ -197,7 +235,7 @@ export default function Onboarding() {
       }
     >
       <Stack gap={5}>
-        <Stepper current={draft.step + 1} total={STEPS.length} />
+        <Stepper {...progressOf(draft)} />
         <Heading>{QUESTIONS[step]}</Heading>
         {content[step]}
       </Stack>

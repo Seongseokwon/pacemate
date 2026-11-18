@@ -196,7 +196,7 @@ export default function UiGallery() {
                 left={<StatusDot session={type} />}
                 title={SESSION_TYPE_LABELS[type].name}
                 description={SESSION_TYPE_LABELS[type].guidance}
-                right={<Icon name="chevron" tone="neutral" />}
+                right={<Icon name="next" tone="neutral" />}
                 onPress={() => showToast(SESSION_TYPE_LABELS[type].name)}
               />
             ))}
