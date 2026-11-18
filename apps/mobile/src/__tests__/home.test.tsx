@@ -106,3 +106,17 @@ describe('[코치와 일정 조정하기] (F05-R14)', () => {
     expect(screen.queryByRole('button', { name: '코치와 일정 조정하기' })).toBeNull();
   });
 });
+
+test('목표 없음이면 대회와 D-day 대신 목표 문구와 진행 상황을 보여 준다 (F03-R09)', async () => {
+  await show(
+    home({
+      plan: plan({ goalDistance: 'none', raceDate: null, focus: 'habit', startDate: '2026-11-09', endDate: '2027-01-10' }),
+      daysToRace: null,
+      weekSessions: [session({ date: '2026-11-16', status: 'completed' }), session({ date: '2026-11-19' })],
+    }),
+  );
+  expect(await screen.findByText('꾸준히 달리는 습관 만들기')).toBeOnTheScreen();
+  expect(screen.getByText('2주차 / 전체 9주')).toBeOnTheScreen();
+  expect(screen.getByText('이번 주 1번 달렸어요')).toBeOnTheScreen();
+  expect(screen.queryByText('목표 없음')).toBeNull();
+});

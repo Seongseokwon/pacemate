@@ -1,4 +1,4 @@
-import { PLAN_KIND_LABELS, PLAN_WARNING_LABELS, type PlanKind, type PlanOption } from '@pacemate/shared';
+import { PLAN_FOCUS_LABELS, PLAN_KIND_LABELS, PLAN_WARNING_LABELS, type PlanKind, type PlanOption } from '@pacemate/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -122,7 +122,17 @@ export default function PlanPreview() {
             ))}
           </Stack>
         )}
-        {options.length === 1 && <Heading level={2}>{PLAN_KIND_LABELS[option.kind].name}</Heading>}
+        {/* 목표 없음이면 선택 카드와 안내 없이 목표 문구를 쓴다(UI_UX §6.2, F03-R09) */}
+        {option.focus ? (
+          <Stack gap={1}>
+            <Text variant="supporting" tone="secondary">
+              {PLAN_KIND_LABELS[option.kind].name}
+            </Text>
+            <Heading level={2}>{PLAN_FOCUS_LABELS[option.focus]}</Heading>
+          </Stack>
+        ) : (
+          options.length === 1 && <Heading level={2}>{PLAN_KIND_LABELS[option.kind].name}</Heading>
+        )}
         <Stack direction="row" gap={2}>
           <StatTile value={`${option.totalWeeks}주`} label="전체 기간" />
           <StatTile value={`주 ${weeklyCount(option)}회`} label="주당 횟수" />

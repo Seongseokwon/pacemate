@@ -1,16 +1,17 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import type {
-  ConfirmPlanRequest,
-  HomeResponse,
-  PlanSummary,
-  PlanWarning,
-  PreviewPlanRequest,
-  PreviewPlanResponse,
-  RunnerLevel,
-  SessionDetailResponse,
-  SessionSnapshot,
-  SessionsQuery,
-  SessionsResponse,
+import {
+  planFocusOf,
+  type ConfirmPlanRequest,
+  type HomeResponse,
+  type PlanSummary,
+  type PlanWarning,
+  type PreviewPlanRequest,
+  type PreviewPlanResponse,
+  type RunnerLevel,
+  type SessionDetailResponse,
+  type SessionSnapshot,
+  type SessionsQuery,
+  type SessionsResponse,
 } from '@pacemate/shared';
 import type { EngineGoal, EngineProfile, PlanOption } from '@pacemate/training-engine';
 import { AppError } from '../common/app-error.js';
@@ -44,6 +45,7 @@ export class PlanService {
       options: options.map((option) => ({
         ...option,
         sessions: option.sessions.map((session) => ({ ...session, status: 'planned', workoutId: null, original: null })),
+        focus: planFocusOf(input.goalDistance, option.sessions),
       })),
     };
   }
@@ -226,9 +228,13 @@ export class PlanService {
   private async summarize(plan: TrainingPlan, date: string): Promise<PlanSummary> {
     // 진행률은 대회와 생략한 훈련을 세지 않는다(DATABASE §3.4)
     const counted = { planId: plan.id, userId: plan.userId, isSkipped: false, type: { not: 'race' } } as const;
-    const [total, completed] = await Promise.all([
+    const [total, completed, firstWeek] = await Promise.all([
       this.prisma.plannedSession.count({ where: counted }),
       this.prisma.plannedSession.count({ where: { ...counted, workout: { isNot: null } } }),
+      // 목표 문구는 계획의 첫 주로 정하므로 저장하지 않는다(API_SPEC §3.3)
+      plan.goalDistance === 'none'
+        ? this.prisma.plannedSession.findMany({ where: { planId: plan.id, userId: plan.userId, weekNumber: 1 }, select: { weekNumber: true, runIntervalMin: true } })
+        : Promise.resolve([]),
     ]);
     return {
       id: plan.id,
@@ -242,6 +248,7 @@ export class PlanService {
       warnings: plan.warnings as PlanWarning[],
       progress: { completed, total },
       isFinished: isFinished(plan, date),
+      focus: planFocusOf(plan.goalDistance, firstWeek),
     };
   }
 }

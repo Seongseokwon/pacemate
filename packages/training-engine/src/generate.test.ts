@@ -191,6 +191,29 @@ test('권장 페이스는 최근 페이스가 있을 때만 주고 최근 페이
   expect(sessions.find((session) => session.type === 'tempo')?.paceRange).toEqual({ minSecPerKm: 400, maxSecPerKm: 420 });
 });
 
+test('AC-F03-07 TE-G06 목표 없음은 수준과 주간 거리에 관계없이 기초 훈련 계획 하나뿐이고 경고가 없다', () => {
+  const levels: Partial<EngineProfile>[] = [
+    { experience: 'none', continuousRun: 'under_10m', recentWeeklyKm: 0 },
+    { experience: 'under_6m', continuousRun: 'under_60m', recentWeeklyKm: 12 },
+    { experience: 'over_2y', continuousRun: 'over_60m', recentWeeklyKm: 50, recentPaceSecPerKm: 300 },
+  ];
+  for (const level of levels) {
+    const { options } = run(level, { goalDistance: 'none' });
+    expect(options.map((item) => [item.kind, item.warnings])).toEqual([['base_building', []]]);
+    expect(options[0]?.sessions.some((session) => session.type === 'race' || session.type === 'tempo')).toBe(false);
+  }
+});
+
+test('TE-G03 목표 없음은 대회 날짜 없이 표준 기간 9주로 만든다', () => {
+  expect(option(run({ recentWeeklyKm: 20 }, { goalDistance: 'none' }), 'base_building').totalWeeks).toBe(9);
+  expect(option(run({ recentWeeklyKm: 0 }, { goalDistance: 'none' }), 'base_building').totalWeeks).toBe(9);
+});
+
+test('F02-R07 목표 없음에 목표 기록이나 대회 날짜가 있으면 계획을 만들지 않는다', () => {
+  expect(run({}, { goalDistance: 'none', goalTimeSec: 1800 }).options).toEqual([]);
+  expect(run({}, { goalDistance: 'none', raceDate: '2027-01-10' }).options).toEqual([]);
+});
+
 test('입력이 맞지 않으면 계획을 만들지 않는다', () => {
   expect(run({ preferredWeekdays: [2, 4] }).options).toEqual([]);
   expect(run({ weeklyRunCount: 6, preferredWeekdays: [1, 2, 3, 4, 5, 6] }).options).toEqual([]);
@@ -209,14 +232,18 @@ const inputs: fc.Arbitrary<GenerateInput> = fc
     recentPaceSecPerKm: fc.option(fc.integer({ min: 180, max: 900 }), { nil: null }),
     weekdays: fc.uniqueArray(fc.integer({ min: 1, max: 7 }), { minLength: 2, maxLength: 7 }),
     countSeed: fc.nat(),
-    goalDistance: fc.constantFrom('five_k', 'ten_k', 'half'),
+    goalDistance: fc.constantFrom('five_k', 'ten_k', 'half', 'none'),
     goalTimeSec: fc.option(fc.integer({ min: 900, max: 14_400 }), { nil: null }),
     today: fc.integer({ min: 0, max: 730 }),
     raceIn: fc.option(fc.integer({ min: 1, max: 300 }), { nil: null }),
   } as const)
   .map(({ weekdays, countSeed, goalDistance, goalTimeSec, today, raceIn, ...rest }) => ({
     profile: { ...rest, preferredWeekdays: weekdays, weeklyRunCount: 2 + (countSeed % (Math.min(weekdays.length, 5) - 1)) },
-    goal: { goalDistance, goalTimeSec, raceDate: raceIn === null ? null : date(today + raceIn) },
+    // 목표 없음에는 목표 기록과 대회 날짜가 없다(F02-R07)
+    goal:
+      goalDistance === 'none'
+        ? { goalDistance, goalTimeSec: null, raceDate: null }
+        : { goalDistance, goalTimeSec, raceDate: raceIn === null ? null : date(today + raceIn) },
     today: date(today),
   }));
 
@@ -227,6 +254,9 @@ test('AC-F03-02 불변식: 만들어진 모든 계획이 검증기를 통과한�
       // 기초 훈련 계획은 언제나 만들 수 있어야 한다
       expect(options.some((item) => item.kind === 'base_building')).toBe(true);
       for (const plan of options) {
+        if (input.goal.goalDistance === 'none') {
+          expect(options.map((item) => [item.kind, item.warnings, item.totalWeeks])).toEqual([['base_building', [], PLAN.standardWeeks.none]]);
+        }
         const sessions = plan.sessions.map((session, i) => ({ ...session, id: String(i), completed: false, skipped: false }));
         expect(validate({ plan: { ...plan, goal: input.goal, profile: input.profile, level, sessions }, today: input.today })).toEqual({ ok: true });
         const runs = plan.sessions.filter((session) => session.type !== 'race');

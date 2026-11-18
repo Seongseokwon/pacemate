@@ -28,6 +28,7 @@ export const plan = (patch: Partial<PlanSummary> = {}): PlanSummary => ({
   warnings: [],
   progress: { completed: 12, total: 36 },
   isFinished: false,
+  focus: null,
   ...patch,
 });
 

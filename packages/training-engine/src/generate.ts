@@ -116,17 +116,22 @@ function build({ profile, goal, today }: GenerateInput, kind: PlanKind): Omit<Pl
       }
     }
   } else {
-    const before = PLAN.taper.weekBefore[goal.goalDistance];
+    // 목표 없음은 대회가 없어 조정 주가 없고, 도달 거리를 비교하지 않는다(TE-G06)
+    const distance = goal.goalDistance === 'none' ? null : goal.goalDistance;
+    const before = distance === null ? null : PLAN.taper.weekBefore[distance];
     // 대회가 월~수요일이면 그 전 주도 대회가 있는 주처럼 줄인다(TE-S08)
     const early = race !== null && weekdayOf(race) <= SAFETY.taperPreviousWeekUntilWeekday;
     const taper = race === null ? [] : [PLAN.taper.raceWeek, ...(early ? [PLAN.taper.raceWeek] : []), ...(before === null ? [] : [before])];
     const weeksWith = (maintain: number) => distanceWeeks(recentKm, userCount, kind, totalWeeks, taper, maintain);
     // 대회가 표준 기간보다 멀면 앞은 유지 주간으로 채우되, 도달에 필요한 만큼은 늘리는 주로 쓴다(TE-G07)
     let maintain = Math.max(0, totalWeeks - PLAN.standardWeeks[goal.goalDistance]);
-    const reach = PLAN.reachKm[goal.goalDistance];
-    if (kind === 'race_prep') while (maintain > 0 && reachOf(weeksWith(maintain)) < reach) maintain--;
+    if (kind === 'race_prep') {
+      if (distance === null) return null;
+      const reach = PLAN.reachKm[distance];
+      while (maintain > 0 && reachOf(weeksWith(maintain)) < reach) maintain--;
+      if (reachOf(weeksWith(maintain)) < reach) return null;
+    }
     const weeks = weeksWith(maintain);
-    if (kind === 'race_prep' && reachOf(weeks) < reach) return null;
 
     weeks.forEach((week, w) => {
       const days = daysFor(week.count);
@@ -145,7 +150,7 @@ function build({ profile, goal, today }: GenerateInput, kind: PlanKind): Omit<Pl
       }
     });
   }
-  if (race !== null) add(race, 'race', { distanceKm: PLAN.raceKm[goal.goalDistance] });
+  if (race !== null && goal.goalDistance !== 'none') add(race, 'race', { distanceKm: PLAN.raceKm[goal.goalDistance] });
 
   const first = sessions[0];
   if (!first) return null;
@@ -163,7 +168,7 @@ function build({ profile, goal, today }: GenerateInput, kind: PlanKind): Omit<Pl
 
 /** 목표 기록은 경고만 만든다. 계획의 훈련량과 강도는 달라지지 않는다(TE-G06). */
 function goalTimeWarnings({ profile, goal }: GenerateInput): PlanWarning[] {
-  if (goal.goalTimeSec === null) return [];
+  if (goal.goalTimeSec === null || goal.goalDistance === 'none') return [];
   if (profile.recentPaceSecPerKm === null) return ['GOAL_TIME_NOT_CHECKED'];
   const goalPace = goal.goalTimeSec / PLAN.raceKm[goal.goalDistance];
   return goalPace < profile.recentPaceSecPerKm * (1 - PLAN.goalPaceWarning[goal.goalDistance]) ? ['GOAL_TIME_TOO_FAST'] : [];
@@ -175,6 +180,8 @@ function isValid({ profile, goal, today }: GenerateInput): boolean {
   return (
     isDate(today) &&
     (goal.raceDate === null || isDate(goal.raceDate)) &&
+    // 목표 없음에는 목표 기록과 대회 날짜가 없다(F02-R07)
+    (goal.goalDistance !== 'none' || (goal.raceDate === null && goal.goalTimeSec === null)) &&
     Number.isInteger(count) && count >= PLAN.minSessionsPerWeek && count in PLAN.shares &&
     days.length >= count && new Set(days).size === days.length && days.every((day) => Number.isInteger(day) && day >= 1 && day <= 7)
   );
@@ -183,6 +190,11 @@ function isValid({ profile, goal, today }: GenerateInput): boolean {
 export const generate: Generate = (input) => {
   const level = classifyLevel(input.profile);
   if (!isValid(input)) return { level, options: [] };
+  // 목표 없음은 기초 훈련 계획 하나뿐이고 경고가 없다(F03-R09, TE-G06)
+  if (input.goal.goalDistance === 'none') {
+    const base = build(input, 'base_building');
+    return { level, options: base ? [{ ...base, warnings: [] }] : [] };
+  }
   const warnings = goalTimeWarnings(input);
   const racePrep = build(input, 'race_prep');
   const base = build(input, 'base_building');

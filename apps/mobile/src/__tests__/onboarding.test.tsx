@@ -93,3 +93,17 @@ test('저장에 실패하면 미리보기로 가지 않고 마지막 질문에 �
   expect(router.replace).not.toHaveBeenCalled();
   expect(screen.getByText('나갈 대회 날짜가 정해져 있나요?')).toBeOnTheScreen();
 });
+
+test('목표 없음을 고르면 목표 기록과 대회 날짜를 묻지 않고 바로 프로필을 저장한다 (F02-R07, AC-F02-05)', async () => {
+  jest.mocked(saveProfile).mockResolvedValue({} as never);
+  await show({ ...EMPTY_DRAFT, step: 5, experience: 'none', continuousRun: 'under_10m', weeklyKm: 0, runCount: 2, weekdays: [2, 4], goalMin: 30 });
+
+  expect(screen.getByRole('progressbar', { name: '8단계 중 6단계' })).toBeOnTheScreen();
+  await press('아직 목표가 없어요, 가볍게 시작하고 싶어요');
+  expect(screen.getByRole('progressbar', { name: '6단계 중 6단계' })).toBeOnTheScreen();
+  await fireEvent.press(next());
+
+  await waitFor(() => expect(saveProfile).toHaveBeenCalled());
+  expect(screen.queryByText('목표 기록이 있나요?')).toBeNull();
+  expect(saveDraft).toHaveBeenLastCalledWith(expect.objectContaining({ goalDistance: 'none', goalMin: null, raceDate: null }));
+});

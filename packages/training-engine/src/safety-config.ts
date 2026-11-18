@@ -1,5 +1,5 @@
 /** 이 파일의 값을 바꾸면 올린다. 계획에 함께 저장해 어떤 값으로 만든 계획인지 남긴다(DATABASE §3.3). */
-export const ENGINE_VERSION = '2026-11-16';
+export const ENGINE_VERSION = '2026-11-18';
 
 /** 훈련 안전 규칙의 초기값(PRD §7.4). `D-04`를 확정할 때 값만 바꾼다. */
 export const SAFETY = {
@@ -37,8 +37,8 @@ export const PLAN = {
   },
   /** TE-G05, TE-S06: 최근 주간 거리가 이보다 적거나 없으면 시간 기반 계획으로 시작한다 */
   distanceBasedMinWeeklyKm: 6,
-  /** TE-G03 */
-  standardWeeks: { five_k: 8, ten_k: 10, half: 12 },
+  /** TE-G03. `none`은 목표 없음이다 */
+  standardWeeks: { five_k: 8, ten_k: 10, half: 12, none: 9 },
   raceKm: { five_k: 5, ten_k: 10, half: 21.1 },
   /** TE-G06: 조정 주 전에 `long` 한 번이 닿아야 하는 거리 */
   reachKm: { five_k: 4, ten_k: 8, half: 16 },

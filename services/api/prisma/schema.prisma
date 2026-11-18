@@ -61,6 +61,7 @@ enum GoalDistance {
   five_k
   ten_k
   half
+  none
 
   @@map("goal_distance")
 }

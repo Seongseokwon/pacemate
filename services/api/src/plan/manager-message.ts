@@ -16,7 +16,11 @@ export function managerMessage(input: {
 }): ManagerMessage {
   const { plan, today, todaySession, weekSessions } = input;
   if (!plan) return { code: 'NO_PLAN', text: '새 목표를 정하고 훈련을 시작해 보세요.' };
-  if (plan.isFinished) return { code: 'PLAN_FINISHED', text: '계획이 끝났어요. 수고하셨어요. 새 목표를 정해 볼까요?' };
+  if (plan.isFinished) {
+    // 목표 없음 계획이 끝나면 다음 목표를 권한다(F03-R08)
+    if (plan.goalDistance === 'none') return { code: 'PLAN_FINISHED', text: '계획을 끝까지 해냈어요. 이제 5km에 도전해 볼까요?' };
+    return { code: 'PLAN_FINISHED', text: '계획이 끝났어요. 수고하셨어요. 새 목표를 정해 볼까요?' };
+  }
   if (plan.startDate > today) {
     const [, month, day] = plan.startDate.split('-').map(Number);
     return { code: 'PLAN_NOT_STARTED', text: `첫 훈련은 ${month}월 ${day}일이에요. 그때까지 편하게 쉬어 주세요.` };

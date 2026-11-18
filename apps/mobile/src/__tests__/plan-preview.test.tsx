@@ -26,6 +26,7 @@ const option = (kind: PlanOption['kind'], patch: Partial<PlanOption> = {}): Plan
     { date: '2026-11-24', type: 'easy', distanceKm: 3, durationMin: null, runIntervalMin: null, paceRange: null, weekNumber: 2, status: 'planned', workoutId: null, original: null },
   ],
   warnings: [],
+  focus: null,
   ...patch,
 });
 
@@ -92,4 +93,11 @@ test('계획을 만들 수 없으면 이유와 [답변 수정]을 보여 준다'
   expect(await screen.findByText('입력한 조건으로는 계획을 만들 수 없어요.')).toBeOnTheScreen();
   await press('답변 수정');
   expect(router.replace).toHaveBeenCalledWith('/(onboarding)');
+});
+
+test('목표 없음이면 선택 카드와 안내 없이 목표 문구를 보여 준다 (UI_UX §6.2, F03-R09)', async () => {
+  jest.mocked(previewPlan).mockResolvedValue({ options: [option('base_building', { focus: 'continuous_30min' })] });
+  await show();
+  expect(screen.getByText('30분 쉬지 않고 달리기')).toBeOnTheScreen();
+  expect(screen.queryByRole('button', { name: /^완주 준비 계획/ })).toBeNull();
 });

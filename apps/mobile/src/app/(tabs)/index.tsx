@@ -1,4 +1,4 @@
-import { GOAL_DISTANCE_LABELS, type HomeResponse, type PlanSummary } from '@pacemate/shared';
+import { GOAL_DISTANCE_LABELS, PLAN_FOCUS_LABELS, type HomeResponse, type PlanSummary } from '@pacemate/shared';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -109,9 +109,14 @@ export default function Home() {
     return (
       <Stack gap={6}>
         <RaceGoalCard
-          title={GOAL_DISTANCE_LABELS[plan.goalDistance]}
+          // 목표 없음이면 대회와 D-day 대신 목표 문구와 진행 상황을 보여 준다. 계획이 정하지 않은 거리를 쓰지 않는다(F03-R09)
+          title={plan.focus ? PLAN_FOCUS_LABELS[plan.focus] : GOAL_DISTANCE_LABELS[plan.goalDistance]}
           highlight={goalHighlight({ ...data, plan })}
-          description={notStarted ? `${formatDate(plan.startDate)}에 시작해요` : undefined}
+          description={
+            notStarted ? `${formatDate(plan.startDate)}에 시작해요`
+            : plan.focus ? `이번 주 ${data.weekSessions.filter((session) => session.status === 'completed').length}번 달렸어요`
+            : undefined
+          }
           progress={plan.progress}
         />
 

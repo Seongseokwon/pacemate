@@ -177,6 +177,7 @@ describe('POST /v1/plan (F03)', () => {
       warnings: [],
       progress: { completed: 0, total: option.sessions.length },
       isFinished: false,
+      focus: null,
     });
     expect((await get('/v1/plan')).body).toEqual(res.body);
 
@@ -508,5 +509,72 @@ describe('GET /v1/home (PRD §5.4)', () => {
 
     await workout(thursday.id, '2026-11-19');
     expect((await get('/v1/home')).body.weekMissedCount).toBe(2);
+  });
+});
+
+describe('목표 없음 (F03-R09, T-206)', () => {
+  const NONE = { goalDistance: 'none' };
+
+  test('기초 훈련 계획 하나만 보여 주고, 경고가 없고, 표준 기간 9주다 (AC-F03-07)', async () => {
+    const res = await preview(NONE);
+
+    expect(res.status).toBe(200);
+    expect(res.body.options).toHaveLength(1);
+    expect(res.body.options[0]).toMatchObject({ kind: 'base_building', totalWeeks: 9, warnings: [], focus: 'habit' });
+  });
+
+  test('목표 문구는 계획의 첫 주로 정한다: 시간 기반이고 한 번에 30분 미만이면 30분 달리기 (F03-R09)', async () => {
+    await prisma.runnerProfile.update({ where: { userId: USER_A }, data: { recentWeeklyKm: 0, continuousRun: 'under_10m' } });
+    expect((await preview(NONE)).body.options[0].focus).toBe('continuous_30min');
+
+    await prisma.runnerProfile.update({ where: { userId: USER_A }, data: { continuousRun: 'over_60m' } });
+    expect((await preview(NONE)).body.options[0].focus).toBe('habit');
+  });
+
+  test('거리 목표의 미리보기와 계획 요약에는 목표 문구가 없다', async () => {
+    expect((await preview()).body.options.every((option: { focus: unknown }) => option.focus === null)).toBe(true);
+    await confirm();
+    expect((await get('/v1/plan')).body.focus).toBeNull();
+  });
+
+  test('목표 기록이나 대회 날짜가 있으면 거절한다 (AC-F02-05)', async () => {
+    for (const body of [{ ...NONE, goalTimeSec: 1800 }, { ...NONE, raceDate: '2027-01-10' }]) {
+      const res = await preview(body);
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe('VALIDATION_ERROR');
+      expect((await confirm({ ...body, kind: 'base_building' })).body.code).toBe('VALIDATION_ERROR');
+    }
+  });
+
+  test('완주 준비 계획으로 확정할 수 없다 (F03-R09)', async () => {
+    const res = await confirm({ ...NONE, kind: 'race_prep' });
+    expect(res.body.code).toBe('PLAN_NOT_FEASIBLE');
+  });
+
+  test('확정하면 목표 없음으로 저장되고, 계획 요약과 홈에 목표 문구가 있다', async () => {
+    const res = await confirm({ ...NONE, kind: 'base_building' });
+
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ goalDistance: 'none', goalTimeSec: null, raceDate: null, kind: 'base_building', focus: 'habit' });
+    expect((await get('/v1/home')).body.plan.focus).toBe('habit');
+    expect((await get('/v1/home')).body.daysToRace).toBeNull();
+  });
+
+  test('목표 없음 계획이 끝나면 다음 목표를 권한다 (F03-R08)', async () => {
+    await confirm({ ...NONE, kind: 'base_building' });
+    const plan = await prisma.trainingPlan.findFirstOrThrow({ where: { userId: USER_A } });
+    vi.setSystemTime(new Date(new Date(plan.endDate).getTime() + 2 * 86_400_000));
+
+    const { managerMessage } = (await get('/v1/home')).body;
+    expect(managerMessage.code).toBe('PLAN_FINISHED');
+    expect(managerMessage.text).toContain('5km에 도전해 볼까요?');
+  });
+
+  test('DB 체크 제약: 목표 없음 계획에 완주 준비 계획이나 대회 날짜를 넣을 수 없다', async () => {
+    const base = { userId: USER_A, status: 'active', goalDistance: 'none', startDate: day('2026-11-23'), endDate: day('2027-01-24'), engineVersion: 'test' } as const;
+    await expect(prisma.trainingPlan.create({ data: { ...base, kind: 'race_prep' } })).rejects.toThrow();
+    await expect(prisma.trainingPlan.create({ data: { ...base, kind: 'base_building', raceDate: day('2027-01-24') } })).rejects.toThrow();
+    await expect(prisma.trainingPlan.create({ data: { ...base, kind: 'base_building', goalTimeSec: 1800 } })).rejects.toThrow();
+    await expect(prisma.trainingPlan.create({ data: { ...base, kind: 'base_building' } })).resolves.toMatchObject({ goalDistance: 'none' });
   });
 });
