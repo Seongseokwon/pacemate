@@ -30,7 +30,7 @@ export default function Login() {
           <Button
             size="large"
             variant="secondary"
-            label="Google로 계속하기"
+            label="Google 계정으로 계속하기"
             loading={pending === 'google'}
             disabled={pending !== null}
             onPress={() => void start('google')}
