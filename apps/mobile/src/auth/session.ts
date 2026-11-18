@@ -1,5 +1,6 @@
 import type { AuthProvider } from '@pacemate/shared';
 import { queryClient } from '@/api/query-client';
+import { resetAccountFirstRun } from '@/first-run/store';
 import { clearDraft } from '@/onboarding/draft';
 
 // 로그인 세션을 다루는 유일한 곳. 인증 서비스의 앱 SDK는 로그인 설정(D-A1)이 끝나면 이 파일에 붙이고,
@@ -14,5 +15,6 @@ export async function signIn(provider: AuthProvider): Promise<void> {
 export async function signOut(): Promise<void> {
   // 다음에 로그인하는 사람이 이전 사람의 온보딩 답변을 보지 않게 한다
   await clearDraft();
+  await resetAccountFirstRun();
   queryClient.clear();
 }

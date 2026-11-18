@@ -5,7 +5,7 @@ export { Icon, type IconName } from './icon';
 export { DateInput, Field, formatDate, NumberInput, ScaleInput, Selector, Switch, TextArea, TextInput, WeekdayPicker } from './inputs';
 export { Card, ClickableCard, Divider, Section, SelectableCard, Stack } from './layout';
 export { List, ListItem } from './list';
-export { Screen, SegmentedControl, Stepper, TabBar } from './navigation';
+export { Pager, Screen, SegmentedControl, Stepper, TabBar } from './navigation';
 export { BottomSheet, Dialog } from './overlay';
 export { Heading, Text } from './text';
 export { type Status, type Tone, useTheme } from './theme';

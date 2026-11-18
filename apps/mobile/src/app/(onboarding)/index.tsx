@@ -98,7 +98,8 @@ export default function Onboarding() {
     mutationFn: saveProfile,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ME_KEY });
-      router.replace('/(onboarding)/plan-preview');
+      // 다음 화면(계획 미리보기)은 시작 경로가 정한다(F01-R09)
+      router.replace('/');
     },
     onError: (error) => {
       if (!isRedirectError(error)) showToast(error.message);

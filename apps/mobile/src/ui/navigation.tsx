@@ -1,6 +1,6 @@
 import { BottomTabBarHeightContext, Tabs } from 'expo-router/js-tabs';
-import { type ReactNode, useContext } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { type ReactNode, useContext, useEffect, useRef, useState } from 'react';
+import { RefreshControl, ScrollView, type ScrollViewInstance, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton, Press } from './button';
 import { EmptyState, Spinner } from './feedback';
@@ -186,6 +186,55 @@ export function Stepper({ current, total }: { current: number; total: number }) 
           }}
         />
       ))}
+    </View>
+  );
+}
+
+type PagerProps = { pages: readonly ReactNode[]; index: number; onIndexChange: (index: number) => void };
+
+/** 옆으로 넘기는 장과 장 위치 표시(점). 인트로에서 쓴다(UI_UX §6.1). `index`는 0부터 센다. */
+export function Pager({ pages, index, onIndexChange }: PagerProps) {
+  const t = useTheme();
+  const [width, setWidth] = useState(0);
+  const scroll = useRef<ScrollViewInstance>(null);
+
+  useEffect(() => {
+    if (width > 0) scroll.current?.scrollTo({ x: index * width, animated: true });
+  }, [index, width]);
+
+  return (
+    <View style={{ flex: 1, gap: t.spacing[6] }}>
+      <ScrollView
+        ref={scroll}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+        onMomentumScrollEnd={(event) => width > 0 && onIndexChange(Math.round(event.nativeEvent.contentOffset.x / width))}
+      >
+        {pages.map((page, i) => (
+          <View key={i} style={{ width, justifyContent: 'center' }} accessibilityElementsHidden={i !== index} importantForAccessibility={i === index ? 'auto' : 'no-hide-descendants'}>
+            {page}
+          </View>
+        ))}
+      </ScrollView>
+      <View
+        accessible
+        accessibilityLabel={`${pages.length}장 중 ${index + 1}장`}
+        style={{ flexDirection: 'row', justifyContent: 'center', gap: t.spacing[2] }}
+      >
+        {pages.map((_, i) => (
+          <View
+            key={i}
+            style={{
+              width: i === index ? t.spacing[6] : t.spacing[2],
+              height: t.spacing[2],
+              borderRadius: t.radius.full,
+              backgroundColor: i === index ? t.color.accent : t.color.borderEmphasized,
+            }}
+          />
+        ))}
+      </View>
     </View>
   );
 }

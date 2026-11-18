@@ -24,7 +24,7 @@ const next = () => screen.getByRole('button', { name: /^(다음|계획 만들기
 
 beforeEach(() => jest.clearAllMocks());
 
-test('질문에 답해야 다음으로 넘어가고, 끝까지 답하면 프로필을 저장한 뒤 계획 미리보기로 간다 (F02-R01, F02-R04)', async () => {
+test('질문에 답해야 다음으로 넘어가고, 끝까지 답하면 프로필을 저장한 뒤 시작 경로로 돌아간다 (F02-R01, F02-R04)', async () => {
   jest.mocked(saveProfile).mockResolvedValue({} as never);
   await show();
 
@@ -60,7 +60,7 @@ test('질문에 답해야 다음으로 넘어가고, 끝까지 답하면 프로�
   expect(saveProfile).not.toHaveBeenCalled();
   await press('건너뛰기');
 
-  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/(onboarding)/plan-preview'));
+  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/'));
   expect(jest.mocked(saveProfile).mock.calls[0]?.[0]).toEqual({
     experience: 'none',
     continuousRun: 'under_10m',
