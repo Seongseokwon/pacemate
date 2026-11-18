@@ -45,6 +45,8 @@ export default function PlanPreview() {
     await clearDraft();
     await queryClient.invalidateQueries({ queryKey: ME_KEY });
     await queryClient.invalidateQueries({ queryKey: HOME_KEY });
+    // 끝난 계획 뒤 새 목표로 만든 계획은 첫 실행 흐름이 아니라 홈으로 돌아간다
+    if (draft?.goalOnly) return void router.replace('/(tabs)');
     await advance('planConfirmed');
   };
   const confirm = useMutation({

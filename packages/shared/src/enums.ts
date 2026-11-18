@@ -48,7 +48,7 @@ export type ContinuousRun = z.infer<typeof continuousRunSchema>;
 export const runnerLevelSchema = z.enum(['beginner', 'novice', 'intermediate']);
 export type RunnerLevel = z.infer<typeof runnerLevelSchema>;
 
-/** 완주 준비 계획 / 기초 훈련 계획(PRD §7.3). */
+/** 완주 준비 계획 / 기초 훈련 계획 / 유지 계획(PRD §7.3). */
 /** 홈의 매니저 메시지 종류(API_SPEC §3.3). 문구는 서버가 만든다 */
 export const managerMessageCodeSchema = z.enum([
   'NO_PLAN',
@@ -62,7 +62,7 @@ export const managerMessageCodeSchema = z.enum([
 ]);
 export type ManagerMessageCode = z.infer<typeof managerMessageCodeSchema>;
 
-export const planKindSchema = z.enum(['race_prep', 'base_building']);
+export const planKindSchema = z.enum(['race_prep', 'base_building', 'maintenance']);
 export type PlanKind = z.infer<typeof planKindSchema>;
 
 /** 계획의 경고 코드(API_SPEC §3.3의 `warnings`). 문구는 `PLAN_WARNING_LABELS`에 있다. */

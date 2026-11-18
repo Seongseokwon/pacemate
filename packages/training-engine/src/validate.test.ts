@@ -244,6 +244,12 @@ test('TE-S14 첫 주에 한 번에 달리는 시간은 쉬지 않고 달릴 수 
   expect(check([walk('2026-11-03', 20, 2)], under10)).toContain('TE-S14');
 });
 
+test('TE-S14 TE-G10 유지 계획은 최근에 마친 단계까지 첫 주에 둘 수 있다', () => {
+  const continued = { profile: { ...noDistance.profile, continuousRun: 'under_10m' as const, recentRunIntervalMin: 20 } };
+  expect(check([walk('2026-11-03', 30, 20)], continued)).toEqual([]);
+  expect(check([walk('2026-11-03', 30, 30)], continued)).toContain('TE-S14');
+});
+
 test('시간 기반 주에서 거리 기반 주로 넘어가는 주는 전환 조건이 정해질 때까지 거절한다', () => {
   const sessions = [walk('2026-11-03', 30), walk('2026-11-05', 30), run('2026-11-10', 'easy', 1)];
   expect(check(sessions, noDistance)).toEqual(expect.arrayContaining(['TE-S01', 'TE-S13']));

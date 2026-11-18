@@ -53,6 +53,7 @@ enum PlanStatus {
 enum PlanKind {
   race_prep
   base_building
+  maintenance
 
   @@map("plan_kind")
 }

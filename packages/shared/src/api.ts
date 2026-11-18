@@ -131,12 +131,22 @@ const noGoalHasNoTarget = (goal: z.infer<typeof goalInputSchema>, ctx: z.Refinem
   if (goal.raceDate != null) ctx.addIssue({ code: 'custom', path: ['raceDate'], message });
 };
 
-/** `POST /v1/plan/preview` */
-export const previewPlanRequestSchema = goalInputSchema.superRefine(noGoalHasNoTarget);
+/** 유지 계획은 목표 없음으로만 만든다(F03-R10) */
+const continuationHasNoGoal = (goal: { goalDistance: string; continuation?: boolean | undefined; kind?: string }, ctx: z.RefinementCtx) => {
+  if ((goal.continuation === true || goal.kind === 'maintenance') && goal.goalDistance !== 'none') {
+    ctx.addIssue({ code: 'custom', path: ['goalDistance'], message: '이어서 훈련하기는 목표 없이 만들어요.' });
+  }
+};
+
+/** `POST /v1/plan/preview`. `continuation`이 true면 끝난 계획에 잇는 유지 계획을 만든다(F03-R10) */
+export const previewPlanRequestSchema = goalInputSchema
+  .extend({ continuation: z.boolean().optional() })
+  .superRefine(noGoalHasNoTarget)
+  .superRefine(continuationHasNoGoal);
 export type PreviewPlanRequest = z.infer<typeof previewPlanRequestSchema>;
 
-/** `POST /v1/plan`. 미리보기에서 고른 계획의 종류를 더한다. */
-export const confirmPlanRequestSchema = goalInputSchema.extend({ kind: planKindSchema }).superRefine(noGoalHasNoTarget);
+/** `POST /v1/plan`. 미리보기에서 고른 계획의 종류를 더한다. `kind`가 `maintenance`면 유지 계획을 확정한다. */
+export const confirmPlanRequestSchema = goalInputSchema.extend({ kind: planKindSchema }).superRefine(noGoalHasNoTarget).superRefine(continuationHasNoGoal);
 export type ConfirmPlanRequest = z.infer<typeof confirmPlanRequestSchema>;
 
 export const planOptionSchema = z.object({

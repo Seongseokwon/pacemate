@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { previewPlanRequestSchema } from './api.js';
+import { confirmPlanRequestSchema, previewPlanRequestSchema } from './api.js';
 import { planFocusOf } from './labels.js';
 
 const week = (runIntervalMin: number | null, weekNumber = 1) => ({ weekNumber, runIntervalMin });
@@ -21,4 +21,18 @@ test('F02-R07 목표 없음에는 목표 기록과 대회 날짜를 받지 않�
   expect(previewPlanRequestSchema.safeParse({ goalDistance: 'none', goalTimeSec: 1800 }).success).toBe(false);
   expect(previewPlanRequestSchema.safeParse({ goalDistance: 'none', raceDate: '2027-01-10' }).success).toBe(false);
   expect(previewPlanRequestSchema.safeParse({ goalDistance: 'five_k', goalTimeSec: 1800, raceDate: '2027-01-10' }).success).toBe(true);
+});
+
+test('F03-R10 유지 계획의 목표 문구는 첫 주와 관계없이 습관 만들기다', () => {
+  expect(planFocusOf('none', [week(5)], 'maintenance')).toBe('habit');
+  expect(planFocusOf('none', [], 'maintenance')).toBe('habit');
+  expect(planFocusOf('none', [week(5)], 'base_building')).toBe('continuous_30min');
+});
+
+test('F03-R10 이어서 훈련하기와 유지 계획 확정은 목표 없음으로만 보낸다', () => {
+  expect(previewPlanRequestSchema.safeParse({ goalDistance: 'none', continuation: true }).success).toBe(true);
+  expect(previewPlanRequestSchema.safeParse({ goalDistance: 'five_k', continuation: true }).success).toBe(false);
+  expect(previewPlanRequestSchema.safeParse({ goalDistance: 'five_k', continuation: false }).success).toBe(true);
+  expect(confirmPlanRequestSchema.safeParse({ goalDistance: 'none', kind: 'maintenance' }).success).toBe(true);
+  expect(confirmPlanRequestSchema.safeParse({ goalDistance: 'half', kind: 'maintenance' }).success).toBe(false);
 });

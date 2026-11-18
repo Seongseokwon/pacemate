@@ -36,6 +36,7 @@ export const GOAL_DISTANCE_LABELS: Record<GoalDistance, string> = {
 export const PLAN_KIND_LABELS: Record<PlanKind, { name: string; description: string }> = {
   race_prep: { name: '완주 준비 계획', description: '대회에서 끝까지 달리는 것을 목표로 해요' },
   base_building: { name: '기초 훈련 계획', description: '달리기 기초 체력을 차근차근 다져요' },
+  maintenance: { name: '유지 계획', description: '지금까지 달린 만큼을 무리 없이 이어 가요' },
 };
 
 /** 목표 없음 계획의 목표 문구(F03-R09) */
@@ -54,8 +55,11 @@ export const FOCUS_CONTINUOUS_RUN_MIN = 30;
 export function planFocusOf(
   goalDistance: GoalDistance,
   sessions: readonly { weekNumber: number; runIntervalMin: number | null }[],
+  kind?: PlanKind,
 ): PlanFocus | null {
   if (goalDistance !== 'none') return null;
+  // 유지 계획은 첫 주와 관계없이 습관 만들기다(F03-R10)
+  if (kind === 'maintenance') return 'habit';
   const intervals = sessions.filter((session) => session.weekNumber === 1 && session.runIntervalMin !== null).map((session) => session.runIntervalMin as number);
   return intervals.length > 0 && Math.min(...intervals) < FOCUS_CONTINUOUS_RUN_MIN ? 'continuous_30min' : 'habit';
 }

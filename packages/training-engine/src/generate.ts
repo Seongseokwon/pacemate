@@ -1,7 +1,7 @@
 import type { PlanKind, PlanWarning, SessionType } from '@pacemate/shared';
 import { classifyLevel } from './classify-level.js';
 import { PLAN, SAFETY } from './safety-config.js';
-import type { EngineSession, Generate, GenerateInput, PlanOption } from './types.js';
+import type { Continuation, EngineProfile, EngineSession, Generate, GenerateInput, PlanOption } from './types.js';
 import { validate } from './validate.js';
 
 // 값의 근거는 `docs/T-201-TRAINING-DRAFT.md` §10에 있다. 날짜는 1970-01-01부터의 일수로 계산한다.
@@ -46,7 +46,7 @@ function countFor(peakKm: number, userCount: number): Count {
  * 주마다의 횟수와 거리. `taper`는 마지막 주부터 거꾸로 센 조정 주의 비율이다.
  * 다음 주의 기준은 검증기와 같이 최근 4주의 내림한 실제 값이다. 목표값을 기준으로 하면 내림이 쌓여 한도를 넘는다.
  */
-function distanceWeeks(recentKm: number, userCount: number, kind: PlanKind, totalWeeks: number, taper: number[], maintainWeeks: number): Week[] {
+function distanceWeeks(recentKm: number, userCount: number, kind: Exclude<PlanKind, 'maintenance'>, totalWeeks: number, taper: number[], maintainWeeks: number): Week[] {
   const weeks: Week[] = [];
   const totals: number[] = [];
   for (let w = 0; w < totalWeeks; w++) {
@@ -71,7 +71,7 @@ function distanceWeeks(recentKm: number, userCount: number, kind: PlanKind, tota
 
 const reachOf = (weeks: Week[]) => Math.max(0, ...weeks.filter((week) => !week.taper).map((week) => week.longKm));
 
-function build({ profile, goal, today }: GenerateInput, kind: PlanKind): Omit<PlanOption, 'warnings'> | null {
+function build({ profile, goal, today }: GenerateInput, kind: Exclude<PlanKind, 'maintenance'>): Omit<PlanOption, 'warnings'> | null {
   const level = classifyLevel(profile);
   const t = toDay(today);
   const race = goal.raceDate === null ? null : toDay(goal.raceDate);
@@ -187,13 +187,106 @@ function isValid({ profile, goal, today }: GenerateInput): boolean {
   );
 }
 
+/**
+ * 유지 계획의 시작 주간 거리(TE-G10). 이번 주 전 `recentWeeks`주의 주마다 계획 거리와 기록 거리 중 적은 쪽을 평균한다.
+ * 대회 당일 기록은 빼고, 계획에 거리 기반 훈련이 없던 주(계획이 끝난 뒤)는 기록만 본다.
+ */
+function recentWeeklyKm({ ended, workouts }: Continuation, today: number): number {
+  const { recentWeeks } = PLAN.maintenance;
+  const race = ended.raceDate === null ? null : toDay(ended.raceDate);
+  let total = 0;
+  for (let i = 1; i <= recentWeeks; i++) {
+    const from = mondayOf(today) - 7 * i;
+    const inWeek = (date: string) => toDay(date) >= from && toDay(date) <= from + 6 && toDay(date) < today;
+    const planned = ended.sessions.filter((session) => inWeek(session.date) && session.type !== 'race' && session.distanceKm !== null);
+    const done = workouts.filter((workout) => inWeek(workout.date) && toDay(workout.date) !== race).reduce((sum, workout) => sum + workout.distanceKm, 0);
+    total += planned.length === 0 ? done : Math.min(planned.reduce((sum, session) => sum + (session.distanceKm ?? 0), 0), done);
+  }
+  return floor1(total / recentWeeks);
+}
+
+/** 유지 계획(F03-R10, TE-G10). 훈련량을 늘리지 않고, 조금 빠르게 달리기와 회복 주가 없다. */
+function buildMaintenance({ profile, today }: GenerateInput, continuation: Continuation): { option: Omit<PlanOption, 'warnings'>; profile: EngineProfile } | null {
+  const level = classifyLevel(profile);
+  const t = toDay(today);
+  const { ended } = continuation;
+  const { weeks: totalWeeks, postRaceDays, postRaceFactor } = PLAN.maintenance;
+  const preferred = [...profile.preferredWeekdays].sort((a, b) => a - b);
+  const lastRun = ended.sessions.filter((session) => session.type !== 'race').sort((a, b) => a.date.localeCompare(b.date)).at(-1);
+  const baseKm = recentWeeklyKm(continuation, t);
+  // 시간 기반으로 끝난 계획은 시간 기반으로 잇는다. 최근 훈련량이 적어도 시간 기반이다(TE-G05)
+  const timeBased = (lastRun !== undefined && lastRun.distanceKm === null) || baseKm < PLAN.distanceBasedMinWeeklyKm;
+  const doneInterval = ended.sessions.filter((session) => session.completed && session.runIntervalMin !== null).sort((a, b) => a.date.localeCompare(b.date)).at(-1)?.runIntervalMin ?? null;
+  const used: EngineProfile = { ...profile, recentWeeklyKm: baseKm, recentRunIntervalMin: timeBased ? doneInterval : null };
+
+  const userCount = timeBased ? Math.min(profile.weeklyRunCount, PLAN.timeBased.maxSessionsPerWeek) : profile.weeklyRunCount;
+  const longDay = preferred.includes(7) ? 7 : preferred.includes(6) ? 6 : (preferred.at(-1) as number);
+  const daysFor = (count: number) => pickDays(preferred, count, longDay);
+  const thisWeek = mondayOf(t);
+  const firstDays = daysFor(timeBased ? userCount : countFor(baseKm, userCount));
+  const start = firstDays.every((day) => thisWeek + day - 1 > t) ? thisWeek : thisWeek + 7;
+
+  const race = ended.raceDate === null || ended.goalDistance === 'none' ? null : toDay(ended.raceDate);
+  const postRace = race !== null && race < t && start - race <= postRaceDays;
+  // 입문 수준은 대회 뒤 첫 주를 쉬고, 다음 주를 줄여서 시작한다
+  const restWeek = postRace && level === 'beginner' ? 0 : null;
+  const reducedWeek = postRace ? (restWeek === null ? 0 : 1) : null;
+
+  const sessions: EngineSession[] = [];
+  const add = (day: number, type: EngineSession['type'], session: Partial<EngineSession>) =>
+    sessions.push({ date: toDate(day), type, distanceKm: null, durationMin: null, paceRange: null, runIntervalMin: null, weekNumber: (mondayOf(day) - start) / 7 + 1, ...session });
+  const pace = () => {
+    if (profile.recentPaceSecPerKm === null) return null;
+    const [fast, slow] = PLAN.pace.easy;
+    return { minSecPerKm: Math.round(profile.recentPaceSecPerKm * fast), maxSecPerKm: Math.round(profile.recentPaceSecPerKm * slow) };
+  };
+
+  if (timeBased) {
+    // 한 번에 달리는 시간을 늘리지 않는다. 마친 훈련이 없으면 답한 범주의 시작 단계다(TE-S14)
+    const runIntervalMin = doneInterval ?? PLAN.timeBased.startRunInterval[profile.continuousRun];
+    for (let w = 0; w < totalWeeks; w++) {
+      if (w === restWeek) continue;
+      for (const weekday of firstDays) add(start + w * 7 + weekday - 1, 'walk_run', { durationMin: PLAN.timeBased.sessionMin, runIntervalMin });
+    }
+  } else {
+    let previous: { target: number; longKm: number } | null = null;
+    for (let w = 0; w < totalWeeks; w++) {
+      if (w === restWeek) continue;
+      const factor = w === reducedWeek && ended.goalDistance !== 'none' ? postRaceFactor[ended.goalDistance] : 1;
+      // 줄인 주 다음에는 한 번의 거리가 최근 최장 거리의 110%를 넘지 않게 되돌린다(TE-S13)
+      const target: number = previous === null ? baseKm * factor : Math.min(baseKm, previous.target * SAFETY.singleRunIncrease);
+      const count = countFor(target, userCount);
+      let longKm = floor1(target * PLAN.shares[count].long);
+      if (previous !== null) longKm = Math.min(longKm, floor1(previous.longKm * SAFETY.singleRunIncrease));
+      const easyKm = Math.min(floor1(target * PLAN.shares[count].easy), longKm);
+      for (const weekday of daysFor(count)) {
+        const type = weekday === longDay ? 'long' : 'easy';
+        add(start + w * 7 + weekday - 1, type, { distanceKm: type === 'long' ? longKm : easyKm, paceRange: pace() });
+      }
+      previous = { target, longKm };
+    }
+  }
+
+  const first = sessions[0];
+  if (!first) return null;
+  const option = { kind: 'maintenance' as const, startDate: first.date, endDate: toDate(start + totalWeeks * 7 - 1), totalWeeks, sessions };
+  const goal = { goalDistance: 'none' as const, goalTimeSec: null, raceDate: null };
+  const state = { ...option, goal, profile: used, level, sessions: sessions.map((session, i) => ({ ...session, id: String(i), completed: false, skipped: false })) };
+  return validate({ plan: state, today }).ok ? { option, profile: used } : null;
+}
+
 export const generate: Generate = (input) => {
   const level = classifyLevel(input.profile);
-  if (!isValid(input)) return { level, options: [] };
+  if (!isValid(input)) return { level, profile: input.profile, options: [] };
+  if (input.continuation) {
+    // 유지 계획은 목표 없음으로만 만든다(F03-R10)
+    const built = input.goal.goalDistance === 'none' ? buildMaintenance(input, input.continuation) : null;
+    return built ? { level, profile: built.profile, options: [{ ...built.option, warnings: [] }] } : { level, profile: input.profile, options: [] };
+  }
   // 목표 없음은 기초 훈련 계획 하나뿐이고 경고가 없다(F03-R09, TE-G06)
   if (input.goal.goalDistance === 'none') {
     const base = build(input, 'base_building');
-    return { level, options: base ? [{ ...base, warnings: [] }] : [] };
+    return { level, profile: input.profile, options: base ? [{ ...base, warnings: [] }] : [] };
   }
   const warnings = goalTimeWarnings(input);
   const racePrep = build(input, 'race_prep');
@@ -202,5 +295,5 @@ export const generate: Generate = (input) => {
   if (racePrep) options.push({ ...racePrep, warnings });
   // 완주 준비 계획을 만들 수 없으면 기초 훈련 계획에 이유를 넣는다(F03-R06)
   if (base) options.push({ ...base, warnings: racePrep ? warnings : ['RACE_PREP_NOT_REACHABLE', ...warnings] });
-  return { level, options };
+  return { level, profile: input.profile, options };
 };

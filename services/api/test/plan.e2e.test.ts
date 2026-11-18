@@ -129,7 +129,7 @@ describe('POST /v1/plan/preview (F03)', () => {
   });
 
   test('어떤 계획도 만들 수 없으면 PLAN_NOT_FEASIBLE이다 (TE-G06)', async () => {
-    engine.generate.mockReturnValueOnce({ level: 'novice', options: [] });
+    engine.generate.mockReturnValueOnce({ level: 'novice', profile: {} as never, options: [] });
     const res = await preview();
 
     expect(res.status).toBe(422);
@@ -576,5 +576,128 @@ describe('목표 없음 (F03-R09, T-206)', () => {
     await expect(prisma.trainingPlan.create({ data: { ...base, kind: 'base_building', raceDate: day('2027-01-24') } })).rejects.toThrow();
     await expect(prisma.trainingPlan.create({ data: { ...base, kind: 'base_building', goalTimeSec: 1800 } })).rejects.toThrow();
     await expect(prisma.trainingPlan.create({ data: { ...base, kind: 'base_building' } })).resolves.toMatchObject({ goalDistance: 'none' });
+  });
+});
+
+describe('유지 계획 (F03-R08, F03-R10, T-207)', () => {
+  const CONTINUE = { goalDistance: 'none', continuation: true };
+  const MAINTAIN = { goalDistance: 'none', kind: 'maintenance' };
+
+  /** 11/15(일)에 끝난 거리 기반 10km 계획. 최근 4주(10/19~11/15) 동안 주 20km를 계획하고 그대로 달렸다 */
+  async function seedEnded({ status = 'active' as 'active' | 'ended', ran = 1, raceDate = null as string | null } = {}) {
+    const plan = await prisma.trainingPlan.create({
+      data: {
+        userId: USER_A, status, kind: 'race_prep', goalDistance: 'ten_k', raceDate: raceDate ? day(raceDate) : null,
+        startDate: day('2026-09-21'), endDate: day('2026-11-15'), engineVersion: 'test', ...(status === 'ended' && { endedAt: new Date() }),
+      },
+    });
+    for (const monday of ['2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09']) {
+      for (const [offset, km] of [[2, 5], [4, 5], [6, 10]] as const) {
+        const date = new Date(day(monday).getTime() + offset * 86_400_000);
+        const session = await prisma.plannedSession.create({
+          data: { planId: plan.id, userId: USER_A, date, type: offset === 6 ? 'long' : 'easy', distanceKm: km, weekNumber: 1 },
+        });
+        await prisma.workoutLog.create({ data: { userId: USER_A, date, distanceKm: km * ran, durationSec: 1800, source: 'app', plannedSessionId: session.id } });
+      }
+    }
+    return plan;
+  }
+
+  test('끝난 계획에 이어 4주 유지 계획을 보여 주고 저장하지 않는다 (AC-F03-08)', async () => {
+    await seedEnded();
+    const res = await preview(CONTINUE);
+
+    expect(res.status).toBe(200);
+    expect(res.body.options).toHaveLength(1);
+    expect(res.body.options[0]).toMatchObject({ kind: 'maintenance', totalWeeks: 4, warnings: [], focus: 'habit', startDate: '2026-11-18' });
+    const weekly = new Map<number, number>();
+    for (const session of res.body.options[0].sessions) weekly.set(session.weekNumber, (weekly.get(session.weekNumber) ?? 0) + session.distanceKm);
+    expect([...weekly.values()].every((km) => km <= 20)).toBe(true);
+    expect(await prisma.trainingPlan.count()).toBe(1);
+  });
+
+  test('끝난 계획의 훈련과 최근 기록을 Training Engine에 넘기고, 기록이 계획보다 적으면 적은 쪽으로 만든다 (TE-G10)', async () => {
+    await seedEnded({ ran: 0.5 });
+    const res = await preview(CONTINUE);
+
+    const input = engine.generate.mock.calls.at(-1)?.[0];
+    expect(input?.continuation?.ended).toMatchObject({ goalDistance: 'ten_k', raceDate: null });
+    expect(input?.continuation?.ended.sessions).toHaveLength(12);
+    expect(input?.continuation?.ended.sessions.every((session) => session.completed)).toBe(true);
+    expect(input?.continuation?.workouts).toHaveLength(12);
+    // 오늘(11/17)이 있는 주 전 4주 동안 계획 20km 중 10km만 달렸다
+    expect(engine.generate.mock.results.at(-1)?.value.profile.recentWeeklyKm).toBe(10);
+    const total = res.body.options[0].sessions.filter((session: { weekNumber: number }) => session.weekNumber === 2).reduce((sum: number, session: { distanceKm: number | null }) => sum + (session.distanceKm ?? 0), 0);
+    expect(total).toBeLessThanOrEqual(10);
+  });
+
+  test('확정하면 목표 없음 유지 계획으로 저장하고 끝난 계획을 종료한다 (F03-R10)', async () => {
+    const ended = await seedEnded();
+    const res = await confirm(MAINTAIN);
+
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ kind: 'maintenance', goalDistance: 'none', goalTimeSec: null, raceDate: null, focus: 'habit', isFinished: false });
+    expect((await prisma.trainingPlan.findUniqueOrThrow({ where: { id: ended.id } })).status).toBe('ended');
+    expect((await get('/v1/home')).body.plan).toMatchObject({ kind: 'maintenance', focus: 'habit' });
+  });
+
+  test('유지 계획이 끝나면 다시 이어 갈 수 있다 (F03-R10)', async () => {
+    await seedEnded();
+    await confirm(MAINTAIN);
+    const plan = await prisma.trainingPlan.findFirstOrThrow({ where: { userId: USER_A, status: 'active' } });
+    vi.setSystemTime(new Date(plan.endDate.getTime() + 2 * 86_400_000));
+
+    expect((await get('/v1/home')).body.plan.isFinished).toBe(true);
+    expect((await preview(CONTINUE)).body.options[0].kind).toBe('maintenance');
+    expect((await confirm(MAINTAIN)).status).toBe(201);
+    expect(await prisma.trainingPlan.count({ where: { userId: USER_A, kind: 'maintenance' } })).toBe(2);
+  });
+
+  test('대회를 마친 뒤 이으면 첫 주를 줄인다 (TE-G10)', async () => {
+    await seedEnded({ raceDate: '2026-11-15' });
+    const { sessions } = (await preview(CONTINUE)).body.options[0];
+    const week = (n: number) => sessions.filter((session: { weekNumber: number }) => session.weekNumber === n).reduce((sum: number, session: { distanceKm: number }) => sum + session.distanceKm, 0);
+    // 대회 날 기록을 빼면 시작 훈련량은 17.5km이고, 10km 대회 뒤 첫 주는 그 60%까지다
+    expect(week(1)).toBeLessThanOrEqual(17.5 * 0.6);
+    expect(week(2)).toBeGreaterThan(week(1));
+  });
+
+  test('종료 처리된 계획에도 이을 수 있다', async () => {
+    await seedEnded({ status: 'ended' });
+    expect((await preview(CONTINUE)).body.options[0].kind).toBe('maintenance');
+  });
+
+  test('끝난 계획이 없으면 NOT_FOUND, 끝나지 않은 계획이 있으면 PLAN_ALREADY_ACTIVE다', async () => {
+    expect((await preview(CONTINUE)).body.code).toBe('NOT_FOUND');
+    expect((await confirm(MAINTAIN)).body.code).toBe('NOT_FOUND');
+
+    await seedPlan({ endDate: '2027-01-17' });
+    expect((await preview(CONTINUE)).body.code).toBe('PLAN_ALREADY_ACTIVE');
+    expect((await confirm(MAINTAIN)).body.code).toBe('PLAN_ALREADY_ACTIVE');
+  });
+
+  test('다른 사용자의 끝난 계획에는 이을 수 없다 (DI-07)', async () => {
+    await seedEnded();
+    await createProfile(USER_B);
+    expect((await preview(CONTINUE, USER_B)).body.code).toBe('NOT_FOUND');
+  });
+
+  test('이어서 훈련하기는 목표 없음으로만 요청한다', async () => {
+    await seedEnded();
+    for (const res of [await preview({ goalDistance: 'five_k', continuation: true }), await confirm({ goalDistance: 'five_k', kind: 'maintenance' })]) {
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe('VALIDATION_ERROR');
+    }
+  });
+
+  test('continuation 없이 만든 미리보기에는 유지 계획이 없다', async () => {
+    expect((await preview({ goalDistance: 'none' })).body.options.map((option: { kind: string }) => option.kind)).toEqual(['base_building']);
+  });
+
+  test('DB 체크 제약: 유지 계획은 목표 없음으로만 저장한다', async () => {
+    const base = { userId: USER_A, status: 'ended', startDate: day('2026-11-23'), endDate: day('2026-12-20'), engineVersion: 'test', kind: 'maintenance' } as const;
+    await expect(prisma.trainingPlan.create({ data: { ...base, goalDistance: 'five_k' } })).rejects.toThrow();
+    await expect(prisma.trainingPlan.create({ data: { ...base, goalDistance: 'none', raceDate: day('2026-12-20') } })).rejects.toThrow();
+    await expect(prisma.trainingPlan.create({ data: { ...base, goalDistance: 'none' } })).resolves.toMatchObject({ kind: 'maintenance' });
   });
 });

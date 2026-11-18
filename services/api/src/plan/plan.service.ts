@@ -13,7 +13,7 @@ import {
   type SessionsQuery,
   type SessionsResponse,
 } from '@pacemate/shared';
-import type { EngineGoal, EngineProfile, PlanOption } from '@pacemate/training-engine';
+import { type Continuation, type EngineGoal, type EngineProfile, MAINTENANCE_RECENT_WEEKS, type PlanOption } from '@pacemate/training-engine';
 import { AppError } from '../common/app-error.js';
 import { addDays, daysBetween, mondayOf, toDateString, toDbDate } from '../common/dates.js';
 import { today } from '../common/today.js';
@@ -40,12 +40,12 @@ export class PlanService {
   /** 만들 수 있는 계획을 보여 준다. 저장하지 않는다(F03-R05). */
   async preview(userId: string, input: PreviewPlanRequest): Promise<PreviewPlanResponse> {
     const date = today();
-    const { options } = await this.generate(userId, input, date);
+    const { options } = await this.generate(userId, input, date, input.continuation === true);
     return {
       options: options.map((option) => ({
         ...option,
         sessions: option.sessions.map((session) => ({ ...session, status: 'planned', workoutId: null, original: null })),
-        focus: planFocusOf(input.goalDistance, option.sessions),
+        focus: planFocusOf(input.goalDistance, option.sessions, option.kind),
       })),
     };
   }
@@ -53,7 +53,8 @@ export class PlanService {
   /** 같은 입력으로 다시 계산해 저장한다. 미리보기 결과를 보관하지 않는다(API_SPEC §3.3). */
   async confirm(userId: string, input: ConfirmPlanRequest): Promise<PlanSummary> {
     const date = today();
-    const { options, goal } = await this.generate(userId, input, date);
+    // 유지 계획은 미리보기와 같은 입력(끝난 계획과 최근 기록)으로 다시 계산한다(F03-R10)
+    const { options, goal } = await this.generate(userId, input, date, input.kind === 'maintenance');
     const option = options.find(({ kind }) => kind === input.kind);
     if (!option) throw new AppError('PLAN_NOT_FEASIBLE', '고른 계획을 지금 조건으로는 만들 수 없어요. 계획을 다시 확인해 주세요.');
 
@@ -185,7 +186,7 @@ export class PlanService {
   }
 
   /** Training Engine으로 계획을 만들고, 검증기를 통과한 것만 남긴다(F03-R02, TE-S12). */
-  private async generate(userId: string, input: PreviewPlanRequest, date: string): Promise<{ options: PlanOption[]; goal: EngineGoal }> {
+  private async generate(userId: string, input: PreviewPlanRequest, date: string, continuing = false): Promise<{ options: PlanOption[]; goal: EngineGoal }> {
     const row = await this.prisma.runnerProfile.findUnique({ where: { userId } });
     if (!row) throw new AppError('NOT_FOUND', '러닝 프로필을 먼저 입력해 주세요.');
     const goal: EngineGoal = { goalDistance: input.goalDistance, goalTimeSec: input.goalTimeSec ?? null, raceDate: input.raceDate ?? null };
@@ -201,12 +202,49 @@ export class PlanService {
       preferredWeekdays: row.preferredWeekdays,
     };
 
-    const result = this.engine.generate({ profile, goal, today: date });
-    const options = result.options.filter((option) => this.passes(option, { profile, goal, level: result.level }, date));
+    const continuation = continuing ? await this.continuationOf(userId, date) : undefined;
+    const result = this.engine.generate({ profile, goal, today: date, ...(continuation && { continuation }) });
+    // 유지 계획은 최근 훈련량을 반영한 프로필로 검증한다
+    const options = result.options.filter((option) => this.passes(option, { profile: result.profile, goal, level: result.level }, date));
     if (options.length === 0) {
       throw new AppError('PLAN_NOT_FEASIBLE', '입력한 조건으로는 계획을 만들 수 없어요. 대회 날짜나 달리는 요일을 바꿔 보세요.');
     }
     return { options, goal };
+  }
+
+  /**
+   * 유지 계획의 재료: 가장 최근에 끝난 계획의 훈련과 최근 기록(TE-G10). 훈련량은 Training Engine이 정한다.
+   * 끝나지 않은 활성 계획이 있으면 이을 수 없다(API_SPEC §3.3).
+   */
+  private async continuationOf(userId: string, date: string): Promise<Continuation> {
+    const active = await this.prisma.trainingPlan.findFirst({ where: { userId, status: 'active' } });
+    if (active && !isFinished(active, date)) throw new AppError('PLAN_ALREADY_ACTIVE', '진행 중인 계획이 있어요.');
+    // 기간이 끝난 활성 계획이 가장 최근 계획이다. 없으면 종료 처리된 계획 중 가장 늦게 끝난 것이다
+    const ended = active ?? (await this.prisma.trainingPlan.findFirst({ where: { userId, status: 'ended' }, orderBy: { endDate: 'desc' } }));
+    if (!ended) throw new AppError('NOT_FOUND', '이어서 훈련할 끝난 계획이 없어요.');
+
+    const [sessions, workouts] = await Promise.all([
+      this.prisma.plannedSession.findMany({ where: { planId: ended.id, userId, isSkipped: false }, include: withWorkoutId, orderBy: { date: 'asc' } }),
+      this.prisma.workoutLog.findMany({
+        where: { userId, date: { gte: toDbDate(addDays(mondayOf(date), -7 * MAINTENANCE_RECENT_WEEKS)), lt: toDbDate(date) } },
+        select: { date: true, distanceKm: true },
+      }),
+    ]);
+    return {
+      ended: {
+        goalDistance: ended.goalDistance,
+        raceDate: ended.raceDate ? toDateString(ended.raceDate) : null,
+        sessions: sessions.map((session) => ({
+          date: toDateString(session.date),
+          type: session.type,
+          distanceKm: session.distanceKm?.toNumber() ?? null,
+          durationMin: session.durationMin,
+          runIntervalMin: session.runIntervalMin,
+          completed: session.workout !== null,
+        })),
+      },
+      workouts: workouts.map((workout) => ({ date: toDateString(workout.date), distanceKm: workout.distanceKm.toNumber() })),
+    };
   }
 
   private passes(option: PlanOption, context: { profile: EngineProfile; goal: EngineGoal; level: RunnerLevel }, date: string): boolean {
@@ -232,7 +270,7 @@ export class PlanService {
       this.prisma.plannedSession.count({ where: counted }),
       this.prisma.plannedSession.count({ where: { ...counted, workout: { isNot: null } } }),
       // 목표 문구는 계획의 첫 주로 정하므로 저장하지 않는다(API_SPEC §3.3)
-      plan.goalDistance === 'none'
+      plan.goalDistance === 'none' && plan.kind !== 'maintenance'
         ? this.prisma.plannedSession.findMany({ where: { planId: plan.id, userId: plan.userId, weekNumber: 1 }, select: { weekNumber: true, runIntervalMin: true } })
         : Promise.resolve([]),
     ]);
@@ -248,7 +286,7 @@ export class PlanService {
       warnings: plan.warnings as PlanWarning[],
       progress: { completed, total },
       isFinished: isFinished(plan, date),
-      focus: planFocusOf(plan.goalDistance, firstWeek),
+      focus: planFocusOf(plan.goalDistance, firstWeek, plan.kind),
     };
   }
 }

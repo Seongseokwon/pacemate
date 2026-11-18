@@ -26,6 +26,11 @@ export type EngineProfile = {
   weeklyRunCount: number;
   /** 1(월)~7(일) */
   preferredWeekdays: number[];
+  /**
+   * 최근에 실제로 마친 걷고 달리기의 한 번에 달리는 시간(분). 유지 계획을 만들 때만 생성기가 채운다(TE-G10).
+   * 있으면 첫 주 상한(TE-S14)을 이 값까지 넓힌다. 끝난 계획에서 이미 달린 단계를 낮추지 않기 위해서다.
+   */
+  recentRunIntervalMin?: number | null;
 };
 
 export type EngineGoal = {
@@ -50,7 +55,20 @@ export type EngineSession = {
 export type ClassifyLevel = (profile: EngineProfile) => RunnerLevel;
 
 // 생성기
-export type GenerateInput = { profile: EngineProfile; goal: EngineGoal; today: DateString };
+/** 유지 계획(TE-G10)의 재료. 끝난 계획과 최근 기록이다. 훈련량은 생성기가 이것으로 정한다. */
+export type Continuation = {
+  ended: {
+    goalDistance: GoalDistance;
+    raceDate: DateString | null;
+    /** 생략하지 않은 훈련. `completed`는 기록이 연결되었는지다 */
+    sessions: (Omit<EngineSession, 'paceRange' | 'weekNumber'> & { completed: boolean })[];
+  };
+  /** 오늘 전 최근 몇 주의 운동 기록. 범위 밖의 기록은 생성기가 무시한다 */
+  workouts: { date: DateString; distanceKm: number }[];
+};
+
+/** `continuation`이 있으면 유지 계획만 만든다. 이때 목표는 목표 없음이어야 한다(F03-R10). */
+export type GenerateInput = { profile: EngineProfile; goal: EngineGoal; today: DateString; continuation?: Continuation };
 
 export type PlanOption = {
   kind: PlanKind;
@@ -63,6 +81,8 @@ export type PlanOption = {
 
 export type GenerateResult = {
   level: RunnerLevel;
+  /** 계획을 만들고 검증할 때 쓴 프로필. 유지 계획이면 최근 훈련량을 반영한 값이다. 다시 검증할 때 이 값을 넘긴다(TE-S12) */
+  profile: EngineProfile;
   /** 만들 수 있는 계획만 담는다. 비어 있으면 어떤 계획도 만들 수 없다(TE-G06) */
   options: PlanOption[];
 };
