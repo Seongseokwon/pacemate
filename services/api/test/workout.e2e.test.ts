@@ -40,6 +40,11 @@ test('동시 중복 요청, 이상 페이스 확인과 통계 (F07-R03, F07-R08)
   expect((await app.call('get', '/v1/workouts/stats', user)).body).toEqual({ week: { distanceKm: 5, count: 1 }, month: { distanceKm: 5, count: 1 } });
 });
 
+test('통증 기록을 저장하면 휴식을 권한다', async () => {
+  const result = await app.call('post', '/v1/workouts', user, { date, distanceKm: 5, durationSec: 1800, memo: '무릎이 아파요' });
+  expect(result.body.coachLine).toMatchObject({ code: 'WORKOUT_PAIN', text: expect.stringContaining('쉬') });
+});
+
 test('후보 정렬과 기록 수정·페이지 조회는 사용자별로 제한된다 (F07-R04, F07-R06)', async () => {
   const plan = await db.trainingPlan.create({ data: { userId: user, status: 'active', kind: 'race_prep', goalDistance: 'ten_k', startDate: day('2026-11-16'), endDate: day('2026-12-20'), engineVersion: 'test' } });
   const earlier = await db.plannedSession.create({ data: { userId: user, planId: plan.id, date: day('2026-11-16'), type: 'easy', distanceKm: 5, weekNumber: 1 } });

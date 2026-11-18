@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { WORKOUT_COACH_LINE, WORKOUT_LIMITS, type CreateWorkoutRequest, type ListQuery, type UpdateWorkoutRequest } from '@pacemate/shared';
+import { WORKOUT_COACH_LINE, WORKOUT_LIMITS, WORKOUT_PAIN_COACH_LINE, type CreateWorkoutRequest, type ListQuery, type UpdateWorkoutRequest } from '@pacemate/shared';
 import { AppError } from '../common/app-error.js';
 import { addDays, mondayOf, toDateString, toDbDate } from '../common/dates.js';
 import { today } from '../common/today.js';
@@ -57,7 +57,7 @@ export class WorkoutService {
       const [planned, completed] = await Promise.all([this.db.plannedSession.count({ where }), this.db.plannedSession.count({ where: { ...where, workout: { isNot: null } } })]);
       weekProgress = { planned, completed };
     }
-    return { workout: toWorkout(row), weekProgress, coachLine: WORKOUT_COACH_LINE };
+    return { workout: toWorkout(row), weekProgress, coachLine: row.memo?.trim() ? WORKOUT_PAIN_COACH_LINE : WORKOUT_COACH_LINE };
   }
 
   async update(userId: string, id: string, input: UpdateWorkoutRequest) { return toWorkout(await this.save(userId, input, id)); }
