@@ -90,12 +90,15 @@ export const proposalChangeSchema = z.object({
   before: sessionSnapshotSchema.nullable(),
   after: sessionSnapshotSchema.nullable(),
 });
+export type ProposalChange = z.infer<typeof proposalChangeSchema>;
 
 export const proposalSchema = z.object({
   id: idSchema,
   type: proposalTypeSchema,
   status: proposalStatusSchema,
   expiresAt: dateTimeSchema,
+  /** 카드의 이유 한 줄. 서버가 사유와 요청 내용으로 만든 템플릿 문구다(F05-R03). 목표 변경과 기록 등록은 null이다 */
+  reasonLine: z.string().nullable(),
   /** 승인 시 AI 일정 변경 이용량을 차감하는지 */
   consumesQuota: z.boolean(),
   changes: z.array(proposalChangeSchema),

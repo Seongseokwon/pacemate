@@ -321,6 +321,7 @@ model ChangeProposal {
   planId          String?         @map("plan_id") @db.Uuid
   type            ProposalType
   source          ProposalSource
+  quotaExempt     Boolean         @default(false) @map("quota_exempt")
   status          ProposalStatus
   basePlanVersion Int?            @map("base_plan_version")
   reason          ProposalReason?

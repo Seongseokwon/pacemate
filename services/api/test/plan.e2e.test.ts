@@ -1,4 +1,4 @@
-import { generate, validate } from '@pacemate/training-engine';
+import { generate, reschedule, validate } from '@pacemate/training-engine';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { TRAINING_ENGINE } from '../src/plan/training-engine.js';
 import { createTestApp } from './test-app.js';
@@ -11,7 +11,7 @@ const TODAY = '2026-11-17';
 const day = (date: string) => new Date(`${date}T00:00:00Z`);
 
 const prisma = createTestPrisma();
-const engine = { generate: vi.fn(generate), validate: vi.fn(validate), version: 'test-version' };
+const engine = { generate: vi.fn(generate), validate: vi.fn(validate), reschedule, version: 'test-version' };
 let t: Awaited<ReturnType<typeof createTestApp>>;
 
 beforeAll(async () => {

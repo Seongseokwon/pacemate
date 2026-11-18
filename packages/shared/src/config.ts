@@ -41,3 +41,6 @@ export const LIST_PAGE = { defaultLimit: 30, maxLimit: 100 } as const;
 
 /** 사용자별 분당 요청 수 제한(API_SPEC §1). */
 export const RATE_LIMIT_PER_MINUTE = { default: 60, chat: 10 } as const;
+
+/** 이번 주 미완료 훈련이 이 횟수 이상이면 홈에 [코치와 일정 조정하기]를 보여 주고, 그 주의 일정 변경 1회는 차감하지 않는다(F05-R14, PRD §8.2). */
+export const MISSED_SESSIONS_FOR_ADJUSTMENT = 2;

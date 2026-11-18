@@ -105,7 +105,7 @@
 |---|---|---|---|---|---|
 | T-301 | 기록 API: 저장·수정·삭제, 통계, 연결 후보, 중복·페이스 확인. 저장 응답의 `weekProgress`·`coachLine`(템플릿) | F07, `F07-R10`, API_SPEC §3.4 | T-204 | `AC-F07-01`~`04` | 완료 (Codex) |
 | T-302 | 기록 화면: 목록, 입력(운동 강도, 통증 입력칸. 컨디션 없음), 저장 뒤 코치 한마디와 이번 주 진행률, 상세, 기초 통계 | F07, `F07-R01`, `F07-R10`, PRD §5.7, UI_UX §6.6 | T-301, T-109 | 화면에서 입력한 기록으로 훈련이 완료 표시된다. `AC-F07-06` | 완료 (Codex) |
-| T-303 | Apple 건강(HealthKit) 러닝 기록 읽기: workout 읽기(거리, 시간, 페이스, 날짜, 심박수 선택), 중복 제거, 권한 요청, `workout_logs` 저장 및 `planned_sessions` 연결 | `URGENT_PRE_MVP.md` §1 | T-302 | HealthKit 권한 승인 후 최근 30일 러닝 기록을 가져온다. 중복 제거되고 훈련과 자동 연결된다. iOS 실기기 동작 확인 | 대기 |
+| T-303 | Apple 건강(HealthKit) 러닝 기록 읽기: workout 읽기(거리, 시간, 페이스, 날짜, 심박수 선택), 중복 제거, 권한 요청, `workout_logs` 저장 및 `planned_sessions` 연결 | `URGENT_PRE_MVP.md` §1 | T-302 | HealthKit 권한 승인 후 최근 30일 러닝 기록을 가져온다. 중복 제거되고 훈련과 자동 연결된다. iOS 실기기 동작 확인 | 대기 (담당: Codex) |
 
 ### M4. 변경 제안과 AI 채팅
 
@@ -113,7 +113,7 @@
 |---|---|---|---|---|---|
 | T-401 | Engine 변경기. 변경 대상은 이번 주와 다음 주뿐(`TE-R10`) | `TE-R01`~`R10` | T-203 | 규칙마다 테스트가 있고, 불변식 테스트에서 모든 변경 결과가 검증기를 통과한다 | 검토 (Codex) |
 | T-402 | 이용량 모듈: 집계, 한도 판정, Pro 판정(구독 연동 전에는 모두 무료) | PRD §8.2, `DI-12` | T-104 | 동시 요청에도 한도를 넘지 않는다(`AC-F10-04`) | 완료 (Codex) |
-| T-403 | 제안 모듈: 생성, 승인 트랜잭션, 취소, 목표·프로필 변경 제안(목표 없음 ↔ 거리 목표 전환 포함). 놓친 훈련이 많은 주의 차감 없는 일정 변경(`quota_exempt`, `AC-F10-06`). 만든 날 자정 만료, 이유 한 줄(`reasonLine`), 목표 변경의 최근 기록 기준과 `RECENT_DISTANCE_REQUIRED`(기록으로 주간 거리를 구하는 방법의 초기값을 `DECISIONS.md`에 기록) | F05, `F02-R09`, `DI-01`~`DI-08`, ARCHITECTURE §7.6, API_SPEC §3.6 | T-401, T-402, T-301 | `AC-F05-02`~`09`. 중복·동시 승인, 버전 불일치, 만료, 처리 중 실패를 실제 DB로 검증한다 | 대기 |
+| T-403 | 제안 모듈: 생성, 승인 트랜잭션, 취소, 목표·프로필 변경 제안(목표 없음 ↔ 거리 목표 전환 포함). 놓친 훈련이 많은 주의 차감 없는 일정 변경(`quota_exempt`, `AC-F10-06`). 만든 날 자정 만료, 이유 한 줄(`reasonLine`), 목표 변경의 최근 기록 기준과 `RECENT_DISTANCE_REQUIRED`(기록으로 주간 거리를 구하는 방법의 초기값을 `DECISIONS.md`에 기록) | F05, `F02-R09`, `DI-01`~`DI-08`, ARCHITECTURE §7.6, API_SPEC §3.6 | T-401, T-402, T-301 | `AC-F05-02`~`09`. 중복·동시 승인, 버전 불일치, 만료, 처리 중 실패를 실제 DB로 검증한다 | 검토 (Claude Code) |
 | T-404 | LLM 게이트웨이(가짜 구현 포함), 호출 기록 | ARCHITECTURE §7.2, `F11-R02` | T-103 | 가짜 구현으로 도구 호출이 있는 대화를 재현할 수 있다 | 완료 (Claude Code) |
 | T-405 | 도구 레지스트리와 도구 7개. `OUT_OF_RANGE`, `propose_goal_change`의 `recentWeeklyKm`, 기록 등록에서 `condition` 제외 | PRD §6.2, API_SPEC §6 | T-403, T-404 | 도구마다 입력 검증·정상·실패 테스트가 있다 | 대기 |
 | T-406 | 메시지 처리기, 컨텍스트 구성기, 시스템 지침 v1, 채팅 API. 목표 없음이면 목표 정보를 `focus`로 넘긴다. 시스템 지침에 되묻기 최대 2번(`AI-04`), 심한 통증에는 제안 없이 쉬기·진료 안내(`AI-06`). 코치 3명의 말투 지침(`AI-11`)을 `users.coach`로 골라 넣는다 | F04, `F04-R11`, `AI-11`, `AI-12`, ARCHITECTURE §7.4~7.5, API_SPEC §3.5 | T-405, T-411 | `AC-F04-03`, `05`, `06`. 코치를 바꾸면 다음 요청의 시스템 지침이 바뀌고 도구 정의는 같다. 중복 전송과 처리 중 재전송이 명세대로 응답한다 | 대기 |
@@ -123,6 +123,8 @@
 | T-410 | 이용 한도 변경: 가입 체험분(`usage_trials`), Usage 응답의 `pool`, `users.identity_hash`와 탈퇴 뒤 체험분 유지. 한도 상수(`PLAN_LIMITS`, `TRIAL_LIMITS`)는 2026-11-17에 먼저 고쳤다 | PRD §8.1, §8.2, `DI-11`, `DI-12`, DATABASE §3.1, §3.11, §7, API_SPEC §2.1 | T-402, T-106 | `AC-F10-04`, `AC-F10-05`, `AC-F10-07`. 체험분에서 월 한도로 넘어가는 경계와 동시 요청을 실제 DB로 검증한다 | 대기 |
 | T-411 | AI 코치 고르기: `users.coach` 마이그레이션, `packages/shared`의 코치 값과 이름·소개, `GET /v1/me`의 `coach`, `PUT /v1/me/coach`, 코치 고르기 화면(온보딩의 계획 미리보기 뒤, 마이 > 코치 바꾸기), `CoachSelectCard`, `CoachAvatar`, 프로필 이미지 | `F04-R11`~`R13`, DATABASE §3.1, API_SPEC §3.1, UI_UX §6.10 | T-111, T-112, D-15, D-A10 | 코치를 고르면 저장되고 `GET /v1/me`에 보인다. 바꿔도 이용량이 바뀌지 않는다(`AC-F04-07`의 일부). 저장에 실패하면 다음 화면으로 넘어가지 않는다 | 검토 (Claude Code, PR #46) |
 
+`T-403`의 제안 모듈은 `services/api/src/proposal`에 있다. 도구(`T-405`)는 `ProposalService`의 `createReschedule`, `createGoalChangeFromChat`, `createWorkoutLog`를 부르고, 결과 `{ created, proposal | reasonCode, message }`를 그대로 도구 출력으로 쓴다. 도구 입력 스키마는 `packages/shared`의 `proposeRescheduleInputSchema`, `proposeGoalChangeInputSchema`, `proposeWorkoutLogInputSchema`다. 채팅 서버(`T-406`)는 제안 카드와 결과 메시지를 `proposal/proposal.mapper.ts`의 `toProposal`, `toChatMessage`로 그린다. 채팅 처리가 실패했을 때 대기 제안을 취소하는 일(ARCHITECTURE §7.5의 6번)은 `T-406`이 `cancel`로 한다. 승인 뒤 분석 이벤트(§7.6의 9번)는 `T-502`에서 붙인다. 목표 변경의 최근 주간 거리 계산은 `DECISIONS.md` 2026-11-18 "목표 변경의 최근 주간 거리와 새 계획 배치"에 있다(개발자 확인 필요).
+
 ### M5. 구독, 분석
 
 | ID | 작업 | 요구사항 | 선행 | 완료 조건 | 상태 |
@@ -131,7 +133,7 @@
 | T-502 | 분석: 서버 이벤트 전송, 앱 이벤트 2종 | F11, ARCHITECTURE §12 | T-406 | `AC-F11-01`~`03` | 대기 |
 | T-503 | 마이페이지 나머지: 구독 관리, 이용량 표시, 약관 링크, 문의, 로그아웃 | PRD §5.8, `F10-R07` | T-501, T-109 | 남은 이용량이 AI 코치와 마이페이지에 같은 값으로 보인다(`AC-F10-08`) | 대기 |
 | T-504 | 내부 테스트 배포: EAS 계정 연결, 앱 서명, TestFlight와 내부 테스트 트랙 배포. 빌드 프로필(`eas.json`)은 `T-110`에서 만들었다 | `AD-13`, ARCHITECTURE §15 | T-110, D-A1 | 두 플랫폼의 내부 테스트 빌드가 실기기에 설치되어 운영 API의 `/health`를 호출한다 | 대기 |
-| T-505 | 무료 월 5회 한도 검증 장치: 분석 이벤트(`trial_exhausted`, `monthly_limit_reached`, `paywall_viewed_from_limit`), 측정 지표 정의, 서버 설정으로 한도 변경 가능 | `URGENT_PRE_MVP.md` §6 | T-410, T-502 | 한도 도달 시 이벤트가 기록된다. PostHog에서 지표를 조회할 수 있다. `config.ts` 값 변경 시 앱 업데이트 없이 한도가 바뀐다 | 대기 |
+| T-505 | 무료 월 5회 한도 검증 장치: 분석 이벤트(`trial_exhausted`, `monthly_limit_reached`, `paywall_viewed_from_limit`), 측정 지표 정의, 서버 설정으로 한도 변경 가능 | `URGENT_PRE_MVP.md` §6 | T-410, T-502 | 한도 도달 시 이벤트가 기록된다. PostHog에서 지표를 조회할 수 있다. `config.ts` 값 변경 시 앱 업데이트 없이 한도가 바뀐다 | 대기 (담당: Codex) |
 
 ### M6. 알림, 주간 피드백, 모니터링
 
@@ -155,7 +157,7 @@
 
 | ID | 작업 | 요구사항 | 선행 | 완료 조건 | 상태 |
 |---|---|---|---|---|---|
-| T-304 | Android Health Connect 연동 | `URGENT_PRE_MVP.md` P1 §1 | T-303 | Health Connect 권한 승인 후 최근 30일 러닝 기록을 가져온다. Android 실기기 동작 확인 | 대기 |
+| T-304 | Android Health Connect 연동 | `URGENT_PRE_MVP.md` P1 §1 | T-303 | Health Connect 권한 승인 후 최근 30일 러닝 기록을 가져온다. Android 실기기 동작 확인 | 대기 (담당: Codex) |
 
 출시 차단 기준은 PRD §12와 같다: Training Engine 테스트 전체 통과, `AC-F05` 전체 통과, 결제 테스트 통과, 타인 데이터 접근 차단 확인.
 
@@ -204,6 +206,23 @@ AI 도구가 대신할 수 없는 일이다. 기다리는 시간이 있는 것�
 - 기능(Fxx) 하나는 API와 화면을 한 도구가 맡는다(PRD §14.2). 채팅(F04)만 서버와 화면을 나누며, `T-408`은 `T-406` 뒤에 시작한다.
 - Claude Code는 인증, 계획, 제안·승인, 채팅 서버, 구독을 맡는다. Codex는 Training Engine, 기록, 채팅 화면, 알림, 운영을 맡는다.
 - 화면은 `packages/shared/src/api.ts`의 스키마를 기준으로 만든다.
+
+### 5.1 P0 긴급 작업의 담당 (2026-11-18)
+
+`URGENT_PRE_MVP.md`의 P0 작업을 아래 표의 기준으로 나눈다. 아래 "시점" 표보다 이 표가 우선한다. 새 작업(`T-303`, `T-505`, `T-304`)은 기존 기능 담당을 따랐다: 기록(F07)과 분석·알림은 Codex, 인증·제안·채팅 서버는 Claude Code.
+
+| 순서 | Claude Code | Codex | 막는 것 |
+|---|---|---|---|
+| 1 (지금 시작) | T-403 (제안 모듈). 선행 `T-401`·`T-402`·`T-301`이 모두 "검토" 이상 | T-303 (HealthKit 기록 읽기). 선행 `T-302` 완료. HealthKit 라이브러리 선택은 의존성 추가 전에 개발자에게 제안한다 | - |
+| 2 | T-405 → T-406 (도구, 채팅 서버) | T-410 (체험분 한도). 선행 `T-106`이 "검토"가 되면 시작한다 | `T-406`은 `D-17`, `T-410`은 `T-106`(→ `D-A1`) |
+| 3 | T-106 마무리 (Supabase 로그인 연결, 인증 서비스 쪽 계정 삭제). `D-A1`이 끝나는 대로 다른 작업보다 먼저 한다 | T-408 (AI 코치 화면). `T-406`이 "검토"가 되면 시작한다 | `D-A1`, `T-406` |
+| 4 | T-407 (공급자 비교) | T-601 (알림, 코치 말투 문구 포함), T-502 → T-505 (분석, 한도 검증 장치) | `D-A3`, `D-16`, `T-504`, `D-A7` |
+
+- `T-410`은 `services/api/src/auth/auth.service.ts`에 `identity_hash` 저장을 넣는다. Claude Code의 `T-106` 마무리와 같은 파일을 고치므로, 먼저 끝난 쪽을 병합한 뒤 다른 쪽이 `main`을 받아 이어서 한다.
+- `T-303`은 `packages/shared/src/api.ts`에 기록 출처(`source`)를 더한다. `T-403`도 같은 파일에 제안 스키마를 더할 수 있으므로 `shared` 변경은 작게 나눠 먼저 병합한다.
+- `T-304`(Android Health Connect, P1)는 `T-303`과 같은 구조라 Codex가 맡는다.
+
+### 5.2 마일스톤별 배치
 
 | 시점 | Claude Code | Codex |
 |---|---|---|

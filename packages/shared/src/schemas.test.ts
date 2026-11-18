@@ -42,6 +42,7 @@ const proposal = {
   type: 'reschedule',
   status: 'pending',
   expiresAt: '2026-11-20T06:00:00Z',
+  reasonLine: '여행 일정(금~일)에 맞췄어요',
   consumesQuota: true,
   changes: [
     {
