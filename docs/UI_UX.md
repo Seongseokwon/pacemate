@@ -19,6 +19,20 @@
 
 [PaceMate · Mobile UI](https://www.figma.com/design/EOg570LuvtAluAwOcaD1vb)는 화면 배치와 프로토타입을 확인하는 디자인 원본이다. 기능 요구사항은 PRD, 구현의 토큰과 컴포넌트 규칙은 이 문서가 기준이다.
 
+#### C2 스타일 화면 (확정, 2026-11-18)
+
+| 확인할 내용 | Figma |
+|---|---|
+| C2 샘플 화면 | [01–03 / 샘플 화면 (C2)](https://www.figma.com/design/EOg570LuvtAluAwOcaD1vb/?node-id=48-542) |
+| 첫 실행 플로우 | [04 / 첫 실행 플로우 (C2)](https://www.figma.com/design/EOg570LuvtAluAwOcaD1vb/?node-id=48-1764) |
+| 핵심 플로우 | [05–09 / 핵심 플로우 (C2)](https://www.figma.com/design/EOg570LuvtAluAwOcaD1vb/?node-id=48-5624) |
+| C2 컴포넌트와 토큰 | [10 / C2 컴포넌트 & 토큰 (보기용 시트)](https://www.figma.com/design/EOg570LuvtAluAwOcaD1vb/?node-id=48-8056) |
+| C2 컴포넌트 라이브러리 | [11 / C2 컴포넌트 (라이브러리)](https://www.figma.com/design/EOg570LuvtAluAwOcaD1vb/?node-id=56-17) |
+
+C2 스타일(다크 + 주황) 화면 67장: 기존 와이어프레임 53, 샘플 12, 새 화면 2(코치 고르기, 코치 바꾸기). 이름에 C2가 붙은 화면이 개발 기준이다. 예전 화면과 컴포넌트는 참고용이다.
+
+#### 예전 응원 테마 시안 (참고용)
+
 | 확인할 내용 | Figma |
 |---|---|
 | 기본 앱 화면 | [홈과 AI 코치 흐름](https://www.figma.com/design/EOg570LuvtAluAwOcaD1vb?node-id=4-861), [온보딩·기록·설정](https://www.figma.com/design/EOg570LuvtAluAwOcaD1vb?node-id=4-862) |
@@ -101,22 +115,22 @@ Astryx 디자인 시스템(https://astryx.atmeta.com/)의 적용을 검토했다
 
 | 토큰 | 용도 | 다크 (MVP) | 라이트 (준비) |
 |---|---|---|---|
-| `background.body` | 화면 바탕 (1단계) | `#0B1018` | Figma |
-| `background.surface` | 카드, 머리글, 입력창, 시트 (2단계) | Figma | Figma |
-| `background.raised` | 카드 안에 한 번 더 놓이는 패널 (3단계) | Figma | Figma |
-| `background.muted` | 옅은 채움, 사용자 말풍선 | Figma | Figma |
-| `text.primary` | 본문, 제목, 주 아이콘 | Figma | Figma |
-| `text.secondary` | 보조 설명, 날짜 | Figma | `#6B7482` |
-| `text.disabled` | 비활성 | Figma | Figma |
-| `text.accent` | 주황 글자('오늘', 글자 버튼의 강조) | `#FF5A1F` | `#C2410C` |
-| `icon.secondary` | 보조 아이콘 | Figma | Figma |
+| `background.body` | 화면 바탕 (1단계) | `#0B1018` | `#F4F5F7` |
+| `background.surface` | 카드, 머리글, 입력창, 시트 (2단계) | `#151C26` | `#FFFFFF` |
+| `background.raised` | 카드 안에 한 번 더 놓이는 패널 (3단계) | `#1E2733` | `#F0F2F5` |
+| `background.muted` | 옅은 채움, 사용자 말풍선 | `#1E2733` | `#F0F2F5` |
+| `text.primary` | 본문, 제목, 주 아이콘 | `#F3F5F8` | `#0E141C` |
+| `text.secondary` | 보조 설명, 날짜 | `#B4BCC8` | `#4A5463` |
+| `text.disabled` | 비활성 | `#7D8899` | `#6B7482` |
+| `text.accent` | 주황 글자('오늘', 글자 버튼의 강조) | `#FF8A5C` | `#C2410C` |
+| `icon.secondary` | 보조 아이콘 | `#97A1B0` | `#5C6573` |
 | `accent` | 주 버튼, 진행 표시, '오늘' 표시의 주황 채움 | `#FF5A1F` | `#EE4F14` |
 | `onAccent` | `accent` 위의 글자 | `#0B1018` | `#0B1018` |
-| `accentMuted` | 선택된 항목의 옅은 채움 | Figma | Figma |
-| `border` | 구분선 | Figma | Figma |
-| `borderEmphasized` | 입력창 테두리 | Figma | Figma |
-| `overlay` | 시트·대화 상자 뒤의 어둠 | Figma | Figma |
-| `skeleton` | 로딩 자리 표시 | Figma | Figma |
+| `accentMuted` | 선택된 항목의 옅은 채움 | `#3A2419` | `#FFEDE4` |
+| `border` | 구분선 | `#252F3C` | `#E3E7ED` |
+| `borderEmphasized` | 입력창 테두리 | `#334052` | `#CDD3DC` |
+| `overlay` | 시트·대화 상자 뒤의 어둠 | `#000000B3` | `#0E141C80` |
+| `skeleton` | 로딩 자리 표시 | `#222B37` | `#EBEEF2` |
 
 - 주황은 포인트 색 하나뿐이다. 주 버튼, 진행 표시(`ProgressBar`, `WeekGauge`), '오늘' 표시에만 쓰고 장식에 쓰지 않는다.
 - `onAccent`는 흰색이 아니라 남색이다. 흰 글자는 주황 위에서 대비가 4.5:1에 못 미친다(다크 `#FF5A1F`에서 3.12:1, 라이트 `#EE4F14`에서 3.64:1). 남색 `#0B1018`은 `#FF5A1F` 위에서 6.11:1이다.
@@ -131,12 +145,10 @@ Astryx 디자인 시스템(https://astryx.atmeta.com/)의 적용을 검토했다
 
 | 상태 | `text.*` 다크 / 라이트 | `*Muted` 다크 / 라이트 |
 |---|---|---|
-| success | Figma (현재 `#7FD492`) / Figma (현재 `#1B7A33`) | Figma / Figma |
-| warning | Figma (현재 `#F0C75A`) / Figma (현재 `#8A6100`) | Figma / Figma |
-| error | Figma (현재 `#FF9C96`) / Figma (현재 `#C0262C`) | Figma / Figma |
-| info | Figma (현재 `#8DBEFF`) / Figma (현재 `#0B5FC4`) | Figma / Figma |
-
-"현재"는 바탕이 `#111111`이던 v1.0의 값이다. 바탕이 남색으로 바뀌므로 Figma 값으로 옮긴 뒤 대비를 다시 확인한다.
+| success | `#5FD39A` / `#12784A` | `#163329` / `#E2F4EA` |
+| warning | `#FFC266` / `#9A5B00` | `#33290F` / `#FFF3DC` |
+| error | `#FF8B85` / `#B42318` | `#3A1C1E` / `#FDE7E5` |
+| info | `#8DBBFF` / `#1F5FBF` | `#17253A` / `#E3EEFC` |
 
 강조색은 주황이다(`UX-01`). 강조색을 바꿀 때는 `accent`, `onAccent`, `accentMuted`, `text.accent`를 함께 바꾸고, `onAccent`와의 대비가 4.5:1 이상인지, 훈련 종류 색(§8.1)과 헷갈리지 않는지 확인한다.
 
@@ -159,11 +171,11 @@ Astryx 디자인 시스템(https://astryx.atmeta.com/)의 적용을 검토했다
 
 | 토큰 | 값 | 용도 |
 |---|---|---|
-| `radius.inner` | 6 | 칩, 카드 안의 작은 요소 |
-| `radius.element` | 10 | 버튼, 입력창 |
+| `radius.inner` | 10 | 칩, 카드 안의 작은 요소 |
+| `radius.element` | 14 | 버튼, 입력창 |
 | `radius.container` | 20 | 카드, 패널 |
 | `radius.page` | 28 | 하단 시트의 위쪽 모서리 |
-| `radius.chat` | 28 | 말풍선, 채팅 입력창 |
+| `radius.chat` | 18 | 말풍선, 채팅 입력창 |
 | `radius.full` | 9999 | 원형 버튼, 상태 점 |
 
 ### 3.5 글자
@@ -623,11 +635,11 @@ PRD `F04-R11`~`F04-R13`. 코치마다 다른 것은 AI 응답의 말투뿐이다
 
 | `type` | 표시 이름 | 토큰 | 다크 | 라이트 | 체감 안내 문구 |
 |---|---|---|---|---|---|
-| `walk_run` | 걷고 달리기 | `session.walkRun` | `#3FC4C4` | `#0E8F8F` | 걷기와 달리기를 번갈아 해요 |
-| `easy` | 가볍게 달리기 | `session.easy` | `#5B9DFF` | `#1E6FE0` | 편하게 대화할 수 있는 속도예요 |
-| `tempo` | 조금 빠르게 달리기 | `session.tempo` | 미정(`UX-08`) | 미정(`UX-08`) | 숨이 조금 차지만 유지할 수 있는 속도예요 |
-| `long` | 길게 달리기 | `session.long` | `#A58BFF` | `#6B3FE0` | 편한 속도로 평소보다 오래 달려요 |
-| `race` | 대회 | `session.race` | `#FF7CCB` | `#D63A9E` | 대회 날이에요 |
+| `walk_run` | 걷고 달리기 | `session.walkRun` | `#3CC8C8` | `#0E8F8F` | 걷기와 달리기를 번갈아 해요 |
+| `easy` | 가볍게 달리기 | `session.easy` | `#6AA6FF` | `#1E6FE0` | 편하게 대화할 수 있는 속도예요 |
+| `tempo` | 조금 빠르게 달리기 | `session.tempo` | `#FF9F4A` (임시, `UX-08`) | `#D9620A` (임시, `UX-08`) | 숨이 조금 차지만 유지할 수 있는 속도예요 |
+| `long` | 길게 달리기 | `session.long` | `#A98BFF` | `#6B3FE0` | 편한 속도로 평소보다 오래 달려요 |
+| `race` | 대회 | `session.race` | `#FF6FC4` | `#D63A9E` | 대회 날이에요 |
 
 표시 이름과 문구는 `packages/shared`에 둔다(API_SPEC §2.2). '길게 달리기'와 '오래 달리기' 중 무엇을 쓸지는 아직 정하지 않았다(`UX-10`). 정할 때까지 '길게 달리기'를 쓴다.
 
