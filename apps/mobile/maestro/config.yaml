@@ -1,12 +1,13 @@
 # `maestro test apps/mobile/maestro`가 이 순서로 돌린다. common/ 안의 파일은 다른 흐름이 불러 쓰는 조각이다.
 executionOrder:
   continueOnFailure: true
+  # b17-intro가 앱 데이터를 지우고 인트로를 끝내야 다른 흐름이 로그인 화면에서 시작한다
   flowsOrder:
+    - b17-intro
     - b05-login
     - b07-consent
     - b08-delete-account
     - b18-start
     - b19-coach-select
     - b16-icons
-    - b17-intro
     - b10-b13-onboarding

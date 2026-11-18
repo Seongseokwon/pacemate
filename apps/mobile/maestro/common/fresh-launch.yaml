@@ -1,12 +1,24 @@
-# 앱 데이터를 지우고 연다. 개발 빌드의 번들러 연결도 지워지므로 다시 고르고 개발 메뉴 안내를 닫는다.
+# 앱 데이터를 지우고 연다. 개발 빌드의 번들러 연결도 지워지므로 다시 붙이고 개발 메뉴 안내를 닫는다.
 appId: com.pacemate.app
 ---
 - launchApp:
     clearState: true
     clearKeychain: true
-- extendedWaitUntil: { visible: "http://.*:8081", timeout: 20000 }
-- tapOn: "http://.*:8081"
-- extendedWaitUntil: { visible: "Continue|나에게 꼭 맞는 계획", timeout: 60000 }
+- runFlow:
+    when: { platform: iOS }
+    commands:
+      - extendedWaitUntil: { visible: "http://.*:8081", timeout: 20000 }
+      - tapOn: "http://.*:8081"
+# Android 에뮬레이터는 번들러 목록에 서버가 뜨지 않아 주소를 넣어 붙는다(adb reverse tcp:8081 필요)
+- runFlow:
+    when: { platform: Android }
+    commands:
+      - extendedWaitUntil: { visible: "Connect", timeout: 20000 }
+      - tapOn: "http://"
+      - inputText: "http://localhost:8081"
+      - hideKeyboard
+      - tapOn: "Connect"
+- extendedWaitUntil: { visible: "Continue|나에게 꼭 맞는 계획", timeout: 120000 }
 - runFlow:
     when: { visible: "Continue" }
     commands:
