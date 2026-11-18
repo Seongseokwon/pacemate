@@ -29,7 +29,7 @@ import { TRAINING_ENGINE, type TrainingEngine } from '../plan/training-engine.js
 import { LEVEL_CLASSIFIER } from '../profile/level-classifier.js';
 import { paceOf } from '../profile/profile.service.js';
 import { UsageService } from '../usage/usage.service.js';
-import { engineProfileOf, planStateOf, snapshotOf, type SessionWithWorkout } from './plan-state.js';
+import { engineProfileOf, planStateOf, sessionStateOf, snapshotOf, type SessionWithWorkout } from './plan-state.js';
 import { GOAL_CHANGE_MIN_WEEKS_WITH_RECORDS, GOAL_CHANGE_RECENT_WEEKS, SERVICE_UTC_OFFSET } from './proposal.config.js';
 import { consumesQuota, toChatMessage, toProposal } from './proposal.mapper.js';
 import { APPROVE_ERRORS, FAILURE_MESSAGES, reasonLineOf, RESULT_MESSAGES } from './proposal-text.js';
@@ -182,12 +182,14 @@ export class ProposalService {
       const keptDates = new Set(sessions.filter((s) => s.workout && !s.isSkipped).map((s) => toDateString(s.date)));
       const candidates = generated.options.map((option) => ({ option, sessions: option.sessions.filter((s) => !keptDates.has(s.date)) }));
       const engine = { profile: generated.profile, level: generated.level };
-      const chosen = candidates.find(({ option, sessions: kept }) =>
-        this.passesAlone({ ...engine, goal: after, kind: option.kind, startDate: option.startDate, endDate: option.endDate }, kept, date),
+      const planStart = toDateString(plan.startDate);
+      const removable = (s: SessionWithWorkout) => toDateString(s.date) >= date && !s.workout;
+      const kept = sessions.filter((s) => !removable(s)).map(sessionStateOf);
+      const chosen = candidates.find(({ option, sessions: fresh }) =>
+        this.passesCombined({ ...engine, goal: after, kind: option.kind, startDate: option.startDate, endDate: option.endDate }, kept, fresh, date),
       );
       if (!chosen) return fail('NO_SAFE_OPTION');
 
-      const planStart = toDateString(plan.startDate);
       // 새 훈련의 주 번호는 기존 계획의 첫 주부터 센다. 새 계획이 더 일찍 시작하면 그 주가 첫 주다
       const weekOffset = Math.max(0, daysBetween(mondayOf(planStart), mondayOf(chosen.option.startDate)) / 7);
       const payload: GoalChangePayload = {
@@ -197,12 +199,11 @@ export class ProposalService {
         kind: chosen.option.kind,
         warnings: chosen.option.warnings,
         removeSessions: sessions
-          .filter((s) => toDateString(s.date) >= date && !s.workout)
+          .filter(removable)
           .map((s) => ({ id: s.id, ...snapshotOf({ date: toDateString(s.date), type: s.type, distanceKm: s.distanceKm?.toNumber() ?? null, durationMin: s.durationMin }) })),
         addSessions: chosen.sessions.map(({ date: day, type, distanceKm, durationMin, runIntervalMin, paceRange, weekNumber }) => ({
           date: day, type, distanceKm, durationMin, runIntervalMin, paceRange, weekNumber: weekNumber + weekOffset,
         })),
-        weekOffset,
       };
       const created = await insert(tx, date, {
         userId,
@@ -230,6 +231,7 @@ export class ProposalService {
   /** 상태만 "취소"로 바꾼다. 데이터와 이용량은 건드리지 않는다(PRD §6.4, AC-F05-03). */
   async cancel(userId: string, id: string): Promise<Proposal> {
     const row = await this.prisma.$transaction(async (tx) => {
+      await lockUser(tx, userId);
       const locked = await lockProposal(tx, userId, id);
       if (locked.status === 'cancelled') return locked;
       if (locked.status !== 'pending') throw new AppError('PROPOSAL_NOT_PENDING', APPROVE_ERRORS.notPending);
@@ -248,6 +250,8 @@ export class ProposalService {
   async approve(userId: string, id: string): Promise<ApproveProposalResponse> {
     const date = today();
     const messageId = await this.prisma.$transaction(async (tx) => {
+      // 화면의 기록 저장과 같은 순서(사용자 → 계획)로 잠근다. 승인이 계획을 잡은 채 사용자 행을 기다리지 않게 한다
+      await lockUser(tx, userId);
       const row = await lockProposal(tx, userId, id);
       if (row.status === 'approved') return (row.result as { resultMessageId: string }).resultMessageId;
       if (row.status !== 'pending') throw new AppError('PROPOSAL_NOT_PENDING', APPROVE_ERRORS.notPending);
@@ -324,8 +328,10 @@ export class ProposalService {
     // 지울 훈련에 그 사이 기록이 연결되었으면 다시 요청하게 한다
     if (payload.removeSessions.some((s) => !byId.get(s.id) || byId.get(s.id)!.workout)) throw targetChanged();
     const { engine } = payload;
-    const fresh = payload.addSessions.map((s) => ({ ...s, weekNumber: s.weekNumber - payload.weekOffset }));
-    if (!this.passesAlone({ ...engine, goal: payload.goal.after, kind: payload.kind }, fresh, date)) throw new AppError('SAFETY_CHECK_FAILED', APPROVE_ERRORS.safety);
+    const removing = new Set(payload.removeSessions.map((s) => s.id));
+    const kept = sessions.filter((s) => !removing.has(s.id)).map(sessionStateOf);
+    const context = { profile: engine.profile, level: engine.level, goal: payload.goal.after, kind: payload.kind, startDate: engine.startDate, endDate: engine.endDate };
+    if (!this.passesCombined(context, kept, payload.addSessions, date)) throw new AppError('SAFETY_CHECK_FAILED', APPROVE_ERRORS.safety);
     await charge();
 
     if (payload.profileUpdate) await tx.runnerProfile.update({ where: { userId: row.userId }, data: payload.profileUpdate });
@@ -346,7 +352,6 @@ export class ProposalService {
       })),
     });
     const { after } = payload.goal;
-    const planStart = toDateString(plan.startDate);
     await tx.trainingPlan.update({
       where: { id: plan.id },
       data: {
@@ -354,7 +359,7 @@ export class ProposalService {
         goalDistance: after.goalDistance,
         goalTimeSec: after.goalTimeSec,
         raceDate: after.raceDate === null ? null : toDbDate(after.raceDate),
-        startDate: toDbDate(engine.startDate < planStart ? engine.startDate : planStart),
+        startDate: toDbDate(earlier(toDateString(plan.startDate), engine.startDate)),
         endDate: toDbDate(engine.endDate),
         warnings: payload.warnings,
         engineVersion: this.engine.version,
@@ -370,12 +375,19 @@ export class ProposalService {
     });
   }
 
-  /** 새로 만든 훈련만으로 이뤄진 계획이 검증기를 통과하는지(TE-S12). 지난 주의 훈련은 이미 끝난 일이라 넣지 않는다 */
-  private passesAlone(context: Omit<PlanState, 'sessions'>, sessions: { date: string; type: PlanSessionState['type']; distanceKm: number | null; durationMin: number | null; runIntervalMin: number | null; paceRange: PlanSessionState['paceRange']; weekNumber: number }[], date: string): boolean {
-    if (sessions.length === 0) return false;
-    const plan: PlanState = { ...context, sessions: sessions.map((s, index) => ({ ...s, id: String(index), completed: false, skipped: false })) };
-    return this.engine.validate({ plan, today: date }).ok;
+  /**
+   * 새 계획이 시작하는 주부터의 최종 계획이 검증기를 통과하는지(TE-S12, AC-F05-09). 새 훈련과 그 주들에 남는 기록한 훈련을 합친다.
+   * 같은 주에 거리·시간 기반이 섞이거나(TE-S14) 남는 훈련 때문에 주간 거리가 넘치는 것을 막는다.
+   * 시작 주 전은 새 계획과 같이 최근 주간 거리를 기준으로 본다. 새 계획은 그 값으로 만들었다(F02-R09).
+   */
+  private passesCombined(context: Omit<PlanState, 'sessions'>, kept: PlanSessionState[], fresh: GoalChangePayload['addSessions'], date: string): boolean {
+    if (fresh.length === 0) return false;
+    const from = mondayOf(context.startDate);
+    const overlapping = kept.filter((s) => s.date >= from);
+    const added = fresh.map((s, index) => ({ ...s, id: `new-${index}`, completed: false, skipped: false }));
+    return this.engine.validate({ plan: { ...context, sessions: [...overlapping, ...added] }, today: date }).ok;
   }
+
 }
 
 // 트랜잭션 안에서 쓰는 함수
@@ -385,7 +397,7 @@ async function lockUser(tx: Db, userId: string): Promise<void> {
   await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
 }
 
-/** 잠금 순서는 항상 제안 → 계획이다(ARCHITECTURE §7.6). 다른 사용자의 제안은 없는 것으로 본다(DI-07) */
+/** 잠금 순서는 항상 사용자 → 제안 → 계획이다(ARCHITECTURE §7.6). 다른 사용자의 제안은 없는 것으로 본다(DI-07) */
 async function lockProposal(tx: Db, userId: string, id: string): Promise<ChangeProposal> {
   const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM change_proposals WHERE id = ${id}::uuid AND user_id = ${userId}::uuid FOR UPDATE`;
   if (locked.length === 0) throw new AppError('NOT_FOUND', APPROVE_ERRORS.notFound);
@@ -475,21 +487,28 @@ async function finishPlanChange(tx: Db, row: ChangeProposal, plan: TrainingPlan,
   });
 }
 
-/** 기록 등록 승인. 계획을 바꾸지 않으므로 변경 이력과 버전은 건드리지 않는다(DATABASE §3.8) */
+/**
+ * 기록 등록 승인. 계획을 바꾸지 않으므로 변경 이력과 버전은 건드리지 않는다(DATABASE §3.8).
+ * 사용자 행은 승인 처음에 잠갔다. 화면의 기록 저장과 같이 계획을 잠근 뒤 훈련과 중복을 다시 확인한다.
+ */
 async function applyWorkoutLog(tx: Db, row: ChangeProposal, date: string): Promise<void> {
   const { workout } = workoutLogPayloadSchema.parse(row.payload);
   if (workout.date > date) throw targetChanged();
   if (workout.plannedSessionId) {
-    const session = await tx.plannedSession.findFirst({ where: { id: workout.plannedSessionId, userId: row.userId } });
-    if (!session || session.isSkipped) throw targetChanged();
-    await tx.$queryRaw`SELECT id FROM training_plans WHERE id = ${session.planId}::uuid AND user_id = ${row.userId}::uuid FOR UPDATE`;
-    const linked = await tx.workoutLog.findFirst({ where: { plannedSessionId: session.id }, select: { id: true } });
-    if (linked) throw targetChanged();
+    const found = await tx.plannedSession.findFirst({ where: { id: workout.plannedSessionId, userId: row.userId }, select: { planId: true } });
+    if (!found) throw targetChanged();
+    await tx.$queryRaw`SELECT id FROM training_plans WHERE id = ${found.planId}::uuid AND user_id = ${row.userId}::uuid FOR UPDATE`;
+    const session = await tx.plannedSession.findFirst({ where: { id: workout.plannedSessionId, userId: row.userId }, include: withWorkoutId });
+    if (!session || session.isSkipped || session.workout) throw targetChanged();
   }
+  const duplicate = await tx.workoutLog.findFirst({ where: { userId: row.userId, date: toDbDate(workout.date), distanceKm: workout.distanceKm, durationSec: workout.durationSec }, select: { id: true } });
+  if (duplicate) throw new AppError('WORKOUT_DUPLICATE', '같은 운동 기록이 이미 있어요. 다시 확인해 주세요.');
   await tx.workoutLog.create({ data: { ...workout, date: toDbDate(workout.date), userId: row.userId, source: 'chat' } });
 }
 
 // 순수 함수
+
+const earlier = (a: string, b: string): string => (a < b ? a : b);
 
 const targetChanged = () => new AppError('TARGET_CHANGED', APPROVE_ERRORS.targetChanged);
 

@@ -317,6 +317,10 @@ describe('POST /v1/proposals/goal-change (F02-R09)', () => {
     const approved = await approve(proposal.id);
     expect(approved.status).toBe(200);
     expect(approved.body.usage.reschedule.used).toBe(0);
+    // 승인 때도 새 계획이 시작하는 주부터의 최종 계획을 다시 검증한다(TE-S12)
+    const revalidated = engine.validate.mock.calls.at(-1)![0].plan;
+    expect(revalidated.startDate).toBe('2026-11-25');
+    expect(revalidated.sessions.filter((s) => s.id.startsWith('new-'))).toHaveLength(proposal.changes.filter((c) => c.action === 'add').length);
     const plan = await prisma.trainingPlan.findUniqueOrThrow({ where: { id: planId } });
     expect(plan).toMatchObject({ goalDistance: 'ten_k', version: 2 });
     expect(await prisma.plannedSession.findUnique({ where: { id: on('2026-11-18').id } })).not.toBeNull();
@@ -329,6 +333,20 @@ describe('POST /v1/proposals/goal-change (F02-R09)', () => {
     // 새 계획 전체가 안전 규칙을 지킨다(AC-F05-09)
     const summary = await t.call('get', '/v1/plan', USER_A);
     expect(summary.body).toMatchObject({ goalDistance: 'ten_k', version: 2 });
+  });
+
+  test('남는 훈련과 합친 계획이 안전 규칙을 어기면 제안을 만들지 않는다 (TE-S14, AC-F05-09)', async () => {
+    const { on } = await startPlan();
+    // 이번 주 거리 기반 훈련을 기록했는데, 주간 거리 0으로 시간 기반 계획을 만들면 같은 주에 두 방식이 섞인다
+    await t.call('post', '/v1/workouts', USER_A, { date: TODAY, distanceKm: 3, durationSec: 1200, plannedSessionId: on('2026-11-18').id });
+    const res = await t.call('post', '/v1/proposals/goal-change', USER_A, { goal: { goalDistance: 'none' }, profile: { recentWeeklyKm: 0 } });
+
+    const generated = engine.generate.mock.results.at(-1)!.value as ReturnType<typeof generate>;
+    expect(generated.options[0]!.sessions.some((s) => s.date < '2026-11-23' && s.distanceKm === null)).toBe(true);
+    expect(res.status).toBe(422);
+    expect(res.body.code).toBe('PLAN_NOT_FEASIBLE');
+    expect(engine.validate.mock.results.at(-1)!.value).toMatchObject({ ok: false, violations: expect.arrayContaining(['TE-S14']) });
+    expect(await prisma.changeProposal.count()).toBe(0);
   });
 
   test('바꿀 것이 없거나 목표 없음에 대회 날짜를 넣으면 입력 오류다', async () => {
@@ -370,6 +388,52 @@ describe('채팅의 기록 등록 제안 (AC-F07-05)', () => {
     expect(res.body.usage.reschedule.used).toBe(0);
     expect(await prisma.workoutLog.findFirstOrThrow()).toMatchObject({ source: 'chat', plannedSessionId: on('2026-11-18').id });
     expect(await prisma.planChangeLog.count()).toBe(0);
+  });
+
+  test('그 사이 연결할 훈련이 생략되었으면 승인하지 않는다', async () => {
+    const { on } = await startPlan();
+    const proposal = created(await proposals.createWorkoutLog(USER_A, { date: TODAY, distanceKm: 3, durationSec: 1200, sessionId: on('2026-11-20').id }));
+    await prisma.plannedSession.updateMany({ where: { id: on('2026-11-20').id }, data: { isSkipped: true } });
+
+    const res = await approve(proposal.id);
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('TARGET_CHANGED');
+    expect(await prisma.workoutLog.count()).toBe(0);
+  });
+
+  test('제안 뒤 화면에서 같은 기록을 저장했으면 승인 때 중복으로 거부한다', async () => {
+    await startPlan();
+    const proposal = created(await proposals.createWorkoutLog(USER_A, { date: TODAY, distanceKm: 3, durationSec: 1200 }));
+    expect((await t.call('post', '/v1/workouts', USER_A, { date: TODAY, distanceKm: 3, durationSec: 1200 })).status).toBe(201);
+
+    const res = await approve(proposal.id);
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('WORKOUT_DUPLICATE');
+    expect(await prisma.workoutLog.count()).toBe(1);
+    expect((await t.call('get', `/v1/proposals/${proposal.id}`, USER_A)).body.status).toBe('pending');
+  });
+
+  test('승인과 화면 저장이 동시에 일어나도 같은 기록은 하나만 남는다', async () => {
+    await startPlan();
+    const proposal = created(await proposals.createWorkoutLog(USER_A, { date: TODAY, distanceKm: 3, durationSec: 1200 }));
+    const [approved, saved] = await Promise.all([approve(proposal.id), t.call('post', '/v1/workouts', USER_A, { date: TODAY, distanceKm: 3, durationSec: 1200 })]);
+
+    // 먼저 잠근 쪽이 저장하고, 나중 쪽은 중복으로 거부된다
+    const outcomes = [`${approved.status}`, `${saved.status}`].sort();
+    expect([['200', '409'], ['201', '409']]).toContainEqual(outcomes);
+    expect([approved.body.code, saved.body.code]).toContain('WORKOUT_DUPLICATE');
+    expect(await prisma.workoutLog.count()).toBe(1);
+  });
+
+  test('승인과 일정 변경 승인이 동시에 일어나도 교착 없이 끝난다', async () => {
+    const { on } = await startPlan();
+    const proposal = created(await proposals.createReschedule(USER_A, { changeType: 'move', reason: 'schedule', sessionId: on('2026-11-18').id, targetDate: '2026-11-19' }));
+    const results = await Promise.all([
+      approve(proposal.id),
+      t.call('post', '/v1/workouts', USER_A, { date: TODAY, distanceKm: 3, durationSec: 1200, plannedSessionId: on('2026-11-20').id }),
+      approve(proposal.id),
+    ]);
+    expect(results.map((r) => r.status)).toEqual([200, 201, 200]);
   });
 
   test('미래 날짜, 같은 기록, 이미 기록한 훈련은 제안을 만들지 않는다', async () => {

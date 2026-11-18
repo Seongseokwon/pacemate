@@ -132,8 +132,6 @@ export const goalChangePayloadSchema = z.object({
   removeSessions: z.array(sessionSnapshotSchema.extend({ id: idSchema })),
   /** 만들 훈련. `weekNumber`는 기존 계획의 첫 주부터 센 값이다 */
   addSessions: z.array(newSessionSchema),
-  /** 새 계획의 주 번호(1부터)에 더한 값. 승인 때 검증기에 원래 주 번호를 넘기려고 둔다 */
-  weekOffset: z.int().nonnegative(),
 });
 export type GoalChangePayload = z.infer<typeof goalChangePayloadSchema>;
 
