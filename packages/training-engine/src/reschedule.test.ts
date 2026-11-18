@@ -35,7 +35,26 @@ test('TE-R02 같은 주의 날짜로만 이동한다', () => {
 
 test('TE-R03 횟수를 줄일 때 낮은 우선순위부터 생략한다', () => {
   const result = reschedule(input({ changeType: 'reduce_count', weekStart: '2026-11-16', maxSessions: 2 }));
-  expect(result.ok && result.changes).toEqual([expect.objectContaining({ sessionId: 'a', action: 'skip' })]);
+  expect(result.ok && result.changes).toEqual([expect.objectContaining({ sessionId: 'b', action: 'skip' })]);
+  // 길게 달리기는 끝까지 남긴다
+  const one = reschedule(input({ changeType: 'reduce_count', weekStart: '2026-11-16', maxSessions: 1 }));
+  expect(one.ok && one.changes.map((c) => c.sessionId).sort()).toEqual(['a', 'b']);
+});
+
+test('TE-R03 우선순위가 같으면 사용자가 고른 훈련을 먼저 지킨다', () => {
+  const result = reschedule(input({ changeType: 'move', sessionId: 'a', targetDate: '2026-11-19' }));
+  expect(result.ok && result.changes).toEqual([
+    expect.objectContaining({ sessionId: 'a', action: 'move', after: expect.objectContaining({ date: '2026-11-19' }) }),
+    expect.objectContaining({ sessionId: 'b', action: 'skip' }),
+  ]);
+});
+
+test('횟수 줄이기는 그 주의 남은 훈련만 센다', () => {
+  const done = { ...plan, sessions: [{ ...plan.sessions[0]!, completed: true }, ...plan.sessions.slice(1)] };
+  const today = '2026-11-18';
+  expect(reschedule(input({ changeType: 'reduce_count', weekStart: '2026-11-16', maxSessions: 2 }, { plan: done, today }))).toEqual({ ok: false, reasonCode: 'NOTHING_TO_CHANGE' });
+  const result = reschedule(input({ changeType: 'reduce_count', weekStart: '2026-11-16', maxSessions: 1 }, { plan: done, today }));
+  expect(result.ok && result.changes).toEqual([expect.objectContaining({ sessionId: 'b', action: 'skip' })]);
 });
 
 test('TE-R03 이동할 자리에 가벼운 훈련이 있으면 길게 달리기를 먼저 보존한다', () => {
@@ -63,12 +82,14 @@ test('TE-R06 대회 일정은 변경하지 않는다', () => {
 
 test('TE-R07 변경 목록과 주간 거리 및 생략 횟수를 돌려준다', () => {
   const result = reschedule(input({ changeType: 'reduce_count', weekStart: '2026-11-16', maxSessions: 2 }));
-  expect(result.ok && result.impact).toEqual({ weeklyDistanceBeforeKm: 10, weeklyDistanceAfterKm: 8, skippedCount: 1 });
-  expect(result.ok && result.changes[0]).toEqual({ sessionId: 'a', action: 'skip', before: { date: '2026-11-17', type: 'easy', distanceKm: 2, durationMin: null }, after: null });
+  expect(result.ok && result.impact).toEqual({ weeklyDistanceBeforeKm: 10, weeklyDistanceAfterKm: 6, skippedCount: 1 });
+  expect(result.ok && result.changes[0]).toEqual({ sessionId: 'b', action: 'skip', before: { date: '2026-11-19', type: 'easy', distanceKm: 4, durationMin: null }, after: null });
 });
 
 test('TE-R08 자리가 없으면 안전한 생략안을 반환한다', () => {
-  const result = reschedule(input({ changeType: 'move', sessionId: 'a', targetDate: '2026-11-19' }));
+  // 옮길 날에 이미 완료한 훈련이 있다
+  const done = { ...plan, sessions: [plan.sessions[0]!, { ...plan.sessions[1]!, date: '2026-11-16', completed: true }, plan.sessions[2]!] };
+  const result = reschedule(input({ changeType: 'move', sessionId: 'a', targetDate: '2026-11-16' }, { plan: done }));
   expect(result.ok && result.changes.some((c) => c.sessionId === 'a' && c.action === 'skip')).toBe(true);
 });
 
@@ -82,6 +103,12 @@ test('TE-R09 결과는 결정적이고 원본을 바꾸지 않는다', () => {
 test('TE-R10 이번 주와 다음 주만 변경한다', () => {
   expect(reschedule(input({ changeType: 'unavailable_dates', unavailableDates: ['2026-11-30'] }))).toEqual({ ok: false, reasonCode: 'OUT_OF_RANGE' });
   expect(reschedule(input({ changeType: 'move', sessionId: 'a', targetDate: '2026-11-30' }))).toEqual({ ok: false, reasonCode: 'OUT_OF_RANGE' });
+});
+
+test('더 가볍게는 저장 단위인 0.1km로 내림한다', () => {
+  const odd = { ...plan, profile: { ...plan.profile, recentWeeklyKm: 14 }, sessions: [run('a', '2026-11-17', 'easy', 5.5), run('b', '2026-11-19', 'easy', 3), run('c', '2026-11-22', 'long', 5.5)] };
+  const result = reschedule(input({ changeType: 'ease', sessionId: 'a', easeOption: 'lighter' }, { plan: odd, reason: 'fatigue' }));
+  expect(result.ok && result.changes[0]).toMatchObject({ action: 'modify', after: { distanceKm: 2.7 } });
 });
 
 test('피로로 완화하면 50%를 적용하고 검증한다', () => {
@@ -120,3 +147,60 @@ test('불변식: 생성된 계획에서 성공한 모든 변경은 검증기를 
     if (result.ok) expect(validate({ plan: apply(state, result), today: data.today, change: { previous: state, reason: data.reason } })).toEqual({ ok: true });
   }), { numRuns: 100 });
 }, 60_000);
+
+const generatedPlans = fc
+  .record({
+    km: fc.integer({ min: 0, max: 60 }),
+    count: fc.integer({ min: 2, max: 5 }),
+    days: fc.uniqueArray(fc.integer({ min: 1, max: 7 }), { minLength: 5, maxLength: 7 }),
+    goalDistance: fc.constantFrom('five_k', 'ten_k', 'half', 'none'),
+    weeksIn: fc.integer({ min: 0, max: 5 }),
+    weekday: fc.integer({ min: 0, max: 6 }),
+    pick: fc.nat(),
+    reason: fc.constantFrom('schedule', 'fatigue', 'pain'),
+  })
+  .map((r) => {
+    const profile = { ...plan.profile, experience: 'under_2y' as const, continuousRun: 'under_60m' as const, recentWeeklyKm: r.km, weeklyRunCount: r.count, preferredWeekdays: r.days };
+    const goal = { goalDistance: r.goalDistance, goalTimeSec: null, raceDate: null };
+    const generated = generate({ profile, goal, today: '2026-11-15' });
+    const option = generated.options[0]!;
+    const today = new Date(Date.parse('2026-11-16') + (r.weeksIn * 7 + r.weekday) * 86_400_000).toISOString().slice(0, 10);
+    // 오늘 전의 훈련은 기록을 연결했다고 본다
+    const sessions = option.sessions.map((s, i) => ({ ...s, id: String(i), completed: s.date < today, skipped: false }));
+    const state: PlanState = { ...option, profile, goal, level: generated.level, sessions };
+    const weekStart = Date.parse(today) - ((Date.parse(today) / 86_400_000 + 3) % 7) * 86_400_000;
+    const changeable = sessions.filter((s) => s.date >= today && s.type !== 'race' && Date.parse(s.date) < weekStart + 14 * 86_400_000);
+    return { state, today, target: changeable[r.pick % Math.max(changeable.length, 1)], reason: r.reason };
+  });
+
+test('TE-R08 TE-S11 불변식: 이번 주·다음 주의 훈련은 언제나 쉬기로 바꿀 수 있고, 결과는 검증기를 통과한다', () => {
+  fc.assert(
+    fc.property(generatedPlans, ({ state, today, target, reason }) => {
+      if (!target) return;
+      for (const easeOption of ['rest', 'lighter'] as const) {
+        const result = reschedule({ plan: state, request: { changeType: 'ease', sessionId: target.id, easeOption }, reason, today });
+        expect(result.ok).toBe(true);
+        if (result.ok) expect(validate({ plan: apply(state, result), today, change: { previous: state, reason } })).toEqual({ ok: true });
+      }
+    }),
+    { numRuns: 500 },
+  );
+}, 120_000);
+
+test('TE-R05 불가일이 많아도 검증 횟수 상한 안에서 끝나고 줄이는 변경안을 낸다', () => {
+  const profile = { ...plan.profile, experience: 'under_2y' as const, recentWeeklyKm: 40, weeklyRunCount: 5, preferredWeekdays: [1, 2, 4, 6, 7] };
+  const goal = { goalDistance: 'half' as const, goalTimeSec: null, raceDate: null };
+  const generated = generate({ profile, goal, today: '2026-11-15' });
+  const option = generated.options[0]!;
+  const state: PlanState = { ...option, profile, goal, level: generated.level, sessions: option.sessions.map((s, i) => ({ ...s, id: String(i), completed: false, skipped: false })) };
+  for (const unavailableDates of [
+    ['2026-11-16', '2026-11-17', '2026-11-18', '2026-11-23', '2026-11-24', '2026-11-25'],
+    ['2026-11-17', '2026-11-19', '2026-11-21', '2026-11-24', '2026-11-26', '2026-11-28'],
+  ]) {
+    const started = Date.now();
+    const result = reschedule({ plan: state, request: { changeType: 'unavailable_dates', unavailableDates }, reason: 'schedule', today: '2026-11-16' });
+    expect(Date.now() - started).toBeLessThan(3000);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(validate({ plan: apply(state, result), today: '2026-11-16', change: { previous: state, reason: 'schedule' } })).toEqual({ ok: true });
+  }
+}, 30_000);
