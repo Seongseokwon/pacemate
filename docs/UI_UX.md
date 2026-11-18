@@ -41,7 +41,7 @@
 |---|---|---|
 | 홈의 대회 3일 전(D-3)·전날(D-1) 카드. `RaceGoalCard`를 쓰지 않는 별도 카드 | PRD §5.4에 없다. 대회 전날은 알림(`F09-R08`)만 있다 | `UX-16`에서 정하기 전에는 만들지 않는다 |
 
-Claude Code와 Codex에서 레이어 정보를 읽을 때는 각 도구에 연결된 Figma 계정에 파일 열람 권한이 있어야 한다. 연결이 필요한 경우 [Figma 공식 설정 가이드](https://developers.figma.com/docs/figma-mcp-server/remote-server-installation/)에서 사용하는 도구의 절차를 따른다. 연결 또는 호출 한도 때문에 열 수 없으면 해당 프레임의 최신 스크린샷을 요청한다.
+Claude Code와 Codex에서 레이어 정보를 읽을 때는 각 도구에 연결된 Figma 계정에 파일 열람 권한이 있어야 한다. 연결이 필요한 경우 [Figma 공식 설정 가이드](https://developers.figma.com/docs/figma-mcp-server/remote-server-installation/)에서 사용하는 도구의 절차를 따른다. **Figma MCP 할당량이 부족하면 `docs/design/` 폴더의 참조 이미지와 자산으로 검증한다** ([`docs/design/README.md`](design/README.md) 참고).
 
 ---
 
