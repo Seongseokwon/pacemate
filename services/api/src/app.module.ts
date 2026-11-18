@@ -23,10 +23,12 @@ import { LEVEL_CLASSIFIER } from './profile/level-classifier.js';
 import { ProfileController } from './profile/profile.controller.js';
 import { ProfileService } from './profile/profile.service.js';
 import { UsageService } from './usage/usage.service.js';
+import { WorkoutController } from './workout/workout.controller.js';
+import { WorkoutService } from './workout/workout.service.js';
 
 @Module({
   imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: RATE_LIMIT_PER_MINUTE.default }])],
-  controllers: [HealthController, MeController, ProfileController, PlanController],
+  controllers: [HealthController, MeController, ProfileController, PlanController, WorkoutController],
   providers: [
     { provide: APP_CONFIG, useFactory: () => loadConfig() },
     {
@@ -36,6 +38,7 @@ import { UsageService } from './usage/usage.service.js';
     },
     PrismaService,
     UsageService,
+    WorkoutService,
     TokenVerifier,
     AccountService,
     ProfileService,

@@ -41,7 +41,7 @@ export async function createTestApp(options: { controllers?: Type[]; override?: 
       .sign(privateKey);
 
   /** `userId`로 로그인한 앱의 요청 */
-  const call = async (method: 'get' | 'post' | 'put' | 'delete', path: string, userId: string, body?: object) =>
+  const call = async (method: 'get' | 'post' | 'put' | 'patch' | 'delete', path: string, userId: string, body?: object) =>
     request(app.getHttpServer())[method](path)
       .set({ 'X-App-Version': '1.0.0', 'X-App-Platform': 'ios' })
       .auth(await sign(userId), { type: 'bearer' })
