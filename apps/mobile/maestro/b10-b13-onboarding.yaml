@@ -53,11 +53,19 @@ appId: com.pacemate.app
 - tapOn: "건너뛰기"
 # B-13
 - extendedWaitUntil: { visible: "나갈 대회 날짜가.*", timeout: 5000 }
-# shortcut: 날짜 입력칸에 접근성 이름이 없어 위치로 누른다, 이름을 붙이면 글자로 바꾼다
-- tapOn: { point: "50%,30%" }
+# shortcut: 날짜 입력칸에 접근성 이름이 없어 제목 아래 요소로 누른다, 이름을 붙이면 글자로 바꾼다
+- tapOn: { below: "^대회 날짜$" }
 - waitForAnimationToEnd
 - takeScreenshot: b13-picker
-- tapOn: { point: "91%,46%" }
+# 기기의 날짜 선택기를 닫는다(UI_UX §812). iOS는 시트의 닫기, Android는 시스템 창이다
+- runFlow:
+    when: { platform: iOS }
+    commands:
+      - tapOn: { point: "91%,46%" }
+- runFlow:
+    when: { platform: Android }
+    commands:
+      - back
 - waitForAnimationToEnd
 - tapOn: "건너뛰기"
 - assertVisible: "Apple로 계속하기"

@@ -1,8 +1,14 @@
 # B-16: 아이콘 23개를 찍는다. 모양은 스크린샷을 docs/design/icons/*.svg와 눈으로 비교한다
 appId: com.pacemate.app
 ---
+# 앞서 내려 둔 위치가 남지 않게 앱을 다시 켜고 연다
+- stopApp
+- launchApp
+- extendedWaitUntil: { visible: "Apple로 계속하기", timeout: 30000 }
 - openLink: pacemate://ui-gallery
 - extendedWaitUntil: { visible: "컴포넌트 예시", timeout: 15000 }
-- scrollUntilVisible: { element: "카드", direction: DOWN, timeout: 30000, centerElement: true }
+# shortcut: scrollUntilVisible이 Android에서 보이는 제목도 못 찾아 정해진 거리만 민다, 화면 구성이 바뀌면 거리를 고친다
+- swipe: { start: "50%,75%", end: "50%,40%", duration: 2000 }
 - waitForAnimationToEnd
+- assertVisible: "아이콘"
 - takeScreenshot: b16-icons
