@@ -231,7 +231,7 @@ PRD §14.3의 순서로 범위 축소를 개발자에게 제안한다. 도구가
 | B-01 | T-110 | 네이티브 변경이 없어 새로 빌드하지 않아도 된다. 설치된 개발 빌드와 `pnpm --filter @pacemate/mobile dev` | iOS와 Android에서 앱을 연다 | `T-106` 전의 빌드는 탭 화면이 뜬다. `T-106`부터는 B-04를 본다 | 요청 |
 | B-02 | T-110 | B-01과 같다. `apps/mobile/.env`에 스토어 주소가 없는 상태 | 앱을 켠 채로 `pacemate://update`를 연다. iOS: `xcrun simctl openurl booted pacemate://update`, Android: `adb shell am start -a android.intent.action.VIEW -d pacemate://update` | "새 버전이 나왔어요. 계속 쓰려면 스토어에서 업데이트해 주세요." 안내가 보이고 버튼은 없다 | 요청 |
 | B-03 | T-110 | `apps/mobile/.env`에 `EXPO_PUBLIC_IOS_STORE_URL`과 `EXPO_PUBLIC_ANDROID_STORE_URL`을 아무 웹 주소로 넣고 번들러를 다시 켠다. 확인 후 지운다 | `pacemate://update`를 열고 버튼을 누른다 | "업데이트하러 가기" 버튼이 보이고, 누르면 넣은 주소가 열린다 | 요청 |
-| B-04 | T-106 | 네이티브 변경이 없다. 로컬 DB와 API를 켠다(`docker compose up -d`, `pnpm --filter @pacemate/api dev`). Android는 `adb reverse tcp:3000 tcp:3000` | 앱을 연다 | 잠깐 로딩 뒤 로그인 화면이 뜬다: 서비스 이름, 소개 한 줄, "Apple로 계속하기", "Google로 계속하기" | 요청 |
+| B-04 | T-106 | 네이티브 변경이 없다. 로컬 DB와 API를 켠다(`docker compose up -d`, `pnpm --filter @pacemate/api dev`). Android는 `adb reverse tcp:3000 tcp:3000` | 앱을 연다 | 잠깐 로딩 뒤 로그인 화면이 뜬다: 서비스 이름, 소개 한 줄, "Apple로 계속하기", "Google 계정으로 계속하기" | 요청 |
 | B-05 | T-106 | B-04와 같다 | 두 버튼을 차례로 누른다 | "로그인하지 못했어요. 잠시 후 다시 시도해 주세요." 안내가 뜨고 로그인 화면에 남는다. 로그인이 아직 연결되지 않아서이며 지금은 이것이 정상이다 | 요청 |
 | B-06 | T-106 | API를 끈다 | 앱을 다시 연다. 그다음 API를 켜고 [다시 시도]를 누른다 | "인터넷 연결을 확인하고 다시 시도해 주세요."와 [다시 시도]가 보인다. 다시 시도하면 로그인 화면이 뜬다 | 요청 |
 | B-07 | T-106 | B-04와 같다 | `pacemate://consent`를 연다. 항목을 하나씩 누르고, "모두 동의"를 누른다 | 누른 항목의 체크 색이 바뀐다. 세 항목이 모두 체크되어야 "동의하고 시작하기"가 눌린다. "모두 동의"는 세 항목을 한 번에 바꾼다. [전문 보기]는 주소를 넣기 전이라 보이지 않는다 | 요청 |
