@@ -127,6 +127,7 @@ export type SessionChange = {
 export type RescheduleFailure =
   | 'TARGET_NOT_CHANGEABLE'
   | 'OUT_OF_WEEK'
+  | 'OUT_OF_RANGE'
   | 'RACE_DAY_FIXED'
   | 'PERIOD_TOO_LONG'
   | 'NO_SAFE_OPTION'
