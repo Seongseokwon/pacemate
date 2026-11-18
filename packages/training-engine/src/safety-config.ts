@@ -1,5 +1,5 @@
 /** 이 파일의 값을 바꾸면 올린다. 계획에 함께 저장해 어떤 값으로 만든 계획인지 남긴다(DATABASE §3.3). */
-export const ENGINE_VERSION = '2026-11-18';
+export const ENGINE_VERSION = '2026-11-18.1';
 
 /** 훈련 안전 규칙의 초기값(PRD §7.4). `D-04`를 확정할 때 값만 바꾼다. */
 export const SAFETY = {
@@ -26,6 +26,9 @@ export const SAFETY = {
   /** TE-S14: 첫 주에 한 번에 달리는 시간(분)의 상한. "쉬지 않고 달릴 수 있는 시간" 범주의 하한이다. 10분 미만은 하한이 없어 1분으로 둔다 */
   continuousRunMin: { under_10m: 1, under_30m: 10, under_60m: 30, over_60m: 60 },
 } as const;
+
+/** 일정 변경의 초기값(TE-R05, 2026-11-18 개발자 결정). */
+export const RESCHEDULE = { maxUnavailableDays: 14, lighterFactor: 0.5 } as const;
 
 /** 생성기의 초기값(`DECISIONS.md` 2026-11-16 "생성기의 초기값", `docs/T-201-TRAINING-DRAFT.md` §10). `D-04`를 확정할 때 값만 바꾼다. */
 export const PLAN = {
