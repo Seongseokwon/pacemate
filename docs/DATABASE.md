@@ -85,9 +85,9 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | 컬럼 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `id` | uuid | ✓ | 기본 키. 인증 서비스의 사용자 ID를 그대로 쓴다. |
-| `auth_provider` | enum `kakao` / `apple` / `google` | ✓ | |
-| `coach` | enum `oni` / `suri` / `bungae` | ✓ | 고른 AI 코치(PRD `F04-R11`). 기본값 `oni`(제안, PRD `D-15`). AI 응답의 말투만 정한다 |
-| `identity_hash` | text | ✓ | 로그인 공급자와 공급자가 준 사용자 식별자를 서버 비밀값으로 HMAC-SHA256한 값. 유일. 같은 카카오·Apple·Google 계정이면 탈퇴 뒤 다시 가입해도 같다. `usage_trials`를 찾는 키다 |
+| `auth_provider` | enum `apple` / `google` | ✓ | |
+| `coach` | enum `oni` / `suri` / `bungae` | ✓ | 고른 AI 코치(PRD `F04-R11`). 기본값 `oni`(PRD `D-15`). AI 응답의 말투만 정한다 |
+| `identity_hash` | text | ✓ | 로그인 공급자와 공급자가 준 사용자 식별자를 서버 비밀값으로 HMAC-SHA256한 값. 유일. 같은 Apple·Google 계정이면 탈퇴 뒤 다시 가입해도 같다. `usage_trials`를 찾는 키다 |
 | `terms_agreed_at` | timestamptz | ✓ | 이용약관 동의 시각 |
 | `privacy_agreed_at` | timestamptz | ✓ | 개인정보 처리방침 동의 시각 |
 | `health_data_agreed_at` | timestamptz | ✓ | 운동 데이터 처리 동의 시각 |
