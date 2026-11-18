@@ -167,7 +167,7 @@
 | `registered` | 필수 동의를 마쳤는지. false면 동의 화면으로 |
 | `onboardingCompleted` | 프로필이 있는지. false면 온보딩으로 |
 | `hasActivePlan` | 활성 계획이 있는지 |
-| `authProvider` | `kakao` / `apple` / `google` |
+| `authProvider` | `apple` / `google` |
 | `coach` | `oni` / `suri` / `bungae`. 동의 전이면 null |
 | `usage` | Usage 객체 |
 | `subscription` | `{ productId, store, expiresAt, willRenew }` 또는 null |
@@ -176,7 +176,7 @@
 
 **`POST /v1/me`** 요청: `consentVersion`, `agreedTerms`, `agreedPrivacy`, `agreedHealthData`. 세 동의가 모두 true여야 한다(`F01-R02`). 이미 가입된 계정이 다시 호출하면 기존 상태를 돌려준다.
 
-**`PUT /v1/me/coach`** 요청: `{ coach }`. 응답: `{ coach }`. 이용량을 차감하지 않고 횟수를 제한하지 않는다(PRD `F04-R13`, 제안 `D-15`). 저장된 대화는 바꾸지 않으며, 다음 `POST /v1/chat/messages`부터 바뀐 코치의 말투로 답한다. 처리 중인 메시지가 있으면 그 응답은 이전 코치의 말투일 수 있다.
+**`PUT /v1/me/coach`** 요청: `{ coach }`. 응답: `{ coach }`. 이용량을 차감하지 않고 횟수를 제한하지 않는다(PRD `F04-R13`, `D-15`). 저장된 대화는 바꾸지 않으며, 다음 `POST /v1/chat/messages`부터 바뀐 코치의 말투로 답한다. 처리 중인 메시지가 있으면 그 응답은 이전 코치의 말투일 수 있다.
 
 **`DELETE /v1/me`**: 성공하면 `204`. 외부 서비스 삭제가 중간에 실패하면 `500`을 돌려주고, 다시 호출하면 이어서 처리한다(ARCHITECTURE §9).
 
@@ -523,3 +523,4 @@ LLM에 제공하는 도구 7개의 입력과 출력이다(PRD §6.2). HTTP 엔�
 | 홈 전용 엔드포인트 | 홈 화면 데이터를 한 번에 받는다. 매니저 메시지가 서버 규칙이라 어차피 서버 호출이 필요하다. | §3.3 |
 | 화면 흐름 확정에 따른 변경 (2026-11-17) | 카카오 로그인(`authProvider`), 홈의 `daysToStart`·`yesterdaySession`·`weekMissedCount`, 기록 저장 응답의 `weekProgress`·`coachLine`, Proposal의 `reasonLine`과 만료 시각(만든 날 자정), 목표 변경의 `RECENT_DISTANCE_REQUIRED`, 일정 변경 범위의 `OUT_OF_RANGE`, 채팅 기록 등록에서 `condition` 제외 | §2, §3.1, §3.3, §3.4, §3.6, §6. `packages/shared`의 스키마는 각 구현 작업에서 고친다(`DEVELOPMENT_PLAN.md`) |
 | AI 코치 3명 (2026-11-18) | `GET /v1/me`의 `coach`, `PUT /v1/me/coach`. 코치는 도구에 넘기지 않는다 | §3.1, §6, PRD `F04-R11`~`R13` |
+| 카카오 로그인 제외 (2026-11-18) | `authProvider`에서 `kakao`를 뺐다. `packages/shared`의 `authProviderSchema`는 이미 `apple` / `google`이다 | §2, PRD `F01-R01` |
