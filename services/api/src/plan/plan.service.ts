@@ -140,15 +140,33 @@ export class PlanService {
     const date = today();
     const active = await this.prisma.trainingPlan.findFirst({ where: { userId, status: 'active' } });
     if (!active) {
-      return { plan: null, daysToRace: null, todaySession: null, weekSessions: [], managerMessage: managerMessage({ plan: null, today: date, todaySession: null, weekSessions: [] }) };
+      return {
+        plan: null,
+        daysToRace: null,
+        todaySession: null,
+        weekSessions: [],
+        daysToStart: null,
+        yesterdaySession: null,
+        weekMissedCount: 0,
+        managerMessage: managerMessage({ plan: null, today: date, todaySession: null, weekSessions: [] }),
+      };
     }
-    const weekStart = mondayOf(date);
+    const startDate = toDateString(active.startDate);
+    const notStarted = startDate > date;
+    // 시작 전이면 첫 주를 보여 준다(PRD §5.4의 "다음 주 시작")
+    const weekStart = mondayOf(notStarted ? startDate : date);
+    const yesterday = addDays(date, -1);
     const rows = await this.prisma.plannedSession.findMany({
-      where: { planId: active.id, userId, date: { gte: toDbDate(weekStart), lte: toDbDate(addDays(weekStart, 6)) } },
+      where: {
+        planId: active.id,
+        userId,
+        OR: [{ date: { gte: toDbDate(weekStart), lte: toDbDate(addDays(weekStart, 6)) } }, { date: toDbDate(yesterday) }],
+      },
       include: withWorkoutId,
       orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
     });
-    const weekSessions = rows.map((row) => toSession(row, date));
+    const sessions = rows.map((row) => toSession(row, date));
+    const weekSessions = sessions.filter((session) => session.date >= weekStart && session.date <= addDays(weekStart, 6));
     const todaySession = weekSessions.find((session) => session.date === date && session.status !== 'skipped') ?? null;
     const plan = await this.summarize(active, date);
     return {
@@ -156,6 +174,10 @@ export class PlanService {
       daysToRace: plan.raceDate !== null && plan.raceDate >= date ? daysBetween(date, plan.raceDate) : null,
       todaySession,
       weekSessions,
+      daysToStart: notStarted ? daysBetween(date, startDate) : null,
+      // 이틀 전 훈련은 넣지 않는다. 미완료 상태에 이미 생략과 기록 연결이 반영되어 있다
+      yesterdaySession: sessions.find((session) => session.date === yesterday && session.status === 'missed') ?? null,
+      weekMissedCount: weekSessions.filter((session) => session.status === 'missed').length,
       managerMessage: managerMessage({ plan, today: date, todaySession, weekSessions }),
     };
   }

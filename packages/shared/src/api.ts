@@ -194,7 +194,14 @@ export const homeResponseSchema = z.object({
   plan: planSummarySchema.nullable(),
   daysToRace: countSchema.nullable(),
   todaySession: sessionSchema.nullable(),
+  /** 이번 주 훈련. 계획이 시작 전이면 첫 주의 훈련 */
   weekSessions: z.array(sessionSchema),
+  /** 계획 시작일까지 남은 날. 계획이 시작 전일 때만 값이 있다(PRD §5.4) */
+  daysToStart: countSchema.nullable(),
+  /** 어제의 미완료 훈련(생략 제외). 홈의 어제 훈련 기록 카드에 쓴다 */
+  yesterdaySession: sessionSchema.nullable(),
+  /** 이번 주 미완료 훈련 수. 2 이상이면 [코치와 일정 조정하기]를 보여 준다(F05-R14) */
+  weekMissedCount: countSchema,
   /** 서버 규칙으로 만든 템플릿 문구(PRD §5.4) */
   managerMessage: z.object({ code: managerMessageCodeSchema, text: z.string() }),
 });

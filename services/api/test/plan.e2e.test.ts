@@ -395,6 +395,9 @@ describe('GET /v1/home (PRD §5.4)', () => {
       daysToRace: null,
       todaySession: null,
       weekSessions: [],
+      daysToStart: null,
+      yesterdaySession: null,
+      weekMissedCount: 0,
       managerMessage: { code: 'NO_PLAN', text: expect.any(String) },
     });
   });
@@ -443,12 +446,67 @@ describe('GET /v1/home (PRD §5.4)', () => {
     expect((await get('/v1/home')).body.daysToRace).toBeNull();
   });
 
-  test('계획이 아직 시작하지 않았으면 첫 훈련 날짜를 알린다', async () => {
-    await seedPlan({ startDate: '2026-11-23' });
+  test('계획이 아직 시작하지 않았으면 첫 훈련 날짜, 시작까지 남은 날, 첫 주 훈련을 알린다 (PRD §5.4)', async () => {
+    const { session } = await seedPlan({ startDate: '2026-11-23' });
+    await session('2026-11-25');
+    await session('2026-11-29', { type: 'long' });
+    await session('2026-12-02');
 
-    expect((await get('/v1/home')).body.managerMessage).toEqual({
+    const res = await get('/v1/home');
+
+    expect(res.body.managerMessage).toEqual({
       code: 'PLAN_NOT_STARTED',
       text: '첫 훈련은 11월 23일이에요. 그때까지 편하게 쉬어 주세요.',
     });
+    expect(res.body.daysToStart).toBe(6);
+    expect(res.body.todaySession).toBeNull();
+    expect(res.body.weekSessions.map((item: { date: string }) => item.date)).toEqual(['2026-11-25', '2026-11-29']);
+  });
+
+  test('시작한 계획에는 시작까지 남은 날이 없다', async () => {
+    await seedPlan();
+    expect((await get('/v1/home')).body.daysToStart).toBeNull();
+  });
+
+  test('어제 훈련을 기록하지 않았을 때만 어제 훈련을 돌려주고, 이틀 전 훈련은 넣지 않는다 (AC-F06-04)', async () => {
+    const { session, workout } = await seedPlan();
+    await session('2026-11-15');
+    const yesterday = await session('2026-11-16');
+
+    expect((await get('/v1/home')).body.yesterdaySession.id).toBe(yesterday.id);
+
+    // 수요일이 되면 월요일 훈련은 이틀 전이다
+    vi.setSystemTime(new Date('2026-11-18T03:00:00Z'));
+    expect((await get('/v1/home')).body.yesterdaySession).toBeNull();
+
+    vi.setSystemTime(new Date(`${TODAY}T03:00:00Z`));
+    await workout(yesterday.id, '2026-11-16');
+    expect((await get('/v1/home')).body.yesterdaySession).toBeNull();
+  });
+
+  test('어제가 지난주(일요일)여도 어제 훈련을 돌려주고, 생략한 훈련은 넣지 않는다', async () => {
+    const { session } = await seedPlan();
+    const sunday = await session('2026-11-15');
+    vi.setSystemTime(new Date('2026-11-16T03:00:00Z'));
+    expect((await get('/v1/home')).body.yesterdaySession.id).toBe(sunday.id);
+
+    await prisma.plannedSession.update({ where: { id: sunday.id }, data: { isSkipped: true } });
+    expect((await get('/v1/home')).body.yesterdaySession).toBeNull();
+  });
+
+  test('이번 주 미완료 훈련 수를 센다. 지난주 훈련과 생략·완료한 훈련은 세지 않는다 (F05-R14)', async () => {
+    const { session, workout } = await seedPlan();
+    await session('2026-11-15');
+    await session('2026-11-16');
+    expect((await get('/v1/home')).body.weekMissedCount).toBe(1);
+
+    vi.setSystemTime(new Date('2026-11-20T03:00:00Z'));
+    const thursday = await session('2026-11-19');
+    await session('2026-11-18', { isSkipped: true });
+    await session('2026-11-17');
+    expect((await get('/v1/home')).body.weekMissedCount).toBe(3);
+
+    await workout(thursday.id, '2026-11-19');
+    expect((await get('/v1/home')).body.weekMissedCount).toBe(2);
   });
 });

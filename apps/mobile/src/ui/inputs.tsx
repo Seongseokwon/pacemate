@@ -9,6 +9,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { Button, Press } from './button';
+import { formatDate, toDate, toDateString } from './dates';
 import { Icon, type IconName } from './icon';
 import { Stack } from './layout';
 import { List, ListItem } from './list';
@@ -195,22 +196,6 @@ export function Selector<T extends string>({ value, options, onChange, placehold
     </>
   );
 }
-
-const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
-const pad = (value: number) => String(value).padStart(2, '0');
-
-// 날짜 문자열을 기기 시간대의 자정으로 바꿨다가 같은 시간대로 되돌리므로 시간대와 무관하게 같은 날짜가 나온다
-const toDate = (date: string): Date => {
-  const [year = 0, month = 1, day = 1] = date.split('-').map(Number);
-  return new Date(year, month - 1, day);
-};
-const toDateString = (date: Date): string => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-
-/** `YYYY-MM-DD`를 "11월 19일 (목)" 형식으로 쓴다(§9.3). */
-export const formatDate = (date: string): string => {
-  const value = toDate(date);
-  return `${value.getMonth() + 1}월 ${value.getDate()}일 (${WEEKDAYS[value.getDay()]})`;
-};
 
 type DateInputProps = {
   /** `YYYY-MM-DD` */
