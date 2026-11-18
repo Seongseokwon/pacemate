@@ -457,7 +457,7 @@ LLM에 제공하는 도구 7개의 입력과 출력이다(PRD §6.2). HTTP 엔�
 | `sessionId` | `move`, `ease`에 필수 | 대상 훈련 |
 | `targetDate` | `move`에 필수 | 옮길 날짜 |
 | `unavailableDates` | `unavailable_dates`에 필수 | 날짜 배열, 최대 14일(`TE-R05`). 이번 주와 다음 주 안의 날짜만(`TE-R10`) |
-| `weekStart`, `maxSessions` | `reduce_count`에 필수 | 대상 주와 그 주에 가능한 횟수 |
+| `weekStart`, `maxSessions` | `reduce_count`에 필수 | 대상 주와, 그 주의 남은 훈련 중 할 수 있는 횟수. 완료한 훈련, 지난 날의 훈련, 대회 일정은 세지 않는다 |
 | `easeOption` | `ease`에 필수 | `rest`(쉬기) / `lighter`(더 가볍게) |
 
 훈련의 거리·강도는 입력에 없다. Training Engine이 정한다(PRD §6.1, `AI-03`).

@@ -9,6 +9,7 @@ import {
 } from './config.js';
 import {
   authProviderSchema,
+  coachSchema,
   continuousRunSchema,
   experienceSchema,
   goalDistanceSchema,
@@ -64,10 +65,16 @@ export const meResponseSchema = z.object({
   onboardingCompleted: z.boolean(),
   hasActivePlan: z.boolean(),
   authProvider: authProviderSchema,
+  /** 동의 전이면 null */
+  coach: coachSchema.nullable(),
   usage: usageSchema,
   subscription: subscriptionSchema.nullable(),
 });
 export type MeResponse = z.infer<typeof meResponseSchema>;
+
+/** `PUT /v1/me/coach`의 요청과 응답. 이용량을 차감하지 않는다(F04-R13). */
+export const coachChoiceSchema = z.object({ coach: coachSchema });
+export type CoachChoice = z.infer<typeof coachChoiceSchema>;
 
 /** `POST /v1/me`. 세 동의가 모두 true여야 한다(F01-R02). */
 export const createMeRequestSchema = z.object({

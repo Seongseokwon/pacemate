@@ -38,6 +38,9 @@ export const validate: Validate = ({ plan, today, change }) => {
   const currentWeek = isDate(today) ? weekOf(today) : -Infinity;
   const { active, weeks, stats } = byWeek(plan);
   const runs = active.filter((session) => session.type !== 'race');
+  // 변경안이면 기준값을 변경 전 계획으로 계산한다. 줄인 결과가 다음 주의 기준을 낮춰 쉬기·완화를 막지 않게 한다(PRD §7.4, TE-R08)
+  const beforeChange = change ? byWeek(change.previous) : null;
+  const baseStats = beforeChange ? beforeChange.stats : stats;
 
   const malformed = (session: PlanSessionState) =>
     session.distanceKm === null && (session.durationMin === null || session.type !== 'walk_run' || session.runIntervalMin === null);
@@ -56,12 +59,14 @@ export const validate: Validate = ({ plan, today, change }) => {
 
   const startWeek = weekOf(plan.startDate);
   // "첫 주"는 생략하지 않은 훈련이 처음 있는 주다(PRD §7.4).
-  const firstWeek = runs[0] && weekOf(runs[0].date);
+  const baseRuns = beforeChange ? beforeChange.active.filter((session) => session.type !== 'race') : runs;
+  const firstWeek = baseRuns[0] && weekOf(baseRuns[0].date);
   const recentKm = plan.profile.recentWeeklyKm ?? 0;
   const priorWeeks = (week: number) => Array.from({ length: SAFETY.peakWeeks }, (_, i) => week - 1 - i);
   // 계획 시작 전의 주는 최근 주간 거리로 본다(TE-S01). 시간 기반 주는 거리가 0이라,
   // 시간 기반에서 거리 기반으로 넘어가는 주는 전환 조건이 정해질 때까지 통과하지 못한다(D-04).
-  const kmOf = (week: number) => (week < startWeek ? recentKm : stats(week).km);
+  const kmOf = (week: number) => (week < startWeek ? recentKm : baseStats(week).km);
+  const actualKmOf = (week: number) => (week < startWeek ? recentKm : stats(week).km);
   const peakKm = (week: number) => Math.max(...priorWeeks(week).map(kmOf));
   const isRecovery = (week: number) => !exceeds(kmOf(week), peakKm(week) * (1 - SAFETY.recoveryMinReduction));
 
@@ -70,18 +75,22 @@ export const validate: Validate = ({ plan, today, change }) => {
     const { runs: weekRuns, km, minutes, timeBased, mixed } = stats(week);
     if (sessions.length > SAFETY.maxSessionsPerWeek) violations.add('TE-S05');
     const tempos = weekRuns.filter((session) => session.type === 'tempo').length;
-    if (tempos > SAFETY.maxTempoPerWeek || (tempos > 0 && (plan.level === 'beginner' || weekRuns.length < SAFETY.minSessionsForTempo))) violations.add('TE-S07');
+    // 주 횟수는 변경 전 계획으로 센다. 생략으로 횟수가 줄어도 이미 둔 조금 빠르게 달리기를 막지 않는다(PRD §7.4)
+    const runCount = baseStats(week).runs.length;
+    if (tempos > SAFETY.maxTempoPerWeek || (tempos > 0 && (plan.level === 'beginner' || runCount < SAFETY.minSessionsForTempo))) violations.add('TE-S07');
     if (mixed) violations.add('TE-S14');
     const runLimit = Math.max(SAFETY.continuousRunMin[plan.profile.continuousRun], plan.profile.recentRunIntervalMin ?? 0);
     if (week === firstWeek && weekRuns.some((session) => exceeds(session.runIntervalMin ?? 0, runLimit))) violations.add('TE-S14');
     if (timeBased) {
       // 계획 시작 전의 주는 시간 기준이 없다. 비교할 주가 없는 첫 주는 상한이 없다.
-      const peaks = priorWeeks(week).filter((prior) => prior >= startWeek).map((prior) => stats(prior).minutes);
+      const peaks = priorWeeks(week).filter((prior) => prior >= startWeek).map((prior) => baseStats(prior).minutes);
       if (peaks.length > 0 && exceeds(minutes, Math.max(...peaks) * SAFETY.weeklyIncrease)) violations.add('TE-S14');
       continue;
     }
     const share = weekRuns.length <= SAFETY.longRunShare.threshold ? SAFETY.longRunShare.upToThree : SAFETY.longRunShare.fourOrMore;
-    if (weekRuns.some((session) => session.type === 'long' && exceeds(session.distanceKm ?? 0, km * share))) violations.add('TE-S03');
+    // 변경으로 주간 거리가 줄어든 주는 길게 달리기 비율을 보지 않는다(PRD §7.4)
+    const reduced = beforeChange !== null && exceeds(beforeChange.stats(week).km, km);
+    if (!reduced && weekRuns.some((session) => session.type === 'long' && exceeds(session.distanceKm ?? 0, km * share))) violations.add('TE-S03');
     // 회복 주 바로 다음 주는 고점까지만 복귀한다.
     if (exceeds(km, peakKm(week) * (isRecovery(week - 1) ? 1 : SAFETY.weeklyIncrease))) violations.add('TE-S01');
     if (week === firstWeek && exceeds(km, recentKm)) violations.add('TE-S06');
@@ -93,7 +102,7 @@ export const validate: Validate = ({ plan, today, change }) => {
     const before = weekOf(race.date) - 1;
     const weekday = ((dayOf(race.date) + 3) % 7) + 1;
     if (weekday > SAFETY.taperPreviousWeekUntilWeekday || before < startWeek || before < currentWeek || stats(before).timeBased) continue;
-    if (exceeds(kmOf(before), peakKm(before) * (1 - SAFETY.taperMinReduction))) violations.add('TE-S08');
+    if (exceeds(actualKmOf(before), peakKm(before) * (1 - SAFETY.taperMinReduction))) violations.add('TE-S08');
   }
 
   // 고점을 넘지 않는 유지 주간에는 회복 주를 요구하지 않는다. 시간 기반 주와 빈 주는 거리가 0이라 회복 주로 센다.
@@ -101,21 +110,28 @@ export const validate: Validate = ({ plan, today, change }) => {
   const lastWeek = Math.max(...weeks.keys());
   for (let week = startWeek; week <= lastWeek; week++) {
     sinceRecovery = isRecovery(week) ? 0 : sinceRecovery + 1;
-    if (week >= currentWeek && sinceRecovery >= SAFETY.recoveryEveryWeeks && exceeds(kmOf(week), peakKm(week))) violations.add('TE-S02');
+    if (week >= currentWeek && sinceRecovery >= SAFETY.recoveryEveryWeeks && exceeds(actualKmOf(week), peakKm(week))) violations.add('TE-S02');
   }
 
+  // 생략하거나 줄인 훈련은 변경 전 거리로 최근 최장 거리의 기준에 남긴다(PRD §7.4)
+  const currentById = new Map(plan.sessions.map((session) => [session.id, session]));
+  const retained = (beforeChange?.active ?? []).filter((old) => {
+    const now = currentById.get(old.id);
+    return old.type !== 'race' && old.distanceKm !== null && (!now || now.skipped || exceeds(old.distanceKm, now.distanceKm ?? 0));
+  });
+  const references = [...runs, ...retained];
   for (const session of runs) {
     const week = weekOf(session.date);
     // 첫 주는 비교할 달리기가 없어 TE-S03과 TE-S06으로만 제한한다.
     if (session.distanceKm === null || week < currentWeek || week === firstWeek) continue;
     const day = dayOf(session.date);
-    const earlier = runs.filter((other) => other.distanceKm !== null && dayOf(other.date) < day && day - dayOf(other.date) <= SAFETY.singleRunWindowDays);
+    const earlier = references.filter((other) => other.distanceKm !== null && dayOf(other.date) < day && day - dayOf(other.date) <= SAFETY.singleRunWindowDays);
     // 비교할 달리기가 없으면 최장 거리가 -Infinity라 위반이 된다.
     if (exceeds(session.distanceKm, Math.max(...earlier.map((other) => other.distanceKm ?? 0)) * SAFETY.singleRunIncrease)) violations.add('TE-S13');
   }
 
   if (change) {
-    const before = byWeek(change.previous);
+    const before = beforeChange!;
     const beforeById = new Map(before.active.map((session) => [session.id, session]));
     let more = false;
     let harder = false;

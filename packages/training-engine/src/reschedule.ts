@@ -51,27 +51,41 @@ export const reschedule: Reschedule = ({ plan, request, reason, today }) => {
     if (!Number.isInteger(request.maxSessions) || request.maxSessions < 0) return failure('NO_SAFE_OPTION');
     weeks = [day(request.weekStart)];
     maxSessions = request.maxSessions;
-    if (active.filter((s) => monday(day(s.date)) === weeks[0]).length <= maxSessions) return failure('NOTHING_TO_CHANGE');
+    // 횟수는 그 주의 남은 훈련만 센다. 완료·지난 훈련과 대회는 세지 않는다(API_SPEC §4)
     targets = active.filter((s) => changeable(s) && monday(day(s.date)) === weeks[0]);
+    if (targets.length <= maxSessions) return failure('NOTHING_TO_CHANGE');
   }
   if (!targets.length) return failure('NOTHING_TO_CHANGE');
 
   const targetIds = new Set(targets.map((s) => s.id));
-  const sort = (a: PlanSessionState, b: PlanSessionState) => priority(b) - priority(a) || a.date.localeCompare(b.date) || a.id.localeCompare(b.id);
+  // 우선순위가 같으면 사용자가 고른 훈련을 먼저 지킨다(TE-R03)
+  const chosen = (s: PlanSessionState) => (request.changeType === 'reduce_count' || !targetIds.has(s.id) ? 1 : 0);
+  const sort = (a: PlanSessionState, b: PlanSessionState) => priority(b) - priority(a) || chosen(a) - chosen(b) || a.date.localeCompare(b.date) || a.id.localeCompare(b.id);
   const extras = active.filter((s) => changeable(s) && weeks.includes(monday(day(s.date))) && !targetIds.has(s.id)).sort(sort);
 
+  const originalOf = new Map(plan.sessions.map((s) => [s.id, s]));
+  const isChanged = (s: PlanSessionState) => {
+    const old = originalOf.get(s.id)!;
+    return s.skipped || s.date !== old.date || s.distanceKm !== old.distanceKm || s.durationMin !== old.durationMin;
+  };
+  const passes = (sessions: PlanSessionState[]) => validate({ plan: { ...plan, sessions }, today, change: { previous: plan, reason } }).ok;
+
+  // 후보 조합을 깊이 우선으로 찾되, 검증 횟수에 상한을 둔다. 횟수로 세므로 결과는 결정적이다(TE-R09)
   const search = (): PlanSessionState[] | undefined => {
     const candidates = [...targets, ...extras].sort(sort);
     const ids = new Set(candidates.map((s) => s.id));
     const fixed = plan.sessions.filter((s) => !ids.has(s.id));
     const occupied = new Set(fixed.filter((s) => !s.skipped).map((s) => s.date));
     const selected: PlanSessionState[] = [];
+    let budget = RESCHEDULE.maxSearch;
     const visit = (index: number): PlanSessionState[] | undefined => {
+      if (budget <= 0) return undefined;
       if (index === candidates.length) {
         const sessions = [...fixed, ...selected];
-        if (maxSessions !== undefined && sessions.filter((s) => !s.skipped && monday(day(s.date)) === weeks[0]).length > maxSessions) return undefined;
-        const changed = selected.some((s) => s.skipped || s.date !== plan.sessions.find((old) => old.id === s.id)?.date || s.distanceKm !== plan.sessions.find((old) => old.id === s.id)?.distanceKm || s.durationMin !== plan.sessions.find((old) => old.id === s.id)?.durationMin);
-        return changed && validate({ plan: { ...plan, sessions }, today, change: { previous: plan, reason } }).ok ? sessions : undefined;
+        if (maxSessions !== undefined && sessions.filter((s) => changeable(s) && monday(day(s.date)) === weeks[0]).length > maxSessions) return undefined;
+        if (!selected.some(isChanged)) return undefined;
+        budget--;
+        return passes(sessions) ? sessions : undefined;
       }
       const original = candidates[index]!;
       const target = targetIds.has(original.id);
@@ -85,7 +99,8 @@ export const reschedule: Reschedule = ({ plan, request, reason, today }) => {
           .sort((a, b) => Math.abs(day(a) - day(original.date)) - Math.abs(day(b) - day(original.date)) || a.localeCompare(b))
           .map((date) => ({ ...original, date }));
       } else if (request.changeType === 'ease' && request.easeOption === 'lighter') {
-        const distanceKm = original.distanceKm === null ? null : Math.floor(original.distanceKm * RESCHEDULE.lighterFactor * 100) / 100;
+        // 저장 단위(0.1km)로 내림해 검증한 값과 저장할 값을 같게 한다
+        const distanceKm = original.distanceKm === null ? null : Math.floor(original.distanceKm * RESCHEDULE.lighterFactor * 10 + 1e-9) / 10;
         const durationMin = original.durationMin === null ? null : Math.floor(original.durationMin * RESCHEDULE.lighterFactor);
         if ((distanceKm === null || distanceKm > 0) && (durationMin === null || durationMin > 0) && (original.runIntervalMin === null || durationMin === null || original.runIntervalMin <= durationMin)) options = [{ ...original, distanceKm, durationMin }];
       }
@@ -104,7 +119,14 @@ export const reschedule: Reschedule = ({ plan, request, reason, today }) => {
     return visit(0);
   };
 
-  const sessions = search();
+  // 찾지 못했으면 대상 훈련만 생략하는 안을 검증한다. 줄이는 변경안은 항상 낼 수 있어야 한다(TE-R08)
+  const skipOnly = () => {
+    // 횟수 줄이기는 우선순위가 낮은 훈련부터 넘는 만큼만 생략한다(TE-R03)
+    const skipping = request.changeType === 'reduce_count' ? new Set([...targets].sort(sort).slice(maxSessions).map((s) => s.id)) : targetIds;
+    const sessions = plan.sessions.map((s) => (skipping.has(s.id) ? { ...s, skipped: true } : s));
+    return passes(sessions) ? sessions : undefined;
+  };
+  const sessions = search() ?? skipOnly();
   if (!sessions) return failure('NO_SAFE_OPTION');
   const byId = new Map(sessions.map((s) => [s.id, s]));
   const changes: SessionChange[] = plan.sessions.flatMap<SessionChange>((before) => {

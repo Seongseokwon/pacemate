@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { AuthProvider, CreateMeRequest, MeResponse } from '@pacemate/shared';
+import { type AuthProvider, type Coach, type CreateMeRequest, DEFAULT_COACH, type MeResponse } from '@pacemate/shared';
 import { AppError } from '../common/app-error.js';
 import { PrismaService } from '../db/prisma.service.js';
 import { UsageService } from '../usage/usage.service.js';
@@ -26,6 +26,7 @@ export class AccountService {
       where: { id: userId, deletionRequestedAt: null },
       select: {
         authProvider: true,
+        coach: true,
         profile: { select: { userId: true } },
         plans: { where: { status: 'active' }, select: { id: true }, take: 1 },
         subscription: true,
@@ -37,6 +38,7 @@ export class AccountService {
       onboardingCompleted: !!user?.profile,
       hasActivePlan: !!user?.plans.length,
       authProvider: user?.authProvider ?? authProvider,
+      coach: user?.coach ?? null,
       usage: await this.usage.get(userId),
       subscription: subscription
         ? {
@@ -57,9 +59,19 @@ export class AccountService {
     // 삭제가 끝나지 않은 계정이 다시 가입하면 새 계정으로 시작한다. 개인 데이터는 이미 지워져 있다
     await this.prisma.user.updateMany({
       where: { id: userId, deletionRequestedAt: { not: null } },
-      data: { ...consent, authProvider, createdAt: now, deletionRequestedAt: null },
+      data: { ...consent, authProvider, coach: DEFAULT_COACH, createdAt: now, deletionRequestedAt: null },
     });
     return this.getMe(userId, authProvider);
+  }
+
+  /**
+   * 고른 코치를 저장한다(F04-R11~R13). 이용량을 차감하지 않고 횟수를 제한하지 않는다.
+   * 바꾼 이력과 저장된 대화는 그대로 두며, 다음 답변부터 말투만 바뀐다(DATABASE §8).
+   */
+  async setCoach(userId: string, coach: Coach): Promise<{ coach: Coach }> {
+    const { count } = await this.prisma.user.updateMany({ where: { id: userId, deletionRequestedAt: null }, data: { coach } });
+    if (count === 0) throw consentRequired();
+    return { coach };
   }
 
   /**

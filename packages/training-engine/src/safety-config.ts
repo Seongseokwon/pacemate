@@ -27,8 +27,8 @@ export const SAFETY = {
   continuousRunMin: { under_10m: 1, under_30m: 10, under_60m: 30, over_60m: 60 },
 } as const;
 
-/** 일정 변경의 초기값(TE-R05, 2026-11-18 개발자 결정). */
-export const RESCHEDULE = { maxUnavailableDays: 14, lighterFactor: 0.5 } as const;
+/** 일정 변경의 초기값(TE-R05, 2026-11-18 개발자 결정). `maxSearch`는 변경안 후보를 검증하는 최대 횟수다(DECISIONS 2026-11-18 "일정 변경 검증의 기준") */
+export const RESCHEDULE = { maxUnavailableDays: 14, lighterFactor: 0.5, maxSearch: 2000 } as const;
 
 /** 생성기의 초기값(`DECISIONS.md` 2026-11-16 "생성기의 초기값", `docs/T-201-TRAINING-DRAFT.md` §10). `D-04`를 확정할 때 값만 바꾼다. */
 export const PLAN = {
