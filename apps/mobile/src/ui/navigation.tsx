@@ -145,7 +145,7 @@ export function TabBar({ tabs }: TabBarProps) {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: t.color.accent,
+        tabBarActiveTintColor: t.color.text.accent,
         tabBarInactiveTintColor: t.color.text.secondary,
         tabBarStyle: { backgroundColor: t.color.background.surface, borderTopColor: t.color.border },
         tabBarLabelStyle: { fontSize: t.typography.caption.fontSize, fontWeight: t.typography.chip.fontWeight },

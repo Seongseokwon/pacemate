@@ -55,7 +55,8 @@ function useCardStyle(selected = false): ViewStyle {
     padding: t.spacing[4],
     borderRadius: t.radius.container,
     borderWidth: t.size.border,
-    borderColor: selected ? t.color.accent : t.color.border,
+    // 카드는 테두리 대신 패널 단계로 구분하고, 선택 표시에만 테두리를 쓴다(§3.7)
+    borderColor: selected ? t.color.accent : 'transparent',
     backgroundColor: selected ? t.color.accentMuted : t.color.background.surface,
   };
 }

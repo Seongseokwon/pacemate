@@ -5,8 +5,8 @@ import { themes } from './tokens';
 
 export type Theme = (typeof themes)['light' | 'dark'];
 
-/** 현재 모드의 토큰. MVP는 라이트 고정이다(UX-03). 다크를 열 때 여기서 기기 설정을 읽는다. */
-export const useTheme = (): Theme => themes.light;
+/** 현재 모드의 토큰. MVP는 다크 고정이다(UX-03). 라이트를 열 때 여기서 기기 설정을 읽는다. */
+export const useTheme = (): Theme => themes.dark;
 
 export type Status = 'success' | 'warning' | 'error' | 'info';
 /** 색의 뜻. `neutral`은 보조 글자색이다. */

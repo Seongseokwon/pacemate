@@ -21,13 +21,13 @@ type ButtonProps = {
 
 export function Button({ label, onPress, variant = 'primary', size = 'default', loading = false, disabled = false, testID }: ButtonProps) {
   const t = useTheme();
-  const look: Record<typeof variant, { fill?: string; border?: string; text: TextTone }> = {
+  const look: Record<typeof variant, { fill?: string; text: TextTone }> = {
     primary: { fill: t.color.accent, text: 'onAccent' },
-    secondary: { fill: t.color.background.surface, border: t.color.borderEmphasized, text: 'primary' },
+    secondary: { fill: t.color.background.raised, text: 'primary' },
     text: { text: 'primary' },
     danger: { fill: t.color.errorMuted, text: 'error' },
   };
-  const { fill, border, text } = look[variant];
+  const { fill, text } = look[variant];
   const textTone = disabled ? 'disabled' : text;
 
   return (
@@ -46,8 +46,6 @@ export function Button({ label, onPress, variant = 'primary', size = 'default', 
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: t.radius.element,
-        borderWidth: t.size.border,
-        borderColor: border ?? 'transparent',
         backgroundColor: disabled && fill ? t.color.background.muted : fill,
       }}
     >

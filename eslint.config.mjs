@@ -12,6 +12,8 @@ const onlyImports = (allowed, message) => ({
 const NO_CLOCK = '시스템 시각을 읽지 않는다. 오늘 날짜는 인자로 받는다(ARCHITECTURE §6).';
 const NO_COLOR = '색상 값을 직접 쓰지 않는다. `apps/mobile/src/ui/tokens.ts`의 토큰을 쓴다(UI_UX §3).';
 const COLOR = '/^(#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|(rgb|hsl)a?\\()/i';
+const NO_EMOJI = '화면 문구에 이모지를 쓰지 않는다. 필요한 곳에는 선 아이콘을 쓴다(UI_UX §1.3, §9.1).';
+const EMOJI = '/\\p{Extended_Pictographic}/u';
 
 export default tseslint.config(
   { ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**', '**/.expo/**', '**/src/generated/**', 'apps/mobile/ios/**', 'apps/mobile/android/**'] },
@@ -82,6 +84,9 @@ export default tseslint.config(
         'error',
         { selector: `Literal[value=${COLOR}]`, message: NO_COLOR },
         { selector: `TemplateElement[value.raw=${COLOR}]`, message: NO_COLOR },
+        { selector: `Literal[value=${EMOJI}]`, message: NO_EMOJI },
+        { selector: `TemplateElement[value.raw=${EMOJI}]`, message: NO_EMOJI },
+        { selector: `JSXText[value=${EMOJI}]`, message: NO_EMOJI },
       ],
     },
   },
