@@ -76,7 +76,7 @@ describe('어제 훈련 기록 카드 (AC-F06-04)', () => {
     await show(home({ yesterdaySession: yesterday }));
     expect(await screen.findByText('어제 훈련을 기록하지 않았어요')).toBeOnTheScreen();
     await press('기록하기');
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/workout-new', params: { date: '2026-11-16', sessionId: yesterday.id } });
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/(tabs)/records', params: { date: '2026-11-16', sessionId: yesterday.id } });
   });
 
   test('[못 했어요]를 누르면 카드를 닫고, 닫은 훈련은 다시 보여 주지 않는다', async () => {

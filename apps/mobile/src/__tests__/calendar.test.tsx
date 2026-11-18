@@ -56,7 +56,7 @@ test('훈련 상세에서 원래 일정, 기록 입력, AI 변경 요청으로 �
   expect(await screen.findByText('원래 일정: 11월 21일 (토)')).toBeOnTheScreen();
 
   await press('기록하기');
-  expect(router.push).toHaveBeenLastCalledWith({ pathname: '/workout-new', params: { date: '2026-11-19', sessionId: changed.id } });
+  expect(router.push).toHaveBeenLastCalledWith({ pathname: '/(tabs)/records', params: { date: '2026-11-19', sessionId: changed.id } });
 
   await press('목요일, 길게 달리기 12킬로미터, 변경됨, 예정');
   await press('AI에게 변경 요청');
