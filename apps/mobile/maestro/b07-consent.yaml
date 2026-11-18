@@ -1,0 +1,19 @@
+# B-07: 세 항목이 모두 체크되어야 버튼이 켜지고, "모두 동의"는 세 항목을 한 번에 바꾼다
+appId: com.pacemate.app
+---
+- openLink: pacemate://consent
+- extendedWaitUntil: { visible: "이용약관 필수.*", timeout: 15000 }
+- assertVisible: { text: "동의하고 시작하기", enabled: false }
+- tapOn: "이용약관 필수.*"
+- assertVisible: "이용약관 필수, 선택됨"
+- tapOn: "개인정보 처리방침 필수.*"
+- tapOn: "운동 데이터 처리 필수.*"
+- assertVisible: "모두 동의, 선택됨"
+- assertVisible: { text: "동의하고 시작하기", enabled: true }
+- takeScreenshot: b07-all-checked
+- tapOn: "모두 동의.*"
+- assertVisible: "이용약관 필수, 선택 안 됨"
+- assertVisible: "운동 데이터 처리 필수, 선택 안 됨"
+- tapOn: "모두 동의.*"
+- assertVisible: "개인정보 처리방침 필수, 선택됨"
+- takeScreenshot: b07-all-on

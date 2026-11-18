@@ -1,0 +1,19 @@
+# 앱 데이터를 지우고 연다. 개발 빌드의 번들러 연결도 지워지므로 다시 고르고 개발 메뉴 안내를 닫는다.
+appId: com.pacemate.app
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- extendedWaitUntil: { visible: "http://.*:8081", timeout: 20000 }
+- tapOn: "http://.*:8081"
+- extendedWaitUntil: { visible: "Continue|나에게 꼭 맞는 계획", timeout: 60000 }
+- runFlow:
+    when: { visible: "Continue" }
+    commands:
+      - tapOn: "Continue"
+      - waitForAnimationToEnd
+- runFlow:
+    when: { visible: "Close" }
+    commands:
+      - tapOn: "Close"
+      - waitForAnimationToEnd

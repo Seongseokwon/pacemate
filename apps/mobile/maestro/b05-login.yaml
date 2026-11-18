@@ -1,0 +1,12 @@
+# B-05: 로그인 버튼은 아직 연결 전이라 실패 안내를 띄우고 로그인 화면에 남는다
+appId: com.pacemate.app
+---
+- openLink: pacemate://
+- extendedWaitUntil: { visible: "Apple로 계속하기", timeout: 15000 }
+- tapOn: "Apple로 계속하기"
+- assertVisible: "로그인하지 못했어요.*"
+- takeScreenshot: b05-apple
+- tapOn: "Google 계정으로 계속하기"
+- assertVisible: "로그인하지 못했어요.*"
+- assertVisible: "Apple로 계속하기"
+- takeScreenshot: b05-google
