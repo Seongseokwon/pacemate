@@ -40,7 +40,7 @@ const QUESTIONS: Record<Step, string> = {
   weeklyKm: '요즘 일주일에 몇 km 정도 달리세요?',
   recentRecord: '최근 기록이나 평소 속도를 알려 주세요',
   schedule: '일주일에 몇 번, 무슨 요일에 달릴 수 있나요?',
-  goalDistance: '어떤 거리를 목표로 하세요?',
+  goalDistance: '어떤 거리를 목표로 할까요?',
   goalTime: '목표 기록이 있나요?',
   raceDate: '나갈 대회 날짜가 정해져 있나요?',
 };
@@ -223,6 +223,10 @@ export default function Onboarding() {
   return (
     <Screen
       onBack={draft.step > 0 ? () => update({ step: previousStep(draft) }) : undefined}
+      // C2: 머리글 오른쪽에 "7 / 9"
+      headerRight={
+        <Text variant="supporting" tone="secondary" tabular>{`${progressOf(draft).current} / ${progressOf(draft).total}`}</Text>
+      }
       footer={
         <Stack>
           {skip && <Button variant="text" label={skip.label} disabled={save.isPending} onPress={() => goNext(skip.clear)} />}

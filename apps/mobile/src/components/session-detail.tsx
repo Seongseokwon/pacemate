@@ -6,6 +6,7 @@ import { coachHref, recordHref } from '@/navigation/links';
 import {
   BottomSheet,
   Button,
+  Card,
   Chip,
   formatDate,
   formatDuration,
@@ -28,7 +29,7 @@ export function SessionDetailSheet({ sessionId, onClose }: { sessionId: string |
 
   const session = detail.data;
   return (
-    <BottomSheet visible={sessionId !== null} onClose={onClose} title={session ? formatDate(session.date) : '훈련 상세'}>
+    <BottomSheet visible={sessionId !== null} onClose={onClose}>
       {detail.isPending ? (
         <Stack>
           <Skeleton short />
@@ -48,17 +49,38 @@ export function SessionDetailSheet({ sessionId, onClose }: { sessionId: string |
               {session.original && <Chip label="변경됨" tone="info" />}
             </Stack>
             <Stack gap={1}>
+              <Text variant="supporting" tone="secondary">
+                {formatDate(session.date)}
+              </Text>
               <Text variant="display" tabular>
                 {sessionAmount(session)}
               </Text>
-              <Text tone="secondary">{SESSION_TYPE_LABELS[session.type].guidance}</Text>
-              {session.runIntervalMin !== null && <Text tone="secondary">{`한 번에 ${session.runIntervalMin}분씩 달리고 걷기를 번갈아 해요`}</Text>}
-              {session.paceRange && (
-                <Text tone="secondary" tabular>
-                  {`권장 페이스 ${formatPace(session.paceRange.minSecPerKm)} ~ ${formatPace(session.paceRange.maxSecPerKm)}`}
-                </Text>
-              )}
             </Stack>
+            {/* C2 11b: 권장 강도는 패널 안에 이름표와 함께 쓴다 */}
+            <Card nested>
+              <Stack gap={2}>
+                <Stack direction="row" gap={4}>
+                  <Text tone="secondary">속도</Text>
+                  <Stack fill>
+                    <Text>{SESSION_TYPE_LABELS[session.type].guidance}</Text>
+                  </Stack>
+                </Stack>
+                {session.paceRange && (
+                  <Stack direction="row" gap={4}>
+                    <Text tone="secondary">페이스</Text>
+                    <Text tabular>{`${formatPace(session.paceRange.minSecPerKm)} ~ ${formatPace(session.paceRange.maxSecPerKm)}`}</Text>
+                  </Stack>
+                )}
+                {session.runIntervalMin !== null && (
+                  <Stack direction="row" gap={4}>
+                    <Text tone="secondary">방법</Text>
+                    <Stack fill>
+                      <Text>{`한 번에 ${session.runIntervalMin}분씩 달리고 걷기를 번갈아 해요`}</Text>
+                    </Stack>
+                  </Stack>
+                )}
+              </Stack>
+            </Card>
             {session.original && <Text variant="supporting" tone="secondary">{originalLine(session.original)}</Text>}
             {session.workout ? (
               <Stack gap={1}>

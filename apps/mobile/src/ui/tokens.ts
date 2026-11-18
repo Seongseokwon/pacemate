@@ -88,6 +88,8 @@ const shared = {
     listRow: 56,
     icon: 20,
     iconLarge: 24,
+    /** 코치 프로필 이미지(§4.3 `CoachAvatar`): AI 메시지 옆, 채팅 머리글, 코치 카드, 큰 프로필 */
+    avatar: { message: 30, header: 34, card: 52, profile: 104 },
     /** 여러 줄 입력창의 최소 높이, 덩어리 모양 로딩 자리 표시 (초기값) */
     block: 96,
     border: 1,

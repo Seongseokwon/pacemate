@@ -24,7 +24,16 @@ export function EmptyState({ icon, message, actionLabel, onAction }: EmptyStateP
 
 const BANNER_ICON: Record<Status, IconName> = { info: 'info', success: 'check', warning: 'warning', error: 'warning' };
 
-export function Banner({ status = 'info', children }: { status?: Status; children: string }) {
+type BannerProps = {
+  status?: Status;
+  /** 굵은 첫 줄 */
+  title?: string;
+  /** 상태의 기본 아이콘 대신 쓸 아이콘(일정 변경 안내의 `swap` 등) */
+  icon?: IconName;
+  children: string;
+};
+
+export function Banner({ status = 'info', title, icon, children }: BannerProps) {
   const t = useTheme();
   return (
     <View
@@ -38,9 +47,14 @@ export function Banner({ status = 'info', children }: { status?: Status; childre
         backgroundColor: t.color[`${status}Muted`],
       }}
     >
-      <Icon name={BANNER_ICON[status]} tone={status} />
-      <View style={{ flex: 1 }}>
-        <Text variant="supporting" tone={status}>
+      <Icon name={icon ?? BANNER_ICON[status]} tone={status} />
+      <View style={{ flex: 1, gap: t.spacing[0.5] }}>
+        {title !== undefined && (
+          <Text variant="title3" tone={status}>
+            {title}
+          </Text>
+        )}
+        <Text variant="supporting" tone={title === undefined ? status : 'secondary'}>
           {children}
         </Text>
       </View>
@@ -233,5 +247,5 @@ export function Skeleton({ shape = 'line', short = false }: { shape?: 'line' | '
 
 export function Spinner({ size = 'small' }: { size?: 'small' | 'large' }) {
   const t = useTheme();
-  return <ActivityIndicator size={size} color={t.color.text.secondary} accessibilityLabel="불러오는 중" />;
+  return <ActivityIndicator size={size} color={t.color.accent} accessibilityLabel="불러오는 중" />;
 }

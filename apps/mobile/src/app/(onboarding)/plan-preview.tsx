@@ -14,9 +14,9 @@ import {
   EmptyState,
   formatMonthDay,
   Heading,
-  List,
   Screen,
   SelectableCard,
+  SessionList,
   SessionRow,
   showToast,
   Spinner,
@@ -58,11 +58,12 @@ export default function PlanPreview() {
   });
 
   const editAnswers = () => router.replace('/(onboarding)');
+  const header = { title: '이런 계획은 어때요?', onBack: editAnswers };
 
   if (!draft || (goal && preview.isPending)) {
     return (
       <Screen scroll={false}>
-        <Stack fill justify="center" align="center" gap={4}>
+        <Stack fill justify="center" align="center" gap={6}>
           <Spinner size="large" />
           <Text tone="secondary">계획을 만들고 있어요</Text>
         </Stack>
@@ -88,10 +89,13 @@ export default function PlanPreview() {
   const options = preview.data!.options;
   const option = options.find((item) => item.kind === kind) ?? options[0]!;
   const firstWeek = option.sessions.filter((session) => session.weekNumber === 1);
+  // 완주 준비 계획을 만들 수 없는 이유는 맨 위에 안내로, 목표 기록 경고는 요약 아래에 주의로 보여 준다(§6.2)
+  const notReachable = option.warnings.includes('RACE_PREP_NOT_REACHABLE');
+  const otherWarnings = option.warnings.filter((warning) => warning !== 'RACE_PREP_NOT_REACHABLE');
 
   return (
     <Screen
-      title="계획 미리보기"
+      {...header}
       footer={
         <Stack>
           <Button
@@ -105,8 +109,9 @@ export default function PlanPreview() {
       }
     >
       <Stack gap={6}>
+        {notReachable && <Banner status="info">{PLAN_WARNING_LABELS.RACE_PREP_NOT_REACHABLE}</Banner>}
         {options.length > 1 && (
-          <Stack>
+          <Stack gap={3}>
             {options.map((item) => (
               <SelectableCard
                 key={item.kind}
@@ -125,32 +130,31 @@ export default function PlanPreview() {
         {/* 목표 없음이면 선택 카드와 안내 없이 목표 문구를 쓴다(UI_UX §6.2, F03-R09) */}
         {option.focus ? (
           <Stack gap={1}>
+            <Heading level={2}>{`목표: ${PLAN_FOCUS_LABELS[option.focus]}`}</Heading>
             <Text variant="supporting" tone="secondary">
               {PLAN_KIND_LABELS[option.kind].name}
             </Text>
-            <Heading level={2}>{PLAN_FOCUS_LABELS[option.focus]}</Heading>
           </Stack>
         ) : (
           options.length === 1 && <Heading level={2}>{PLAN_KIND_LABELS[option.kind].name}</Heading>
         )}
         <Stack direction="row" gap={2}>
-          <StatTile value={`${option.totalWeeks}주`} label="전체 기간" />
-          <StatTile value={`주 ${weeklyCount(option)}회`} label="주당 횟수" />
+          <StatTile value={`${option.totalWeeks}주`} label="기간" />
+          <StatTile value={`주 ${weeklyCount(option)}회`} label="훈련" />
           <StatTile value={formatMonthDay(option.endDate)} label="종료일" />
         </Stack>
-        {option.warnings.map((warning) => (
-          // 완주 준비 계획을 만들 수 없는 이유는 안내, 목표 기록 경고는 주의로 보여 준다(§6.2)
-          <Banner key={warning} status={warning === 'RACE_PREP_NOT_REACHABLE' ? 'info' : 'warning'}>
+        {otherWarnings.map((warning) => (
+          <Banner key={warning} status="warning">
             {PLAN_WARNING_LABELS[warning]}
           </Banner>
         ))}
-        <Stack gap={2}>
+        <Stack gap={3}>
           <Heading level={2}>첫 주 일정</Heading>
-          <List>
+          <SessionList>
             {firstWeek.map((session) => (
               <SessionRow key={`${session.date}-${session.type}`} session={session} showDate />
             ))}
-          </List>
+          </SessionList>
         </Stack>
       </Stack>
     </Screen>

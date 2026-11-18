@@ -1,10 +1,11 @@
 import { SESSION_STATUS_LABELS, SESSION_TYPE_LABELS, type Session, type SessionSnapshot, type SessionStatus } from '@pacemate/shared';
+import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { formatDate, formatKm, formatShortDate, weekdayOf } from './dates';
-import { Chip, StatusDot } from './feedback';
-import { ListItem } from './list';
+import { Chip } from './feedback';
+import { List, ListItem } from './list';
 import { Text } from './text';
-import { type Tone, useTheme } from './theme';
+import { type Tone, toneColor, useTheme } from './theme';
 
 /** 훈련의 양: 거리 또는 시간(§9.3) */
 export const sessionAmount = (session: Pick<SessionSnapshot, 'distanceKm' | 'durationMin'>): string =>
@@ -13,10 +14,6 @@ export const sessionAmount = (session: Pick<SessionSnapshot, 'distanceKm' | 'dur
 /** 화면 낭독용 양. "12킬로미터", "30분" */
 const spokenAmount = (session: Pick<SessionSnapshot, 'distanceKm' | 'durationMin'>): string =>
   session.distanceKm !== null ? `${Math.round(session.distanceKm * 10) / 10}킬로미터` : `${session.durationMin ?? 0}분`;
-
-/** "길게 달리기 12km" */
-export const sessionTitle = (session: Pick<SessionSnapshot, 'type' | 'distanceKm' | 'durationMin'>): string =>
-  `${SESSION_TYPE_LABELS[session.type].name} ${sessionAmount(session)}`;
 
 const STATUS_TONE: Record<SessionStatus, Tone> = { planned: 'neutral', completed: 'success', missed: 'warning', skipped: 'disabled' };
 
@@ -32,7 +29,7 @@ type SessionRowProps = {
   onPress?: () => void;
 };
 
-/** 훈련 한 줄: 종류 색, 종류 이름, 양, 상태(§4.3). 화면 낭독은 한 덩어리로 읽는다(§10). */
+/** 훈련 한 줄: 종류 색 막대, 종류 이름, 양과 날짜, 상태(§4.3, C2/SessionRow). 화면 낭독은 한 덩어리로 읽는다(§10). */
 export function SessionRow({ session, showDate = false, onPress }: SessionRowProps) {
   const t = useTheme();
   const changed = session.original !== null;
@@ -46,9 +43,9 @@ export function SessionRow({ session, showDate = false, onPress }: SessionRowPro
     .join(', ');
   return (
     <ListItem
-      title={sessionTitle(session)}
-      description={showDate ? formatShortDate(session.date) : undefined}
-      left={<StatusDot session={session.type} />}
+      title={SESSION_TYPE_LABELS[session.type].name}
+      description={showDate ? `${sessionAmount(session)} · ${formatShortDate(session.date)}` : sessionAmount(session)}
+      left={<View style={{ width: t.spacing[1], alignSelf: 'stretch', borderRadius: t.radius.full, backgroundColor: toneColor(t, 'neutral', session.type) }} />}
       right={
         <View style={{ flexDirection: 'row', gap: t.spacing[1] }}>
           {changed && <Chip label="변경됨" tone="info" />}
@@ -58,6 +55,16 @@ export function SessionRow({ session, showDate = false, onPress }: SessionRowPro
       onPress={onPress}
       accessibilityLabel={label}
     />
+  );
+}
+
+/** 훈련 목록을 담는 카드. 행 사이에 구분선을 넣는다(§2의 원칙 5, C2 샘플 화면) */
+export function SessionList({ children }: { children: ReactNode }) {
+  const t = useTheme();
+  return (
+    <View style={{ paddingHorizontal: t.spacing[4], borderRadius: t.radius.container, backgroundColor: t.color.background.surface }}>
+      <List>{children}</List>
+    </View>
   );
 }
 
@@ -71,12 +78,12 @@ export function StatTile({ value, label }: { value: string; label: string }) {
     <View
       accessible
       accessibilityLabel={`${label} ${value}`}
-      style={{ flex: 1, gap: t.spacing[1], padding: t.spacing[3], borderRadius: t.radius.container, backgroundColor: t.color.background.surface }}
+      style={{ flex: 1, alignItems: 'center', gap: t.spacing[1], paddingVertical: t.spacing[4], paddingHorizontal: t.spacing[2], borderRadius: t.radius.container, backgroundColor: t.color.background.surface }}
     >
-      <Text variant="title2" tabular>
+      <Text variant="title2" align="center" tabular>
         {value}
       </Text>
-      <Text variant="supporting" tone="secondary">
+      <Text variant="caption" tone="secondary" align="center">
         {label}
       </Text>
     </View>

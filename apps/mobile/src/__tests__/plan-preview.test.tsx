@@ -51,8 +51,8 @@ test('요약, 첫 주 일정(날짜 포함)을 보여 주고, 확정하면 답�
   expect(await screen.findByText('8주')).toBeOnTheScreen();
   expect(screen.getByText('주 3회')).toBeOnTheScreen();
   expect(screen.getByText('1월 10일')).toBeOnTheScreen();
-  expect(screen.getByText('목 11/19')).toBeOnTheScreen();
-  expect(screen.queryByText('화 11/24')).toBeNull();
+  expect(screen.getByText(/목 11\/19/)).toBeOnTheScreen();
+  expect(screen.queryByText(/화 11\/24/)).toBeNull();
   expect(previewPlan).toHaveBeenCalledWith({ goalDistance: 'ten_k', goalTimeSec: null, raceDate: null });
 
   await press('이 계획으로 시작');
@@ -98,6 +98,6 @@ test('계획을 만들 수 없으면 이유와 [답변 수정]을 보여 준다'
 test('목표 없음이면 선택 카드와 안내 없이 목표 문구를 보여 준다 (UI_UX §6.2, F03-R09)', async () => {
   jest.mocked(previewPlan).mockResolvedValue({ options: [option('base_building', { focus: 'continuous_30min' })] });
   await show();
-  expect(screen.getByText('30분 쉬지 않고 달리기')).toBeOnTheScreen();
+  expect(screen.getByText('목표: 30분 쉬지 않고 달리기')).toBeOnTheScreen();
   expect(screen.queryByRole('button', { name: /^완주 준비 계획/ })).toBeNull();
 });

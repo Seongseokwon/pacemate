@@ -45,20 +45,22 @@ test('주간 보기에서 예정·완료·미완료가 구분되고, 이번 주�
 test('날짜를 고르면 그날 훈련이 보이고, 변경된 훈련에는 "변경됨"이 붙는다 (AC-F06-02)', async () => {
   await show();
   await press(/11월 19일 \(목\)/);
-  expect(screen.getByLabelText('목요일, 길게 달리기 12킬로미터, 변경됨, 예정')).toBeOnTheScreen();
+  expect(screen.getAllByLabelText('목요일, 길게 달리기 12킬로미터, 변경됨, 예정').length).toBeGreaterThan(0);
+  expect(screen.getByText('일정이 변경됐어요')).toBeOnTheScreen();
+  expect(screen.getByText('토 11/21 → 목 11/19 · 거리 변경 없음')).toBeOnTheScreen();
 });
 
 test('훈련 상세에서 원래 일정, 기록 입력, AI 변경 요청으로 이동할 수 있다 (AC-F06-02, AC-F06-03)', async () => {
   jest.mocked(getSession).mockResolvedValue({ ...changed, workout: null, changes: [] });
   await show();
   await press(/11월 19일 \(목\)/);
-  await press('목요일, 길게 달리기 12킬로미터, 변경됨, 예정');
+  await fireEvent.press(screen.getAllByRole('button', { name: '목요일, 길게 달리기 12킬로미터, 변경됨, 예정' })[0]!);
   expect(await screen.findByText('원래 일정: 11월 21일 (토)')).toBeOnTheScreen();
 
   await press('기록하기');
   expect(router.push).toHaveBeenLastCalledWith({ pathname: '/(tabs)/records', params: { date: '2026-11-19', sessionId: changed.id } });
 
-  await press('목요일, 길게 달리기 12킬로미터, 변경됨, 예정');
+  await fireEvent.press(screen.getAllByRole('button', { name: '목요일, 길게 달리기 12킬로미터, 변경됨, 예정' })[0]!);
   await press('AI에게 변경 요청');
   expect(router.push).toHaveBeenLastCalledWith({ pathname: '/(tabs)/coach', params: { sessionId: changed.id } });
 });

@@ -47,7 +47,7 @@ test('온보딩 시작 화면은 고른 일만 알리고 다음 화면을 정하
 test('알림 권한은 허용을 누르면 기기에 묻고, 결과와 상관없이 다음으로 간다 (F09-R03)', async () => {
   jest.mocked(Notifications.requestPermissionsAsync).mockResolvedValue({} as never);
   await show(<NotificationPermission />);
-  await press('알림 받기');
+  await press('알림 켜기');
   await waitFor(() => expect(advance).toHaveBeenCalledWith('notificationsDone'));
   expect(Notifications.requestPermissionsAsync).toHaveBeenCalledTimes(1);
 });

@@ -35,7 +35,7 @@ export const GOAL_DISTANCE_LABELS: Record<GoalDistance, string> = {
 /** 계획 종류의 이름과 한 줄 설명(F03-R01, UI_UX §6.2) */
 export const PLAN_KIND_LABELS: Record<PlanKind, { name: string; description: string }> = {
   race_prep: { name: '완주 준비 계획', description: '대회에서 끝까지 달리는 것을 목표로 해요' },
-  base_building: { name: '기초 훈련 계획', description: '무리하지 않고 달리는 몸을 먼저 만들어요' },
+  base_building: { name: '기초 훈련 계획', description: '달리기 기초 체력을 차근차근 다져요' },
 };
 
 /** 목표 없음 계획의 목표 문구(F03-R09) */

@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { advance } from '@/first-run/store';
-import { Button, Heading, Icon, type IconName, Pager, Screen, Stack, Text } from '@/ui';
+import { Button, Heading, Illustration, type IllustrationName, Pager, Screen, Stack, Text } from '@/ui';
 
-// 각 장의 그림과 문구는 Figma에서 정한다(UI_UX §6.1). Figma를 받기 전의 임시 문구다
-const PAGES: { icon: IconName; title: string; body: string }[] = [
-  { icon: 'run', title: '나에게 맞는 훈련 계획', body: '지금 달리는 정도와 목표에 맞춰 무리하지 않는 계획을 만들어 드려요.' },
-  { icon: 'coach', title: '말로 바꾸는 훈련 일정', body: '바쁜 날이 생기면 코치에게 말해 주세요. 바뀐 일정을 보여 드리고, 확인하면 반영해요.' },
-  { icon: 'calendar', title: '한눈에 보는 진행 상황', body: '달린 기록을 남기면 이번 주 훈련이 얼마나 남았는지 바로 보여 드려요.' },
+// 각 장의 그림과 문구는 Figma에서 정한다(UI_UX §6.1). C2 02a~02c의 문구다
+const PAGES: { illustration: IllustrationName; title: string; body: string }[] = [
+  { illustration: 'plan', title: '나에게 꼭 맞는 계획', body: '지금 실력에서 시작해요.\n달리기 경험과 생활 패턴에 맞춰 계획을 짜 드려요.' },
+  { illustration: 'chat', title: '채팅으로 일정 조정', body: '갑자기 출장이 잡혀도 괜찮아요.\n코치에게 말하면 일정을 다시 맞춰 드려요.' },
+  { illustration: 'progress', title: '다치지 않고 꾸준히', body: '무리하지 않고 조금씩 늘려 가요.\n오래 즐겁게 달리는 게 목표예요.' },
 ];
 
 /** 인트로 3장(F01-R08). 기기마다 처음 한 번만 보여 준다. 다음 화면은 시작 경로가 정한다. */
@@ -17,18 +17,25 @@ export default function Intro() {
   return (
     <Screen
       scroll={false}
-      footer={<Button size="large" label={last ? '시작하기' : '다음'} onPress={() => (last ? void advance('introDone') : setIndex(index + 1))} />}
+      footer={
+        // C2: 앞 두 장은 글자 버튼 [다음], 마지막 장은 주 버튼 [시작하기]
+        last ? (
+          <Button size="large" label="시작하기" onPress={() => void advance('introDone')} />
+        ) : (
+          <Button size="large" variant="text" label="다음" onPress={() => setIndex(index + 1)} />
+        )
+      }
     >
       <Pager
         index={index}
         onIndexChange={setIndex}
         pages={PAGES.map((page) => (
-          <Stack key={page.title} align="center" gap={4}>
-            <Icon name={page.icon} size="large" tone="accent" />
-            <Heading align="center">{page.title}</Heading>
-            <Text tone="secondary" align="center">
-              {page.body}
-            </Text>
+          <Stack key={page.title} gap={6}>
+            <Illustration name={page.illustration} />
+            <Stack gap={3}>
+              <Heading>{page.title}</Heading>
+              <Text tone="secondary">{page.body}</Text>
+            </Stack>
           </Stack>
         ))}
       />

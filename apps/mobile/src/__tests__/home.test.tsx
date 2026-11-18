@@ -29,7 +29,7 @@ beforeEach(() => jest.clearAllMocks());
 describe('첫 홈의 세 가지 상태 (AC-F06-05)', () => {
   test('계획 없음: 계획 만들기 카드를 누르면 온보딩을 시작한다', async () => {
     await show(home({ plan: null, daysToRace: null, managerMessage: { code: 'NO_PLAN', text: '새 목표를 정하고 훈련을 시작해 보세요.' } }));
-    await press('나에게 맞는 훈련 계획을 만들어 보세요');
+    await press('계획 만들기');
     expect(advance).toHaveBeenCalledWith('onboardingStarted');
   });
 
@@ -37,7 +37,7 @@ describe('첫 홈의 세 가지 상태 (AC-F06-05)', () => {
     const today = session({ date: '2026-11-17', type: 'easy', distanceKm: 5 });
     await show(home({ todaySession: today, weekSessions: [today, session({ date: '2026-11-22', type: 'long', distanceKm: 12 })] }));
     expect(await screen.findByText('D-42')).toBeOnTheScreen();
-    expect(screen.getByText('12 / 36 완료')).toBeOnTheScreen();
+    expect(screen.getByText('12 / 36회 완료')).toBeOnTheScreen();
     expect(screen.getByText('오늘의 훈련')).toBeOnTheScreen();
     expect(screen.getByLabelText('일요일, 길게 달리기 12킬로미터, 예정')).toBeOnTheScreen();
     expect(screen.getByLabelText('이번 주 훈련 2번 중 0번 완료')).toBeOnTheScreen();
@@ -52,7 +52,7 @@ describe('첫 홈의 세 가지 상태 (AC-F06-05)', () => {
         managerMessage: { code: 'PLAN_NOT_STARTED', text: '첫 훈련은 11월 23일이에요. 그때까지 편하게 쉬어 주세요.' },
       }),
     );
-    expect(await screen.findByText('시작까지 D-6')).toBeOnTheScreen();
+    expect(await screen.findByText('D-6')).toBeOnTheScreen();
     expect(screen.getByText('첫 훈련은 11월 23일이에요. 그때까지 편하게 쉬어 주세요.')).toBeOnTheScreen();
     expect(screen.getByText('첫 주 훈련')).toBeOnTheScreen();
   });
@@ -60,7 +60,8 @@ describe('첫 홈의 세 가지 상태 (AC-F06-05)', () => {
 
 test('대회 날짜가 없으면 D-day 대신 주차를 보여 준다', async () => {
   await show(home({ plan: plan({ raceDate: null, startDate: '2026-11-09', endDate: '2027-01-03' }), daysToRace: null, weekSessions: [session({ date: '2026-11-17' })] }));
-  expect(await screen.findByText('2주차 / 전체 8주')).toBeOnTheScreen();
+  expect(await screen.findByText(/2주 차 \/ 전체 8주/)).toBeOnTheScreen();
+  expect(screen.getByText('12 / 36회 완료')).toBeOnTheScreen();
 });
 
 test('오늘 훈련을 기록했으면 버튼 대신 완료 표시를 보여 준다', async () => {
@@ -115,8 +116,7 @@ test('목표 없음이면 대회와 D-day 대신 목표 문구와 진행 상황�
       weekSessions: [session({ date: '2026-11-16', status: 'completed' }), session({ date: '2026-11-19' })],
     }),
   );
-  expect(await screen.findByText('꾸준히 달리는 습관 만들기')).toBeOnTheScreen();
-  expect(screen.getByText('2주차 / 전체 9주')).toBeOnTheScreen();
-  expect(screen.getByText('이번 주 1번 달렸어요')).toBeOnTheScreen();
+  expect(await screen.findByText('꾸준히 달리는 습관 만들기 · 2주 차 / 전체 9주')).toBeOnTheScreen();
+  expect(screen.getByLabelText('이번 주 훈련 2번 중 1번 완료')).toBeOnTheScreen();
   expect(screen.queryByText('목표 없음')).toBeNull();
 });
