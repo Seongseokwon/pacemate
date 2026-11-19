@@ -63,6 +63,17 @@ test('Apple 건강 가져오기는 수동 기록과 중복을 제거하고 미�
   expect((await app.call('post', '/v1/workouts/healthkit', user, { ...body, date: '2026-11-18' })).status).toBe(400);
 });
 
+test('Apple 건강 기록은 생략한 훈련과 종료된 계획에 연결하지 않는다 (F07-R11)', async () => {
+  const planData = { userId: user, kind: 'race_prep' as const, goalDistance: 'ten_k' as const, startDate: day('2026-11-16'), endDate: day('2026-12-20'), engineVersion: 'test' };
+  const active = await db.trainingPlan.create({ data: { ...planData, status: 'active' } });
+  const ended = await db.trainingPlan.create({ data: { ...planData, status: 'ended' } });
+  await db.plannedSession.create({ data: { userId: user, planId: active.id, date: day(date), type: 'easy', distanceKm: 5, weekNumber: 1, isSkipped: true } });
+  await db.plannedSession.create({ data: { userId: user, planId: ended.id, date: day(date), type: 'easy', distanceKm: 5, weekNumber: 1 } });
+  const result = await app.call('post', '/v1/workouts/healthkit', user, { externalId: '33333333-3333-4333-8333-333333333333', date, distanceKm: 5, durationSec: 1800, averageHeartRate: null });
+  expect(result.body.imported).toBe(true);
+  expect((await app.call('get', '/v1/workouts', user)).body.items[0].plannedSessionId).toBeNull();
+});
+
 test('통증 기록을 저장하면 휴식을 권한다', async () => {
   const result = await app.call('post', '/v1/workouts', user, { date, distanceKm: 5, durationSec: 1800, memo: '무릎이 아파요' });
   expect(result.body.coachLine).toMatchObject({ code: 'WORKOUT_PAIN', text: expect.stringContaining('쉬') });

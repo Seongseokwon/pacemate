@@ -177,8 +177,6 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 
 ### 3.5 `workout_logs`
 
-Apple 건강 가져오기는 `healthkit_imports`에 사용자 ID와 HealthKit workout UUID를 기록한다. `(user_id, external_id)`를 기본 키로 하며 운동 기록을 수정하거나 삭제해도 이 식별자를 유지해 재가져오기를 막는다. 계정을 삭제하면 함께 삭제하고, 테이블에 행 수준 보안을 켠다.
-
 | 컬럼 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `id` | uuid | ✓ | 기본 키 |
@@ -198,6 +196,16 @@ Apple 건강 가져오기는 `healthkit_imports`에 사용자 ID와 HealthKit wo
 - 인덱스: `(user_id, date)`.
 - 평균 페이스는 `duration_sec / distance_km`로 계산한다(`F07-R02`).
 - 기록을 삭제하면 연결이 사라지고 훈련은 예정 또는 미완료로 돌아간다(`F07-R06`). 별도 갱신이 필요 없다.
+
+### 3.5.1 `healthkit_imports`
+
+| 컬럼 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `user_id` | uuid | ✓ | `users` 참조. 계정 삭제 시 함께 삭제 |
+| `external_id` | uuid | ✓ | HealthKit workout UUID |
+
+- `(user_id, external_id)`를 기본 키로 하고 행 수준 보안을 켠다.
+- 운동 기록을 수정하거나 삭제해도 식별자를 유지해 재가져오기를 막는다.
 
 ### 3.6 `chat_messages`
 
