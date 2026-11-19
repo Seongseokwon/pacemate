@@ -164,3 +164,51 @@ describe('승인 실패와 중복 승인 (AC-F05-04, AC-F05-05, AC-F05-11)', () 
     expect(screen.getByRole('button', { name: '적용하기' })).toBeEnabled();
   });
 });
+
+describe('서버와 대화 상태 맞추기', () => {
+  const pending = { id: '00000000-0000-4000-8000-000000000004', type: 'reschedule', status: 'pending', expiresAt: '2099-01-01T00:00:00Z', reasonLine: null, consumesQuota: true, changes: [], impact: null, warnings: [], goal: null, workout: null };
+  const newer = { ...pending, id: '00000000-0000-4000-8000-000000000006', reasonLine: '새로 맞춘 일정이에요' };
+
+  test('새 제안을 받으면 이전 대기 제안의 상태를 서버에서 다시 받아 대체로 바꾼다 (DI-05)', async () => {
+    const original = mockFetch.getMockImplementation()!;
+    mockFetch.mockImplementation(async (path, schema, options) => {
+      if (path === '/v1/chat/messages' && !options?.method) return { items: [{ ...reply, card: { type: 'proposal', proposal: pending } }], hasMore: false };
+      if (path === '/v1/chat/messages') return { userMessage, replies: [{ ...reply, id: '00000000-0000-4000-8000-000000000007', content: '다른 방법이에요', card: { type: 'proposal', proposal: newer } }], usage };
+      if (path === `/v1/proposals/${pending.id}`) return { ...pending, status: 'superseded' };
+      return original(path, schema, options);
+    });
+    await show();
+    expect(await screen.findAllByRole('button', { name: '적용하기' })).toHaveLength(1);
+    await fireEvent.press(screen.getByRole('button', { name: '보내기' }));
+    expect(await screen.findByText('새 제안으로 바뀌었어요')).toBeOnTheScreen();
+    expect(screen.getByText('새로 맞춘 일정이에요')).toBeOnTheScreen();
+    expect(screen.getAllByRole('button', { name: '적용하기' })).toHaveLength(1);
+    expect(mockFetch).not.toHaveBeenCalledWith(`/v1/proposals/${newer.id}`, expect.anything());
+  });
+
+  test('다시 열었을 때 처리 중인 메시지가 있으면 대화를 다시 받아 답을 보여 준다', async () => {
+    const processing = { ...userMessage, status: 'processing' };
+    let reads = 0;
+    const original = mockFetch.getMockImplementation()!;
+    mockFetch.mockImplementation(async (path, schema, options) => {
+      if (path === '/v1/chat/messages' && !options?.method) return ++reads === 1 ? { items: [processing], hasMore: false } : { items: [reply, userMessage], hasMore: false };
+      return original(path, schema, options);
+    });
+    await show();
+    expect(await screen.findByText('어떻게 도와드릴까요?')).toBeOnTheScreen();
+    expect(reads).toBeGreaterThanOrEqual(2);
+    await waitFor(() => expect(screen.getByRole('button', { name: '보내기' })).toBeEnabled());
+  });
+
+  test('처리 중이던 메시지가 실패로 끝나면 다시 보내기를 보여 준다', async () => {
+    let reads = 0;
+    const original = mockFetch.getMockImplementation()!;
+    mockFetch.mockImplementation(async (path, schema, options) => {
+      if (path === '/v1/chat/messages' && !options?.method) return { items: [{ ...userMessage, status: ++reads === 1 ? 'processing' : 'failed' }], hasMore: false };
+      return original(path, schema, options);
+    });
+    await show();
+    expect(await screen.findByText('보내지 못했어요')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: '다시 보내기' })).toBeEnabled();
+  });
+});

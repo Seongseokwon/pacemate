@@ -84,6 +84,7 @@ function CoachContent() {
       scrollToLatest.current = true;
       setMessages((previous) => [...(previous ?? messages).filter((m) => m.id !== reply.userMessage.id), reply.userMessage, ...reply.replies]);
       setUsage(reply.usage);
+      void refreshReplacedProposals(messages, reply.replies);
       setSessionId(undefined);
     } catch (error) {
       if (isRedirectError(error)) redirectOnApiError(error);
@@ -107,6 +108,53 @@ function CoachContent() {
         .map((m) => (m.card?.type === 'proposal' && m.card.proposal.id === updated.id ? { ...m, card: { type: 'proposal' as const, proposal: updated } } : m))
         .concat(appended),
     );
+
+  // 새 제안이 생기면 서버가 이전 대기 제안을 대체로 바꾸므로 그 상태를 다시 받는다(DI-05)
+  const refreshReplacedProposals = async (earlier: ChatMessage[], replies: ChatMessage[]) => {
+    const fresh = new Set(replies.flatMap((m) => (m.card?.type === 'proposal' ? [m.card.proposal.id] : [])));
+    if (fresh.size === 0) return;
+    const stale = earlier.flatMap((m) => (m.card?.type === 'proposal' && m.card.proposal.status === 'pending' && !fresh.has(m.card.proposal.id) ? [m.card.proposal.id] : []));
+    await Promise.all(
+      stale.map(async (id) => {
+        try {
+          replaceProposal(await getProposal(id));
+        } catch {
+          // 다시 받지 못하면 대기로 남고, 승인하면 서버가 거절해 실제 상태를 다시 받는다
+        }
+      }),
+    );
+  };
+
+  // 앱을 다시 열었을 때 처리 중이던 메시지가 있으면 끝날 때까지 대화를 다시 받는다. 서버는 2분 넘게 끝나지 않으면 실패로 바꾼다
+  const restoring = !busy && messages.some((m) => m.role === 'user' && m.status === 'processing');
+  // 서버의 대화는 카드에 제안의 현재 상태를 담아 주므로, 다시 받은 쪽으로 덮으면 대체된 카드도 함께 바뀐다
+  const applyLatest = (page: ChatMessage[]) => {
+    const latest = [...page].reverse();
+    const byId = new Map(latest.map((m) => [m.id, m]));
+    const known = new Set(messages.map((m) => m.id));
+    const added = latest.filter((m) => !known.has(m.id));
+    setMessages((previous) => {
+      const base = previous ?? messages;
+      return [...base.map((m) => byId.get(m.id) ?? m), ...added.filter((m) => !base.some((b) => b.id === m.id))];
+    });
+    if (added.length === 0) return;
+    scrollToLatest.current = true;
+    // 처리 중에 쓴 이용량은 대화 응답으로 받지 못했으므로 다시 받는다
+    setUsage(undefined);
+    void queryClient.invalidateQueries({ queryKey: ME_KEY });
+    void refreshReplacedProposals(messages, added);
+  };
+  useQuery({
+    queryKey: [...CHAT_KEY, 'restore'],
+    queryFn: async () => {
+      const page = await getChatMessages();
+      applyLatest(page.items);
+      return page;
+    },
+    enabled: restoring,
+    refetchInterval: restoring ? PROCESSING_POLL_MS : false,
+  });
+  const waiting = busy || restoring;
 
   const setCardState = (id: string, state: ProposalCardState & { action?: CardAction }) => setCardStates((previous) => ({ ...previous, [id]: state }));
 
@@ -199,17 +247,17 @@ function CoachContent() {
           <ScrollView horizontal keyboardShouldPersistTaps="handled">
             <Stack direction="row" gap={2}>
               {suggestions.data?.suggestions.map((s) => (
-                <Button key={s.code} variant="secondary" label={s.text} disabled={busy} onPress={() => start(s.text)} />
+                <Button key={s.code} variant="secondary" label={s.text} disabled={waiting} onPress={() => start(s.text)} />
               ))}
             </Stack>
           </ScrollView>
           <Stack direction="row" gap={2} align="center">
             <Stack fill>
               <Field label="메시지">
-                <TextInput value={draft} onChangeText={setDraft} maxLength={CHAT_MESSAGE_MAX_LENGTH} editable={!busy} placeholder="코치에게 물어보세요" />
+                <TextInput value={draft} onChangeText={setDraft} maxLength={CHAT_MESSAGE_MAX_LENGTH} editable={!waiting} placeholder="코치에게 물어보세요" />
               </Field>
             </Stack>
-            <Button label="보내기" disabled={busy || !draft.trim()} onPress={() => start(draft)} />
+            <Button label="보내기" disabled={waiting || !draft.trim()} onPress={() => start(draft)} />
           </Stack>
         </Stack>
       }
@@ -288,7 +336,7 @@ function CoachContent() {
               />
             </Stack>
           )}
-          {busy && sending && <TypingIndicator coach={coach} />}
+          {((busy && sending) || restoring) && <TypingIndicator coach={coach} />}
         </Stack>
       </ScrollView>
     </Screen>
