@@ -13,6 +13,8 @@ export interface ToolResult {
   output: Record<string, unknown>;
   /** 이 실행으로 만들어진 대기 제안. 메시지 처리기가 카드를 붙이고, 처리가 실패하면 취소한다(ARCHITECTURE §7.5) */
   proposalId?: string;
+  /** 그 제안이 대체한 대기 제안. 처리가 실패하면 되돌린다 */
+  supersededProposalIds?: string[];
 }
 
 /**

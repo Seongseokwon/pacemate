@@ -11,6 +11,7 @@ export interface ToolExecution {
   content: string;
   ok: boolean;
   proposalId?: string;
+  supersededProposalIds?: string[];
 }
 
 /** LLM이 실행을 요청했지만 실행하지 않은 이유. LLM이 사용자에게 설명할 수 있게 문장을 함께 준다(API_SPEC §6) */
@@ -43,12 +44,13 @@ export class ToolRegistry {
 
   /** 실패해도 던지지 않고 LLM에 돌려줄 오류 결과를 만든다(PRD §6.3의 5단계) */
   async execute(context: ToolContext, call: LlmToolCall): Promise<ToolExecution> {
-    const result = (ok: boolean, output: object, proposalId?: string): ToolExecution => ({
+    const result = (ok: boolean, output: object, proposalId?: string, supersededProposalIds?: string[]): ToolExecution => ({
       toolCallId: call.id,
       name: call.name,
       content: JSON.stringify(output),
       ok,
       ...(proposalId && { proposalId }),
+      ...(supersededProposalIds?.length && { supersededProposalIds }),
     });
 
     const tool = this.tools.get(call.name);
@@ -59,8 +61,8 @@ export class ToolRegistry {
     if (!parsed.success) return result(false, { error: 'INVALID_INPUT', message: invalidInputMessage(parsed.error) });
 
     try {
-      const { output, proposalId } = await tool.execute(context, parsed.data);
-      return result(true, output, proposalId);
+      const { output, proposalId, supersededProposalIds } = await tool.execute(context, parsed.data);
+      return result(true, output, proposalId, supersededProposalIds);
     } catch (error) {
       // 오류 내용에 사용자 데이터가 들어 있을 수 있어 이름만 남긴다(F11-R04)
       this.logger.error(`도구 실행 실패: ${tool.name} (${error instanceof Error ? error.name : 'unknown'})`);

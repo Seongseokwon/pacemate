@@ -25,6 +25,9 @@ import { ToolRegistry } from './tools/tool-registry.js';
 /** `POST /v1/chat/messages`의 결과. 202는 같은 메시지를 처리하는 중이다(API_SPEC §3.5) */
 export type SendResult = { status: 200; body: ChatReplyResponse } | { status: 202; body: { status: 'processing' } };
 
+/** 이번 처리에서 만든 제안과, 그 제안들이 대체한 제안 */
+type ProposalTrail = { created: string[]; superseded: string[] };
+
 type Card = Pick<Prisma.ChatMessageUncheckedCreateInput, 'cardType' | 'cardData' | 'proposalId'>;
 
 const LIMIT_MESSAGE = '이번 달 AI 대화를 모두 썼어요.';
@@ -104,12 +107,12 @@ export class ChatService {
     }
 
     // 메시지를 저장한 뒤의 실패는 모두 같은 정리를 거친다. 처리 중으로 남으면 사용자가 2분 동안 채팅을 못 쓴다
-    const createdProposals: string[] = [];
+    const proposals: ProposalTrail = { created: [], superseded: [] };
     let replyId: string;
     try {
-      replyId = await this.handle(userId, message, request.sessionId, createdProposals);
+      replyId = await this.handle(userId, message, request.sessionId, proposals);
     } catch (error) {
-      await this.fail(userId, message, createdProposals, error);
+      await this.fail(userId, message, proposals, error);
       throw unavailable();
     }
     // 여기부터는 결과가 커밋된 뒤다. 응답 조립이 실패해도 처리를 되돌리지 않고, 같은 ID로 다시 보내면 저장된 결과를 받는다
@@ -117,7 +120,7 @@ export class ChatService {
   }
 
   /** 한도를 확인하고, LLM과 도구를 반복하고, 결과를 커밋한다(§7.5의 3~5번). 저장한 답의 ID를 돌려준다 */
-  private async handle(userId: string, message: ChatMessageRow, sessionId: string | undefined, createdProposals: string[]): Promise<string> {
+  private async handle(userId: string, message: ChatMessageRow, sessionId: string | undefined, proposals: ProposalTrail): Promise<string> {
     // 한도를 넘으면 LLM을 부르지 않고 한도 안내를 남긴다(F04-R06, AC-F04-03)
     const usage = await this.usage.get(userId);
     if (usage.chat.used >= usage.chat.limit) {
@@ -145,14 +148,15 @@ export class ChatService {
       conversation.push({ role: 'assistant', content: response.text, toolCalls: response.toolCalls });
       for (const call of response.toolCalls) {
         const result = await this.tools.execute({ userId, messageId: message.id }, call);
-        if (result.proposalId) createdProposals.push(result.proposalId);
+        if (result.proposalId) proposals.created.push(result.proposalId);
+        proposals.superseded.push(...(result.supersededProposalIds ?? []));
         if (result.ok && (call.name === 'get_training_plan' || call.name === 'get_weekly_summary')) summaryCalls.push(call);
         conversation.push({ role: 'tool', toolCallId: call.id, content: result.content });
       }
     }
     if (!text.trim()) throw new ChatFailure('EMPTY_RESPONSE');
 
-    const card = (await this.proposalCard(userId, createdProposals)) ?? (await this.summaryCard(userId, summaryCalls.at(-1)));
+    const card = (await this.proposalCard(userId, proposals.created)) ?? (await this.summaryCard(userId, summaryCalls.at(-1)));
     return this.commit(userId, message, { role: 'assistant', content: text.trim(), ...card }, true);
   }
 
@@ -178,15 +182,17 @@ export class ChatService {
     return this.replyOf(userId, { ...message, status: 'done' }, [reply]);
   }
 
-  /** 실패하면 사용자 메시지를 실패로 바꾸고, 그 사이 만든 대기 제안을 취소한다. 이용량은 올리지 않는다(§7.5의 6번, F04-R10) */
-  private async fail(userId: string, message: ChatMessageRow, proposalIds: string[], error: unknown): Promise<void> {
+  /** 실패하면 사용자 메시지를 실패로 바꾸고, 그 사이 만든 대기 제안을 취소하고 이전 대기 제안을 되돌린다. 이용량은 올리지 않는다(§7.5의 6번, F04-R10) */
+  private async fail(userId: string, message: ChatMessageRow, proposals: ProposalTrail, error: unknown): Promise<void> {
     const code = error instanceof ChatFailure || error instanceof LlmError ? error.code : error instanceof Error ? error.name : 'UNKNOWN';
     this.logger.warn(`채팅 처리 실패: ${code}`);
     // 이미 완료됐거나 다른 요청이 실패로 바꾼 메시지는 건드리지 않는다
     await this.prisma.chatMessage.updateMany({ where: { id: message.id, userId, status: 'processing' }, data: { status: 'failed' } });
-    for (const id of proposalIds) {
-      // 이미 다른 제안으로 대체된 것은 그대로 둔다
-      await this.proposals.cancel(userId, id).catch(() => undefined);
+    try {
+      await this.proposals.discardChatProposals(userId, proposals.created, proposals.superseded);
+    } catch (cleanup) {
+      // 정리 실패가 원래 실패를 가리지 않게 한다. 남은 대기 제안은 자정에 만료된다
+      this.logger.warn(`채팅 실패 정리 실패: ${cleanup instanceof Error ? cleanup.name : 'UNKNOWN'}`);
     }
   }
 

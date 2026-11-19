@@ -63,8 +63,8 @@ export function proposalSummaryOf(proposal: Proposal, date: string) {
 
 function toResult(result: CreateResult): ToolResult {
   if (!result.created) return { output: { created: false, reasonCode: result.reasonCode, message: result.message } };
-  const { proposal } = result;
-  return { output: { created: true, proposalId: proposal.id, summary: proposalSummaryOf(proposal, today()) }, proposalId: proposal.id };
+  const { proposal, superseded } = result;
+  return { output: { created: true, proposalId: proposal.id, summary: proposalSummaryOf(proposal, today()) }, proposalId: proposal.id, supersededProposalIds: superseded };
 }
 
 export class MessageNotProcessingError extends Error {

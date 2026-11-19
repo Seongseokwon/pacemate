@@ -37,7 +37,10 @@ import { APPROVE_ERRORS, FAILURE_MESSAGES, reasonLineOf, RESULT_MESSAGES } from 
 type Db = Prisma.TransactionClient;
 
 /** 제안 도구(API_SPEC §6)와 마이페이지가 받는 결과 */
-export type CreateResult = { created: true; proposal: Proposal } | { created: false; reasonCode: ProposalFailureCode; message: string };
+export type CreateResult =
+  /** `superseded`는 이 제안이 대체한 대기 제안. 채팅이 실패하면 되돌린다(DI-05) */
+  | { created: true; proposal: Proposal; superseded: string[] }
+  | { created: false; reasonCode: ProposalFailureCode; message: string };
 
 /** 목표·프로필 변경의 입력. 채팅(`propose_goal_change`)과 마이페이지(`POST /v1/proposals/goal-change`)를 같은 형식으로 모은다 */
 type GoalChangeInput = {
@@ -88,7 +91,7 @@ export class ProposalService {
       if (!next || !this.engine.validate({ plan: next, today: date, change: { previous: state, reason: input.reason } }).ok) return fail('NO_SAFE_OPTION');
 
       const payload: ReschedulePayload = { changes: result.changes, impact: result.impact, warnings: result.warnings, reasonLine: reasonLineOf(input, date) };
-      const row = await insert(tx, date, {
+      const { row, superseded } = await insert(tx, date, {
         userId,
         planId: loaded.plan.id,
         type: 'reschedule',
@@ -99,7 +102,7 @@ export class ProposalService {
         request: input,
         payload,
       });
-      return { created: true, proposal: toProposal(row) };
+      return { created: true, proposal: toProposal(row), superseded };
     });
   }
 
@@ -146,8 +149,8 @@ export class ProposalService {
         workout: { date: input.date, distanceKm, durationSec: input.durationSec, rpe: input.rpe ?? null, memo: input.memo ?? null, plannedSessionId: session?.id ?? null },
         plannedSession: session ? snapshotOf({ date: toDateString(session.date), type: session.type, distanceKm: session.distanceKm?.toNumber() ?? null, durationMin: session.durationMin }) : null,
       };
-      const row = await insert(tx, date, { userId, planId, type: 'workout_log', source: 'chat', quotaExempt: false, basePlanVersion: null, reason: null, request: input, payload });
-      return { created: true, proposal: toProposal(row) };
+      const { row, superseded } = await insert(tx, date, { userId, planId, type: 'workout_log', source: 'chat', quotaExempt: false, basePlanVersion: null, reason: null, request: input, payload });
+      return { created: true, proposal: toProposal(row), superseded };
     });
   }
 
@@ -214,7 +217,7 @@ export class ProposalService {
           date: day, type, distanceKm, durationMin, runIntervalMin, paceRange, weekNumber: weekNumber + weekOffset,
         })),
       };
-      const created = await insert(tx, date, {
+      const { row: created, superseded } = await insert(tx, date, {
         userId,
         planId: plan.id,
         type: 'goal_change',
@@ -225,7 +228,7 @@ export class ProposalService {
         request: input,
         payload,
       });
-      return { created: true, proposal: toProposal(created) };
+      return { created: true, proposal: toProposal(created), superseded };
     });
   }
 
@@ -248,6 +251,27 @@ export class ProposalService {
       return tx.changeProposal.update({ where: { id }, data: { status: 'cancelled', resolvedAt: new Date() } });
     });
     return toProposal(row);
+  }
+
+  /**
+   * 채팅 처리가 실패했을 때의 정리(ARCHITECTURE §7.5의 6번). 그 사이 만든 대기 제안을 취소하고, 그 제안들이 대체한 이전 대기 제안을 되돌린다.
+   * 사용자는 새 카드를 받지 못했으므로 이전 카드를 계속 쓸 수 있어야 한다. 만료됐거나, 이미 다른 대기 제안이 있거나, 새 제안이 승인됐으면 되돌리지 않는다.
+   */
+  async discardChatProposals(userId: string, created: string[], superseded: string[]): Promise<void> {
+    if (created.length === 0) return;
+    await this.prisma.$transaction(async (tx) => {
+      await lockUser(tx, userId);
+      const now = new Date();
+      await tx.changeProposal.updateMany({ where: { id: { in: created }, userId, status: 'pending' }, data: { status: 'cancelled', resolvedAt: now } });
+      if (await tx.changeProposal.count({ where: { id: { in: created }, userId, status: 'approved' } })) return;
+      if (await tx.changeProposal.count({ where: { userId, status: 'pending' } })) return;
+      // 처리 중에 만든 제안끼리 대체한 것은 되돌리지 않는다. 남는 것은 처리 전의 대기 제안 하나뿐이다
+      const previous = await tx.changeProposal.findFirst({
+        where: { id: { in: superseded.filter((id) => !created.includes(id)) }, userId, status: 'superseded', expiresAt: { gt: now } },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (previous) await tx.changeProposal.update({ where: { id: previous.id }, data: { status: 'pending', resolvedAt: null } });
+    });
   }
 
   // 승인
@@ -438,12 +462,15 @@ async function loadActive(tx: Db, userId: string, date: string): Promise<Loaded 
 
 type NewProposal = Omit<Prisma.ChangeProposalUncheckedCreateInput, 'status' | 'expiresAt' | 'request' | 'payload'> & { request: object; payload: object };
 
-/** 기존 대기 제안을 대체하고 새 제안을 만든다(DI-05). 만든 날의 자정에 만료된다 */
-async function insert(tx: Db, date: string, data: NewProposal): Promise<ChangeProposal> {
-  await tx.changeProposal.updateMany({ where: { userId: data.userId, status: 'pending' }, data: { status: 'superseded', resolvedAt: new Date() } });
-  return tx.changeProposal.create({
+/** 기존 대기 제안을 대체하고 새 제안을 만든다(DI-05). 만든 날의 자정에 만료된다. 대체한 제안의 ID를 함께 돌려준다 */
+async function insert(tx: Db, date: string, data: NewProposal): Promise<{ row: ChangeProposal; superseded: string[] }> {
+  const pending = await tx.changeProposal.findMany({ where: { userId: data.userId, status: 'pending' }, select: { id: true } });
+  const superseded = pending.map((p) => p.id);
+  if (superseded.length > 0) await tx.changeProposal.updateMany({ where: { id: { in: superseded }, userId: data.userId }, data: { status: 'superseded', resolvedAt: new Date() } });
+  const row = await tx.changeProposal.create({
     data: { ...data, request: data.request as Prisma.InputJsonValue, payload: data.payload as Prisma.InputJsonValue, status: 'pending', expiresAt: new Date(`${addDays(date, 1)}T00:00:00${SERVICE_UTC_OFFSET}`) },
   });
+  return { row, superseded };
 }
 
 /**
