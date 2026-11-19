@@ -288,6 +288,53 @@ describe('실패 정리와 완료 확정 (§7.5의 5~6번)', () => {
     expect(await prisma.changeProposal.findMany()).toEqual([expect.objectContaining({ id: newerProposalId, status: 'pending' })]);
   });
 
+  test('새 제안을 만든 뒤 실패하면 이전 대기 제안을 되돌려 다시 승인할 수 있다 (DI-05, AC-F04-06)', async () => {
+    const { on } = await startPlan();
+    script([
+      { toolCalls: [toolCall('propose_reschedule', { changeType: 'move', reason: 'schedule', sessionId: on('2026-11-18').id, targetDate: '2026-11-19' })] },
+      { text: '목요일로 옮길까요?' },
+    ]);
+    const previousId = (await send('내일 운동 목요일로 옮겨 줘')).body.replies[0].card.proposal.id;
+    script([
+      { toolCalls: [toolCall('propose_reschedule', { changeType: 'ease', reason: 'fatigue', sessionId: on('2026-11-18').id, easeOption: 'rest' }, 'c1')] },
+      { toolCalls: [toolCall('propose_reschedule', { changeType: 'ease', reason: 'fatigue', sessionId: on('2026-11-18').id, easeOption: 'lighter' }, 'c2')] },
+      () => {
+        throw new LlmError('PROVIDER_ERROR');
+      },
+    ]);
+
+    expect((await send('피곤해')).status).toBe(503);
+
+    const rows = await prisma.changeProposal.findMany({ orderBy: { createdAt: 'asc' } });
+    // 같은 처리 안에서 대체된 중간 제안은 사용자에게 보인 적이 없어 대체 상태로 둔다
+    expect(rows.map((row) => row.status)).toEqual(['pending', 'superseded', 'cancelled']);
+    expect(rows[0]).toMatchObject({ id: previousId, resolvedAt: null });
+    const approved = await t.call('post', `/v1/proposals/${previousId}/approve`, USER_A);
+    expect(approved.status).toBe(200);
+    expect((await prisma.plannedSession.findUniqueOrThrow({ where: { id: on('2026-11-18').id } })).date.toISOString()).toContain('2026-11-19');
+  });
+
+  test('실패할 때 이전 대기 제안이 이미 만료됐으면 되돌리지 않는다', async () => {
+    const { on } = await startPlan();
+    script([
+      { toolCalls: [toolCall('propose_reschedule', { changeType: 'move', reason: 'schedule', sessionId: on('2026-11-18').id, targetDate: '2026-11-19' })] },
+      { text: '목요일로 옮길까요?' },
+    ]);
+    const previousId = (await send('내일 운동 목요일로 옮겨 줘')).body.replies[0].card.proposal.id;
+    script([
+      { toolCalls: [toolCall('propose_reschedule', { changeType: 'ease', reason: 'fatigue', sessionId: on('2026-11-18').id, easeOption: 'rest' })] },
+      async () => {
+        await prisma.changeProposal.update({ where: { id: previousId }, data: { expiresAt: new Date(Date.now() - 1) } });
+        throw new LlmError('PROVIDER_ERROR');
+      },
+    ]);
+
+    expect((await send('피곤해')).status).toBe(503);
+
+    expect(await prisma.changeProposal.findUniqueOrThrow({ where: { id: previousId } })).toMatchObject({ status: 'superseded' });
+    expect(await prisma.changeProposal.count({ where: { status: 'pending' } })).toBe(0);
+  });
+
   test('처리하는 동안 한도에 닿으면 답을 남기지 않고 이용량도 넘기지 않는다 (DI-12)', async () => {
     await prisma.usageCounter.create({ data: { userId: USER_A, month: '2026-11', chatCount: 4 } });
     script([
