@@ -136,3 +136,35 @@ test('사용자가 고른 연결과 자유 러닝은 이후 건강 기록이 와
   expect((await db.workoutLog.findUniqueOrThrow({ where: { id: first.id } })).plannedSessionId).toBeNull();
   expect((await db.workoutLog.findFirstOrThrow({ where: { userId: user, distanceKm: 2 } })).plannedSessionId).toBe(session.id);
 });
+
+test('시간 기반 훈련은 운동 시간이 가장 가까운 건강 기록에 연결된다 (F07-R11)', async () => {
+  const plan = await db.trainingPlan.create({ data: { userId: user, status: 'active', kind: 'race_prep', goalDistance: 'ten_k', startDate: day('2026-11-16'), endDate: day('2026-12-20'), engineVersion: 'test' } });
+  const session = await db.plannedSession.create({ data: { userId: user, planId: plan.id, date: day(date), type: 'easy', durationMin: 30, weekNumber: 1 } });
+  const body = { date, startedAt: '2026-11-17T00:00:00.000Z', endedAt: '2026-11-17T01:00:00.000Z', averageHeartRate: null };
+  await app.call('post', '/v1/workouts/healthkit', user, { ...body, externalId: '33333333-3333-4333-8333-333333333333', distanceKm: 2, durationSec: 720 });
+  await app.call('post', '/v1/workouts/healthkit', user, { ...body, externalId: '44444444-4444-4444-8444-444444444444', distanceKm: 5, durationSec: 1800 });
+  const linked = await db.workoutLog.findFirstOrThrow({ where: { userId: user, plannedSessionId: session.id } });
+  expect(linked.distanceKm.toNumber()).toBe(5);
+});
+
+test('가까운 건강 기록을 먼저 가져와도 연결은 바뀌지 않는다 (F07-R11)', async () => {
+  const plan = await db.trainingPlan.create({ data: { userId: user, status: 'active', kind: 'race_prep', goalDistance: 'ten_k', startDate: day('2026-11-16'), endDate: day('2026-12-20'), engineVersion: 'test' } });
+  const session = await db.plannedSession.create({ data: { userId: user, planId: plan.id, date: day(date), type: 'easy', distanceKm: 10, weekNumber: 1 } });
+  const body = { date, startedAt: '2026-11-17T00:00:00.000Z', endedAt: '2026-11-17T01:00:00.000Z', averageHeartRate: null };
+  await app.call('post', '/v1/workouts/healthkit', user, { ...body, externalId: '44444444-4444-4444-8444-444444444444', distanceKm: 10, durationSec: 3600 });
+  await app.call('post', '/v1/workouts/healthkit', user, { ...body, externalId: '33333333-3333-4333-8333-333333333333', distanceKm: 2, durationSec: 720 });
+  expect((await db.workoutLog.findFirstOrThrow({ where: { userId: user, plannedSessionId: session.id } })).distanceKm.toNumber()).toBe(10);
+});
+
+test('같은 날 기록이 셋 이상이면 사용자가 고른 연결은 이후 가져오기에도 유지된다 (F07-R04)', async () => {
+  const plan = await db.trainingPlan.create({ data: { userId: user, status: 'active', kind: 'race_prep', goalDistance: 'ten_k', startDate: day('2026-11-16'), endDate: day('2026-12-20'), engineVersion: 'test' } });
+  const session = await db.plannedSession.create({ data: { userId: user, planId: plan.id, date: day(date), type: 'easy', distanceKm: 10, weekNumber: 1 } });
+  const body = { date, startedAt: '2026-11-17T00:00:00.000Z', endedAt: '2026-11-17T01:00:00.000Z', averageHeartRate: null };
+  await app.call('post', '/v1/workouts/healthkit', user, { ...body, externalId: '33333333-3333-4333-8333-333333333333', distanceKm: 2, durationSec: 720 });
+  const manual = await app.call('post', '/v1/workouts', user, { date, distanceKm: 4, durationSec: 1440 });
+  await app.call('post', '/v1/workouts/healthkit', user, { ...body, externalId: '44444444-4444-4444-8444-444444444444', distanceKm: 6, durationSec: 2160 });
+  expect((await app.call('patch', `/v1/workouts/${manual.body.workout.id}`, user, { plannedSessionId: session.id })).status).toBe(200);
+  await app.call('post', '/v1/workouts/healthkit', user, { ...body, externalId: '55555555-5555-4555-8555-555555555555', distanceKm: 10, durationSec: 3600 });
+  const linked = await db.workoutLog.findMany({ where: { userId: user, plannedSessionId: session.id } });
+  expect(linked.map((row) => row.id)).toEqual([manual.body.workout.id]);
+});

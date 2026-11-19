@@ -287,6 +287,8 @@
 
 **`POST /v1/workouts/healthkit`** 요청은 `externalId`(HealthKit workout UUID), `date`, `startedAt`, `endedAt`(ISO 시각), `distanceKm`, `durationSec`, `averageHeartRate`(선택적 심박수가 없으면 null)를 받는다. 응답은 `{ imported: boolean }`이다. 같은 사용자의 HealthKit ID는 저장하지 않고 `false`를 반환하며 수정·삭제 후에도 재가져오지 않는다. 페이스가 허용 범위 밖이면 저장하지 않고 `false`를 반환한다. 같은 날짜의 활성 계획 훈련과 Apple 건강 기록을 거리 차이가 가장 작은 짝부터 자동 연결한다. 사용자가 직접 선택한 연결과 수동 기록의 연결은 유지한다.
 
+거리가 없는 시간 기반 훈련은 거리 기반 훈련을 연결한 다음, 훈련 시간과 기록 시간의 차이가 작은 짝부터 연결한다.
+
 **`POST /v1/workouts`** 요청
 
 | 필드 | 필수 | 값 |

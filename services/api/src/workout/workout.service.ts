@@ -91,8 +91,8 @@ export class WorkoutService {
         const sessions = await tx.plannedSession.findMany({ where: { userId, planId: plan.id, date, isSkipped: false }, include: { workout: true } });
         const available = sessions.filter((s) => !s.workout || s.workout.autoLinked);
         const records = await tx.workoutLog.findMany({ where: { userId, date, source: 'healthkit', manualLink: false, OR: [{ plannedSessionId: null }, { autoLinked: true }] } });
-        const pairs = available.flatMap((session) => records.map((record) => ({ session, record, difference: session.distanceKm === null ? Infinity : Math.abs(session.distanceKm.toNumber() - record.distanceKm.toNumber()) })));
-        pairs.sort((a, b) => a.difference - b.difference || a.session.id.localeCompare(b.session.id) || (a.record.healthkitId ?? a.record.id).localeCompare(b.record.healthkitId ?? b.record.id));
+        const pairs = available.flatMap((session) => records.map((record) => ({ session, record, timeBased: session.distanceKm === null, difference: session.distanceKm !== null ? Math.abs(session.distanceKm.toNumber() - record.distanceKm.toNumber()) : session.durationMin !== null ? Math.abs(session.durationMin * 60 - record.durationSec) : Infinity })));
+        pairs.sort((a, b) => Number(a.timeBased) - Number(b.timeBased) || a.difference - b.difference || a.session.id.localeCompare(b.session.id) || (a.record.healthkitId ?? a.record.id).localeCompare(b.record.healthkitId ?? b.record.id));
         await tx.workoutLog.updateMany({ where: { userId, id: { in: records.map((r) => r.id) }, autoLinked: true }, data: { plannedSessionId: null, autoLinked: false } });
         const usedSessions = new Set<string>();
         const usedRecords = new Set<string>();

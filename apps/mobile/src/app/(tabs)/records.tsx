@@ -28,7 +28,7 @@ export default function Records() {
   const refresh = async () => { await client.invalidateQueries(); };
   const remove = useMutation({ mutationFn: deleteWorkout, onSuccess: async () => { setDeleting(false); setSelected(null); await refresh(); }, onError: (error) => { if (!isRedirectError(error)) { setDeleting(false); setDeleteError(message(error)); } } });
   const separate = useMutation({ mutationFn: (id: string) => updateWorkout(id, { separateRun: true }), onSuccess: refresh, onError: (error) => { if (!isRedirectError(error)) setDeleteError(message(error)); } });
-  const health = useMutation({ mutationFn: importHealthkitWorkouts, onSuccess: async (result) => { setHealthMessage(result.total === 0 ? '건강 앱에서 러닝 기록을 찾지 못했어요. 건강 앱의 데이터 접근 권한을 확인해 주세요.' : `${result.imported}개를 가져왔어요. ${result.skipped}개는 이미 가져왔거나 저장할 수 없는 기록이에요. 거리가 없는 기록 ${result.missingDistance}개.${result.failed > 0 ? ` ${result.failed}개를 가져오지 못했어요.` : ''}`); await refresh(); }, onError: (error) => { if (!isRedirectError(error)) setHealthMessage(message(error)); void refresh(); } });
+  const health = useMutation({ mutationFn: importHealthkitWorkouts, onSuccess: async (result) => { setHealthMessage(result.total === 0 ? '건강 앱에서 러닝 기록을 찾지 못했어요. 건강 앱의 데이터 접근 권한을 확인해 주세요.' : `${result.imported}개를 가져왔어요. ${result.skipped}개는 이미 가져왔거나 저장할 수 없는 기록이에요.${result.missingDistance > 0 ? ` 거리가 없는 기록 ${result.missingDistance}개는 가져오지 않았어요.` : ''}${result.failed > 0 ? ` ${result.failed}개를 가져오지 못했어요.` : ''}`); await refresh(); }, onError: (error) => { if (!isRedirectError(error)) setHealthMessage(message(error)); void refresh(); } });
   const items = list.data?.pages.flatMap((page) => page.items) ?? [];
   const failure = list.error ?? stats.error;
   return (
@@ -81,7 +81,7 @@ function WorkoutForm({ workout, onBack, onSaved }: { workout: Workout | null; on
     if (err instanceof ApiClientError && (err.code === 'WORKOUT_DUPLICATE' || err.code === 'PACE_OUT_OF_RANGE')) setConfirmation(err.code);
     else if (!isRedirectError(err)) setError(message(err));
   } });
-  const options = [{ value: 'free', label: '자유 러닝' }, ...(workout?.plannedSessionId ? [{ value: workout.plannedSessionId, label: '현재 연결된 훈련' }] : []), ...(candidates.data?.items ?? []).filter((s) => s.id !== workout?.plannedSessionId).map((s) => ({ value: s.id, label: `${formatDate(s.date)} · ${SESSION_TYPE_LABELS[s.type].name}` }))];
+  const options = [{ value: 'free', label: '자유 러닝' }, ...(workout?.plannedSessionId ? [{ value: workout.plannedSessionId, label: '현재 연결된 훈련' }] : []), ...(candidates.data?.items ?? []).filter((s) => s.id !== workout?.plannedSessionId).map((s) => ({ value: s.id, label: `${formatDate(s.date)} · ${SESSION_TYPE_LABELS[s.type].name}${s.workoutId ? ' · 다른 기록과 연결됨' : ''}` }))];
   const changeDate = (value: string) => { setDate(value); setChosenSession(null); };
   return <Screen title={workout ? '기록 수정' : '운동 기록'} onBack={onBack} footer={<Button label="저장" size="large" disabled={!valid || candidates.isLoading || candidates.isError} loading={mutation.isPending} onPress={() => { setError(null); setConfirmed({ confirmDuplicate: false, confirmPace: false }); mutation.mutate({ confirmDuplicate: false, confirmPace: false }); }} />}>
     <Stack gap={4}>
