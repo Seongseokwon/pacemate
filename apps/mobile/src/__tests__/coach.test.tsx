@@ -10,6 +10,7 @@ import { showToast } from '@/ui';
 import Me from '../app/(tabs)/me';
 import CoachChange from '../app/coach-change';
 import CoachSelect from '../app/coach-select';
+import { testQueryClient } from '../test-fixtures';
 
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 jest.mock('expo-router', () => ({ router: { replace: jest.fn(), back: jest.fn(), push: jest.fn() } }));
@@ -34,7 +35,7 @@ const button = (name: string) => screen.getByRole('button', { name });
 
 beforeEach(() => {
   jest.clearAllMocks();
-  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  queryClient = testQueryClient();
   jest.mocked(getMe).mockResolvedValue(ME);
 });
 

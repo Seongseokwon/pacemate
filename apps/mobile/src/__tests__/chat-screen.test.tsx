@@ -1,7 +1,8 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { apiFetch, ApiClientError } from '@/api/client';
 import Coach from '../app/(tabs)/coach';
+import { testQueryClient } from '../test-fixtures';
 
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 jest.mock('expo-router/js-tabs', () => ({ BottomTabBarHeightContext: jest.requireActual('react').createContext(undefined) }));
@@ -13,7 +14,7 @@ const userMessage = { id: '00000000-0000-4000-8000-000000000002', role: 'user', 
 const reply = { ...userMessage, id: '00000000-0000-4000-8000-000000000003', role: 'assistant', content: '어떻게 도와드릴까요?' };
 const mockFetch = jest.mocked(apiFetch);
 const show = async () => {
-  await render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })}><Coach /></QueryClientProvider>);
+  await render(<QueryClientProvider client={testQueryClient()}><Coach /></QueryClientProvider>);
   await screen.findByDisplayValue('훈련을 바꾸고 싶어요');
 };
 beforeEach(() => {

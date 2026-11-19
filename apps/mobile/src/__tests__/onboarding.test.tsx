@@ -1,9 +1,10 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { saveProfile } from '@/api/profile';
 import { EMPTY_DRAFT, loadDraft, type OnboardingDraft, saveDraft } from '@/onboarding/draft';
 import Onboarding from '../app/(onboarding)/index';
+import { testQueryClient } from '../test-fixtures';
 
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 jest.mock('expo-router', () => ({ router: { replace: jest.fn(), canDismiss: jest.fn(() => false), dismissAll: jest.fn() } }));
@@ -13,7 +14,7 @@ jest.mock('@/onboarding/draft', () => ({ ...jest.requireActual('@/onboarding/dra
 const show = async (draft: OnboardingDraft = EMPTY_DRAFT) => {
   jest.mocked(loadDraft).mockResolvedValue(draft);
   await render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { mutations: { retry: false } } })}>
+    <QueryClientProvider client={testQueryClient()}>
       <Onboarding />
     </QueryClientProvider>,
   );

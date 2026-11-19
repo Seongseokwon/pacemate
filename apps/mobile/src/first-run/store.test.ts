@@ -7,10 +7,9 @@ import { advance, loadFirstRun, resetAccountFirstRun } from './store';
 jest.mock('expo-router', () => ({ router: { replace: jest.fn(), canDismiss: jest.fn(() => false), dismissAll: jest.fn() } }));
 jest.mock('expo-secure-store', () => ({ getItemAsync: jest.fn(), setItemAsync: jest.fn(() => Promise.resolve()) }));
 
-beforeEach(() => {
-  jest.clearAllMocks();
-  queryClient.clear();
-});
+beforeEach(() => jest.clearAllMocks());
+// 앱 전체가 함께 쓰는 클라이언트라 캐시 정리 타이머가 남으면 Jest 작업자가 끝나지 않는다
+afterEach(() => queryClient.clear());
 
 test('저장된 상태가 없거나 읽지 못하면 처음 실행한 기기로 본다', async () => {
   jest.mocked(SecureStore.getItemAsync).mockResolvedValueOnce(null);

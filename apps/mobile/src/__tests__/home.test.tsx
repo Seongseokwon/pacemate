@@ -1,11 +1,11 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { getHome } from '@/api/plan';
 import { advance } from '@/first-run/store';
 import { loadDismissed } from '@/home/dismissed';
 import Home from '../app/(tabs)/index';
-import { home, plan, session } from '../test-fixtures';
+import { home, plan, session, testQueryClient } from '../test-fixtures';
 
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn() } }));
@@ -17,7 +17,7 @@ jest.mock('@/home/dismissed', () => ({ loadDismissed: jest.fn(() => Promise.reso
 const show = async (data = home()) => {
   jest.mocked(getHome).mockResolvedValue(data);
   await render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider client={testQueryClient()}>
       <Home />
     </QueryClientProvider>,
   );

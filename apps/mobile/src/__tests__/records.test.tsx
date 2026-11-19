@@ -1,8 +1,9 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { ApiClientError } from '@/api/client';
 import { createWorkout, getCandidates, getWorkouts, getWorkoutStats } from '@/api/workouts';
 import Records from '../app/(tabs)/records';
+import { testQueryClient } from '../test-fixtures';
 
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 jest.mock('@/health/healthkit', () => ({ importHealthkitWorkouts: jest.fn() }));
@@ -18,7 +19,7 @@ beforeEach(() => {
 
 test('거리와 시간을 입력하고 저장하면 코치 문구와 진행률을 보여 준다', async () => {
   jest.mocked(createWorkout).mockResolvedValue({ workout: {} as never, weekProgress: { completed: 1, planned: 3 }, coachLine: { code: 'WORKOUT_SAVED', text: '수고하셨어요.' } });
-  await render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Records /></QueryClientProvider>);
+  await render(<QueryClientProvider client={testQueryClient()}><Records /></QueryClientProvider>);
   await screen.findByText('아직 운동 기록이 없어요.');
   await fireEvent.press(screen.getAllByRole('button', { name: '기록 추가' })[0]!);
   await screen.findByText('운동 날짜');
@@ -36,7 +37,7 @@ test('거리와 시간을 입력하고 저장하면 코치 문구와 진행률�
 
 test('중복 확인에 동의하면 확인 값을 추가해 다시 저장한다', async () => {
   jest.mocked(createWorkout).mockRejectedValueOnce(new ApiClientError('WORKOUT_DUPLICATE', '중복')).mockResolvedValueOnce({ workout: {} as never, weekProgress: null, coachLine: { code: 'WORKOUT_SAVED', text: '수고하셨어요.' } });
-  await render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Records /></QueryClientProvider>);
+  await render(<QueryClientProvider client={testQueryClient()}><Records /></QueryClientProvider>);
   await screen.findByText('아직 운동 기록이 없어요.');
   await fireEvent.press(screen.getAllByRole('button', { name: '기록 추가' })[0]!);
   await fireEvent.changeText(screen.getByLabelText('거리 (km)'), '5');
@@ -52,7 +53,7 @@ test('같은 날의 훈련을 연결하고 통증을 저장한다', async () => 
   const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   jest.mocked(getCandidates).mockResolvedValue({ items: [{ id: 'session-1', date, type: 'easy' } as never] });
   jest.mocked(createWorkout).mockResolvedValue({ workout: {} as never, weekProgress: null, coachLine: { code: 'WORKOUT_PAIN', text: '쉬면서 몸 상태를 살펴봐 주세요.' } });
-  await render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Records /></QueryClientProvider>);
+  await render(<QueryClientProvider client={testQueryClient()}><Records /></QueryClientProvider>);
   await screen.findByText('아직 운동 기록이 없어요.');
   await fireEvent.press(screen.getAllByRole('button', { name: '기록 추가' })[0]!);
   await fireEvent.changeText(screen.getByLabelText('거리 (km)'), '5');

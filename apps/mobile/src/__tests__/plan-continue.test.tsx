@@ -1,5 +1,5 @@
 import type { PlanOption } from '@pacemate/shared';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { ApiClientError } from '@/api/client';
@@ -7,7 +7,7 @@ import { confirmPlan, getHome, previewPlan } from '@/api/plan';
 import { saveDraft } from '@/onboarding/draft';
 import Home from '../app/(tabs)/index';
 import PlanContinue from '../app/plan-continue';
-import { home, plan } from '../test-fixtures';
+import { home, plan, testQueryClient } from '../test-fixtures';
 
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn(), back: jest.fn() } }));
@@ -18,7 +18,7 @@ jest.mock('@/home/dismissed', () => ({ loadDismissed: jest.fn(() => Promise.reso
 jest.mock('@/onboarding/draft', () => ({ ...jest.requireActual('@/onboarding/draft'), saveDraft: jest.fn(() => Promise.resolve()) }));
 
 const show = (ui: React.ReactElement) =>
-  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>{ui}</QueryClientProvider>);
+  render(<QueryClientProvider client={testQueryClient()}>{ui}</QueryClientProvider>);
 const press = async (name: string) => fireEvent.press(await screen.findByRole('button', { name }));
 
 const row = (date: string, weekNumber: number, patch: Partial<PlanOption['sessions'][number]> = {}): PlanOption['sessions'][number] => ({
