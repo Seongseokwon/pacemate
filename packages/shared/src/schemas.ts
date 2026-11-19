@@ -62,6 +62,7 @@ const workoutContentSchema = z.object({
   date: dateSchema,
   distanceKm: z.number().positive(),
   durationSec: z.int().positive(),
+  averageHeartRate: z.int().positive().max(300).nullable().optional(),
   /** 서버가 거리와 시간으로 계산한다 */
   paceSecPerKm: z.int().positive(),
   condition: z.int().min(1).max(5).nullable(),

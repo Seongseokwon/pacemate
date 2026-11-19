@@ -88,6 +88,7 @@ enum SessionType {
 enum WorkoutSource {
   app
   chat
+  healthkit
 
   @@map("workout_source")
 }
@@ -194,6 +195,7 @@ model User {
   plans                TrainingPlan[]
   sessions             PlannedSession[]
   workouts             WorkoutLog[]
+  healthkitImports     HealthkitImport[]
   chatMessages         ChatMessage[]
   proposals            ChangeProposal[]
   planChangeLogs       PlanChangeLog[]
@@ -280,6 +282,7 @@ model WorkoutLog {
   date             DateTime      @db.Date
   distanceKm       Decimal       @map("distance_km") @db.Decimal(5, 2)
   durationSec      Int           @map("duration_sec")
+  averageHeartRate Int?          @map("average_heart_rate")
   condition        Int?          @db.SmallInt
   rpe              Int?          @db.SmallInt
   memo             String?
@@ -293,6 +296,15 @@ model WorkoutLog {
 
   @@index([userId, date])
   @@map("workout_logs")
+}
+
+model HealthkitImport {
+  userId     String @map("user_id") @db.Uuid
+  externalId String @map("external_id") @db.Uuid
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, externalId])
+  @@map("healthkit_imports")
 }
 
 model ChatMessage {

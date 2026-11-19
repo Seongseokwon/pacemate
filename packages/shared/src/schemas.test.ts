@@ -79,6 +79,7 @@ test('API_SPEC §2의 예시 객체가 스키마를 통과한다', () => {
   ).toBe(true);
   expect(sessionSchema.safeParse(session).success).toBe(true);
   expect(workoutSchema.safeParse(workout).success).toBe(true);
+  expect(workoutSchema.safeParse({ ...workout, source: 'healthkit' }).success).toBe(true);
   expect(proposalSchema.safeParse(proposal).success).toBe(true);
   expect(chatMessageSchema.safeParse(message(null)).success).toBe(true);
   expect(chatMessageSchema.safeParse(message({ type: 'proposal', proposal })).success).toBe(true);

@@ -17,7 +17,8 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-notifications"
+      "expo-notifications",
+      ["@kingstinct/react-native-healthkit", { "NSHealthShareUsageDescription": "러닝 기록을 가져와 훈련에 연결합니다.", "NSHealthUpdateUsageDescription": "건강 데이터를 업데이트하지 않습니다.", "background": false }]
     ]
   }
 }

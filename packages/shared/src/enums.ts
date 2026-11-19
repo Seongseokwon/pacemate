@@ -16,7 +16,7 @@ export type SessionStatus = z.infer<typeof sessionStatusSchema>;
 export const goalDistanceSchema = z.enum(['five_k', 'ten_k', 'half', 'none']);
 export type GoalDistance = z.infer<typeof goalDistanceSchema>;
 
-export const workoutSourceSchema = z.enum(['app', 'chat']);
+export const workoutSourceSchema = z.enum(['app', 'chat', 'healthkit']);
 export type WorkoutSource = z.infer<typeof workoutSourceSchema>;
 
 export const proposalTypeSchema = z.enum(['reschedule', 'goal_change', 'workout_log']);

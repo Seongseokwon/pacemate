@@ -40,6 +40,40 @@ test('동시 중복 요청, 이상 페이스 확인과 통계 (F07-R03, F07-R08)
   expect((await app.call('get', '/v1/workouts/stats', user)).body).toEqual({ week: { distanceKm: 5, count: 1 }, month: { distanceKm: 5, count: 1 } });
 });
 
+test('Apple 건강 기록은 동시 가져오기에도 중복되지 않고 같은 날 훈련에 연결된다 (F07-R11)', async () => {
+  const plan = await db.trainingPlan.create({ data: { userId: user, status: 'active', kind: 'race_prep', goalDistance: 'ten_k', startDate: day('2026-11-16'), endDate: day('2026-12-20'), engineVersion: 'test' } });
+  const session = await db.plannedSession.create({ data: { userId: user, planId: plan.id, date: day(date), type: 'easy', distanceKm: 5, weekNumber: 1 } });
+  const body = { externalId: '33333333-3333-4333-8333-333333333333', date, distanceKm: 5, durationSec: 1800, averageHeartRate: 140 };
+  const results = await Promise.all([app.call('post', '/v1/workouts/healthkit', user, body), app.call('post', '/v1/workouts/healthkit', user, body)]);
+  expect(results.map((r) => r.body.imported).sort()).toEqual([false, true]);
+  expect((await app.call('get', '/v1/workouts', user)).body.items).toMatchObject([{ source: 'healthkit', plannedSessionId: session.id, averageHeartRate: 140 }]);
+  expect((await app.call('post', '/v1/workouts/healthkit', other, body)).body.imported).toBe(true);
+  const id = (await app.call('get', '/v1/workouts', user)).body.items[0].id;
+  await app.call('patch', `/v1/workouts/${id}`, user, { distanceKm: 5.2 });
+  expect((await app.call('post', '/v1/workouts/healthkit', user, body)).body.imported).toBe(false);
+  await app.call('delete', `/v1/workouts/${id}`, user);
+  expect((await app.call('post', '/v1/workouts/healthkit', user, body)).body.imported).toBe(false);
+  expect((await app.call('post', '/v1/workouts/healthkit', user, { ...body, externalId: '44444444-4444-4444-8444-444444444444', distanceKm: 10, durationSec: 600 })).body.imported).toBe(false);
+});
+
+test('Apple 건강 가져오기는 수동 기록과 중복을 제거하고 미래 날짜를 거절한다 (F07-R11)', async () => {
+  const body = { externalId: '33333333-3333-4333-8333-333333333333', date, distanceKm: 5, durationSec: 1800, averageHeartRate: null };
+  await app.call('post', '/v1/workouts', user, { date, distanceKm: 5, durationSec: 1800 });
+  expect((await app.call('post', '/v1/workouts/healthkit', user, body)).body.imported).toBe(false);
+  expect((await app.call('post', '/v1/workouts/healthkit', user, { ...body, date: '2026-11-18' })).status).toBe(400);
+});
+
+test('Apple 건강 기록은 생략한 훈련과 종료된 계획에 연결하지 않는다 (F07-R11)', async () => {
+  const planData = { userId: user, kind: 'race_prep' as const, goalDistance: 'ten_k' as const, startDate: day('2026-11-16'), endDate: day('2026-12-20'), engineVersion: 'test' };
+  const active = await db.trainingPlan.create({ data: { ...planData, status: 'active' } });
+  const ended = await db.trainingPlan.create({ data: { ...planData, status: 'ended' } });
+  await db.plannedSession.create({ data: { userId: user, planId: active.id, date: day(date), type: 'easy', distanceKm: 5, weekNumber: 1, isSkipped: true } });
+  await db.plannedSession.create({ data: { userId: user, planId: ended.id, date: day(date), type: 'easy', distanceKm: 5, weekNumber: 1 } });
+  const result = await app.call('post', '/v1/workouts/healthkit', user, { externalId: '33333333-3333-4333-8333-333333333333', date, distanceKm: 5, durationSec: 1800, averageHeartRate: null });
+  expect(result.body.imported).toBe(true);
+  expect((await app.call('get', '/v1/workouts', user)).body.items[0].plannedSessionId).toBeNull();
+});
+
 test('통증 기록을 저장하면 휴식을 권한다', async () => {
   const result = await app.call('post', '/v1/workouts', user, { date, distanceKm: 5, durationSec: 1800, memo: '무릎이 아파요' });
   expect(result.body.coachLine).toMatchObject({ code: 'WORKOUT_PAIN', text: expect.stringContaining('쉬') });

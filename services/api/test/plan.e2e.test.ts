@@ -359,6 +359,7 @@ describe('GET /v1/sessions/{id} (F06-R03)', () => {
       date: '2026-11-14',
       distanceKm: 5,
       durationSec: 1920,
+      averageHeartRate: null,
       paceSecPerKm: 384,
       condition: null,
       rpe: 6,

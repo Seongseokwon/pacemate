@@ -265,6 +265,13 @@ export const createWorkoutRequestSchema = workoutFieldsSchema.partial({
 });
 export type CreateWorkoutRequest = z.infer<typeof createWorkoutRequestSchema>;
 
+export const healthkitWorkoutRequestSchema = workoutFieldsSchema.pick({ date: true, distanceKm: true, durationSec: true }).extend({
+  externalId: z.uuid(),
+  averageHeartRate: z.int().positive().max(300).nullable(),
+});
+export type HealthkitWorkoutRequest = z.infer<typeof healthkitWorkoutRequestSchema>;
+export const healthkitWorkoutResponseSchema = z.object({ imported: z.boolean() });
+
 /** `PATCH /v1/workouts/{id}`. `plannedSessionId: null`은 연결 해제다. */
 export const updateWorkoutRequestSchema = workoutFieldsSchema.partial();
 export type UpdateWorkoutRequest = z.infer<typeof updateWorkoutRequestSchema>;

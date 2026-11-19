@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { WORKOUT_COACH_LINE, WORKOUT_LIMITS, WORKOUT_PAIN_COACH_LINE, type CreateWorkoutRequest, type ListQuery, type UpdateWorkoutRequest } from '@pacemate/shared';
+import { WORKOUT_COACH_LINE, WORKOUT_LIMITS, WORKOUT_PAIN_COACH_LINE, type CreateWorkoutRequest, type HealthkitWorkoutRequest, type ListQuery, type UpdateWorkoutRequest } from '@pacemate/shared';
 import { AppError } from '../common/app-error.js';
 import { addDays, mondayOf, toDateString, toDbDate } from '../common/dates.js';
 import { today } from '../common/today.js';
@@ -61,6 +61,25 @@ export class WorkoutService {
   }
 
   async update(userId: string, id: string, input: UpdateWorkoutRequest) { return toWorkout(await this.save(userId, input, id)); }
+
+  async importHealthkit(userId: string, input: HealthkitWorkoutRequest) {
+    if (input.date > today()) throw new AppError('VALIDATION_ERROR', '미래 날짜에는 기록할 수 없어요.');
+    return this.db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
+      const distanceKm = new Prisma.Decimal(input.distanceKm).toDecimalPlaces(2);
+      const date = toDbDate(input.date);
+      const pace = input.durationSec / distanceKm.toNumber();
+      if (pace < WORKOUT_LIMITS.paceSecPerKm.min || pace > WORKOUT_LIMITS.paceSecPerKm.max) return { imported: false };
+      if (await tx.healthkitImport.findUnique({ where: { userId_externalId: { userId, externalId: input.externalId } } })) return { imported: false };
+      await tx.healthkitImport.create({ data: { userId, externalId: input.externalId } });
+      if (await tx.workoutLog.findFirst({ where: { userId, date, distanceKm, durationSec: input.durationSec } })) return { imported: false };
+      const session = await tx.plannedSession.findFirst({ where: { userId, date, isSkipped: false, workout: null, plan: { status: 'active' } }, orderBy: { createdAt: 'asc' } });
+      if (session) await tx.$queryRaw`SELECT id FROM training_plans WHERE id = ${session.planId}::uuid AND user_id = ${userId}::uuid FOR UPDATE`;
+      const available = session && await tx.plannedSession.findFirst({ where: { id: session.id, userId, date, isSkipped: false, workout: null, plan: { status: 'active' } } });
+      await tx.workoutLog.create({ data: { userId, date, distanceKm, durationSec: input.durationSec, averageHeartRate: input.averageHeartRate, source: 'healthkit', plannedSessionId: available?.id ?? null } });
+      return { imported: true };
+    });
+  }
 
   async remove(userId: string, id: string) {
     await this.db.$transaction(async (tx) => {
