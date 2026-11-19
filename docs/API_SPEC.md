@@ -444,9 +444,9 @@ LLM에 제공하는 도구 7개의 입력과 출력이다(PRD §6.2). HTTP 엔�
 | 도구 | 입력 | 출력 |
 |---|---|---|
 | `get_runner_profile` | 없음 | 오늘 날짜, 프로필, 수준, 목표(거리·기록·대회 날짜), 대회까지 남은 날. 프로필이 없으면 프로필과 수준은 null. 활성 계획이 없으면 목표는 null. 목표 없음이면 목표는 `{ goalDistance: 'none', focus }`이고 기록·대회 날짜·남은 날을 넣지 않는다 |
-| `get_training_plan` | `from`, `to` (날짜, 최대 28일) | 오늘 날짜, 계획 요약(지금 몇째 주, 전체 주 수, 진행률. 첫 주가 오기 전이면 주차는 null)과 기간 내 훈련 목록: `sessionId`, `date`, 요일, `type`, `distanceKm`, `durationMin`, `runIntervalMin`, `status`. 활성 계획이 없으면 계획 요약은 null |
+| `get_training_plan` | `from`, `to` (날짜, 최대 28일) | 오늘 날짜, 계획 요약(지금 몇째 주, 전체 주 수, 진행률. 첫 주가 오기 전이거나 계획이 끝났으면 주차는 null)과 기간 내 훈련 목록: `sessionId`, `date`, 요일, `type`, `distanceKm`, `durationMin`, `runIntervalMin`, `paceRange`(권장 페이스), 훈련 안내 문구, `status`. 활성 계획이 없으면 계획 요약은 null |
 | `get_workout_history` | `from`, `to` (날짜, 최대 90일) | 기록 목록: `date`, 요일, `distanceKm`, `durationSec`, `paceSecPerKm`, `rpe`(운동 강도), `memo`(통증 내용), 연결된 훈련의 `type` |
-| `get_weekly_summary` | `weekStart` (월요일) | §3.7의 수치(`aiFeedback` 제외). 횟수는 계획 진행률과 같이 대회와 생략한 훈련을 세지 않고, 거리는 훈련에 연결되지 않은 기록까지 합한다 |
+| `get_weekly_summary` | `weekStart` (월요일) | §3.7의 수치(`aiFeedback` 제외). 횟수와 다음 훈련은 계획 진행률과 같이 대회와 생략한 훈련을 빼고 본다. 거리는 훈련에 연결되지 않은 기록까지 합한다 |
 
 ### 제안 도구
 

@@ -62,6 +62,15 @@ describe('SummaryService.weeklyNumbers', () => {
     expect(numbers.nextSession).toMatchObject({ date: '2026-11-20', status: 'planned' });
   });
 
+  test('대회만 남았으면 다음 훈련은 없다 (PRD §7.2)', async () => {
+    const plan = await seedUser(USER);
+    const last = await session(plan.id, USER, '2026-11-18');
+    await workout(USER, '2026-11-18', 5, last.id);
+    await session(plan.id, USER, '2026-11-22', { type: 'race' });
+
+    expect((await service.weeklyNumbers(USER, '2026-11-16')).nextSession).toBeNull();
+  });
+
   test('계획도 기록도 없는 주는 0이고, 다른 사용자의 데이터는 세지 않는다 (DI-07)', async () => {
     const plan = await seedUser(OTHER);
     await session(plan.id, OTHER, '2026-11-20');
