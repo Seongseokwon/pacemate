@@ -1,0 +1,15 @@
+# B-24: 로그인과 T-407 연결 후, 오늘 기록이 없는 계정으로 실행한다.
+appId: com.pacemate.app
+---
+- openLink: pacemate://coach
+- extendedWaitUntil: { visible: "메시지", timeout: 15000 }
+- tapOn: "메시지"
+- inputText: "오늘 5km를 30분에 달렸어요. 기록해 주세요"
+- tapOn: "보내기"
+- extendedWaitUntil: { visible: "기록 확인", timeout: 90000 }
+- takeScreenshot: b24-s4-proposal
+- tapOn: "기록 저장"
+- extendedWaitUntil: { visible: "적용했어요", timeout: 15000 }
+- takeScreenshot: b24-s4-saved
+- tapOn: "기록"
+- takeScreenshot: b24-s4-records

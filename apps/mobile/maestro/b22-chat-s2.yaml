@@ -1,0 +1,15 @@
+# B-22: 로그인과 T-407 연결 후, 이번 주에 변경 가능한 훈련이 있는 계정으로 실행한다.
+appId: com.pacemate.app
+---
+- openLink: pacemate://coach
+- extendedWaitUntil: { visible: "메시지", timeout: 15000 }
+- tapOn: "메시지"
+- inputText: "이번 주말에 여행을 가요. 주말 훈련을 다른 날로 옮겨 주세요"
+- tapOn: "보내기"
+- extendedWaitUntil: { visible: "일정 변경 제안", timeout: 90000 }
+- takeScreenshot: b22-s2-proposal
+- tapOn: "적용하기"
+- extendedWaitUntil: { visible: "적용했어요", timeout: 15000 }
+- takeScreenshot: b22-s2-applied
+- tapOn: "캘린더에서 보기"
+- takeScreenshot: b22-s2-calendar

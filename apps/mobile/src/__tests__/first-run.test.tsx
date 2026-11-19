@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import * as Notifications from 'expo-notifications';
 import type { ReactElement } from 'react';
@@ -9,6 +9,7 @@ import OnboardingStart from '../app/(onboarding)/start';
 import Index from '../app/index';
 import Intro from '../app/intro';
 import NotificationPermission from '../app/notification-permission';
+import { testQueryClient } from '../test-fixtures';
 
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 jest.mock('expo-router', () => {
@@ -20,7 +21,7 @@ jest.mock('@/api/me', () => ({ ...jest.requireActual('@/api/me'), getMe: jest.fn
 jest.mock('@/first-run/store', () => ({ ...jest.requireActual('@/first-run/store'), advance: jest.fn(() => Promise.resolve()), loadFirstRun: jest.fn() }));
 
 const show = (element: ReactElement) =>
-  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{element}</QueryClientProvider>);
+  render(<QueryClientProvider client={testQueryClient()}>{element}</QueryClientProvider>);
 const press = (name: string) => fireEvent.press(screen.getByRole('button', { name }));
 
 beforeEach(() => jest.clearAllMocks());

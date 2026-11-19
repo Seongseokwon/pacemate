@@ -1,9 +1,9 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { getSession, getSessions } from '@/api/plan';
 import Calendar from '../app/(tabs)/calendar';
-import { session } from '../test-fixtures';
+import { session, testQueryClient } from '../test-fixtures';
 
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
@@ -20,7 +20,7 @@ const items = [
 const show = async () => {
   jest.mocked(getSessions).mockResolvedValue({ items });
   await render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider client={testQueryClient()}>
       <Calendar />
     </QueryClientProvider>,
   );

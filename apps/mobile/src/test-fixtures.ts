@@ -1,4 +1,9 @@
 import type { HomeResponse, PlanSummary, Session } from '@pacemate/shared';
+import { QueryClient } from '@tanstack/react-query';
+
+// 캐시 정리 타이머(기본 5분)가 남으면 Jest 작업자가 끝나지 않아 강제 종료되므로 테스트에서는 타이머를 만들지 않는다
+export const testQueryClient = (): QueryClient =>
+  new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false, gcTime: Infinity } } });
 
 let next = 0;
 export const session = (patch: Partial<Session> = {}): Session => ({

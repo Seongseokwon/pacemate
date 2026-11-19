@@ -1,5 +1,5 @@
 import type { PlanOption } from '@pacemate/shared';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { ApiClientError } from '@/api/client';
@@ -7,6 +7,7 @@ import { confirmPlan, previewPlan } from '@/api/plan';
 import { advance } from '@/first-run/store';
 import { clearDraft, EMPTY_DRAFT, loadDraft } from '@/onboarding/draft';
 import PlanPreview from '../app/(onboarding)/plan-preview';
+import { testQueryClient } from '../test-fixtures';
 
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 jest.mock('expo-router', () => ({ router: { replace: jest.fn(), push: jest.fn() } }));
@@ -33,7 +34,7 @@ const option = (kind: PlanOption['kind'], patch: Partial<PlanOption> = {}): Plan
 const show = async () => {
   jest.mocked(loadDraft).mockResolvedValue({ ...EMPTY_DRAFT, goalDistance: 'ten_k', step: 7 });
   await render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
+    <QueryClientProvider client={testQueryClient()}>
       <PlanPreview />
     </QueryClientProvider>,
   );
@@ -107,7 +108,7 @@ test('끝난 계획 뒤 새 목표로 만든 계획은 첫 실행 흐름 없이 
   jest.mocked(confirmPlan).mockResolvedValue({} as never);
   jest.mocked(loadDraft).mockResolvedValue({ ...EMPTY_DRAFT, goalDistance: 'ten_k', step: 7, goalOnly: true });
   await render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
+    <QueryClientProvider client={testQueryClient()}>
       <PlanPreview />
     </QueryClientProvider>,
   );

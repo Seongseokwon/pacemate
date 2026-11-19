@@ -12,6 +12,9 @@ export const toDateString = (date: Date): string => `${date.getFullYear()}-${pad
 /** 화면에 '오늘'을 표시하고 처음 고를 날짜를 정할 때만 쓴다. 훈련 상태 같은 판단은 서버가 한다(ARCHITECTURE §13). */
 export const deviceToday = (): string => toDateString(new Date());
 
+/** 서버 시각(ISO 8601 UTC)을 기기 시간대의 날짜로 바꾼다. 대화의 날짜 구분선에 쓴다 */
+export const localDateOf = (timestamp: string): string => toDateString(new Date(timestamp));
+
 export const addDays = (date: string, days: number): string => {
   const value = toDate(date);
   value.setDate(value.getDate() + days);

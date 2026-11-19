@@ -7,6 +7,7 @@ import { signIn, signOut } from '@/auth/session';
 import Consent from '../app/(auth)/consent';
 import Login from '../app/(auth)/login';
 import DeleteAccount from '../app/delete-account';
+import { testQueryClient } from '../test-fixtures';
 
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 jest.mock('expo-router', () => ({ router: { replace: jest.fn(), back: jest.fn(), canDismiss: jest.fn(() => false), dismissAll: jest.fn() } }));
@@ -21,7 +22,7 @@ const press = (name: string | RegExp) => fireEvent.press(screen.getByRole('butto
 
 beforeEach(() => {
   jest.clearAllMocks();
-  queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+  queryClient = testQueryClient();
 });
 
 describe('동의 화면 (F01-R02)', () => {
