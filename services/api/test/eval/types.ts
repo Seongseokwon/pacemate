@@ -103,6 +103,8 @@ export interface EvalTranscript {
   fixture: EvalFixture;
   turns: EvalTurnResult[];
   proposals: EvalProposalResult[];
+  /** 이 사례에서 공급자를 부른 비용의 합. 공급자 구현이 계산한 추정치다 */
+  costUsd: number;
 }
 
 export interface EvalCheck {
@@ -116,6 +118,7 @@ export interface EvalCheck {
 
 export interface EvalResult {
   caseId: string;
+  category: EvalCategory;
   coach: Coach;
   checks: EvalCheck[];
   transcript: EvalTranscript;
