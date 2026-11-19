@@ -1,7 +1,8 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { FakeLlmProvider, type FakeLlmStep } from '../src/chat/llm/fake-llm-provider.js';
 import { LLM_PROVIDER, LlmError, type LlmProvider, type LlmRequest } from '../src/chat/llm/llm-provider.js';
 import { SAFETY_LINES } from '../src/chat/prompts/safety.js';
+import { UsageService } from '../src/usage/usage.service.js';
 import { createTestApp } from './test-app.js';
 import { createTestPrisma, resetDatabase } from './test-db.js';
 
@@ -206,6 +207,80 @@ describe('실패 (F04-R10)', () => {
     expect(res.status).toBe(503);
     expect(await chatUsed()).toBe(0);
     await plain.app.close();
+  });
+});
+
+describe('실패 정리와 완료 확정 (§7.5의 5~6번)', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  test('메시지를 저장한 뒤 한도 조회가 실패해도 처리 중으로 남지 않는다', async () => {
+    vi.spyOn(t.app.get(UsageService), 'get').mockRejectedValueOnce(new Error('db'));
+    const clientMessageId = newId();
+
+    expect((await send('안녕', { clientMessageId })).status).toBe(503);
+
+    expect(await prisma.chatMessage.findFirstOrThrow({ where: { clientMessageId } })).toMatchObject({ status: 'failed' });
+    script([{ text: '네' }]);
+    expect((await send('다시 안녕')).status).toBe(200);
+  });
+
+  test('커밋한 뒤 응답 조립이 실패해도 결과를 되돌리지 않고, 같은 ID로 다시 보내면 저장된 결과를 받는다 (AC-F04-06)', async () => {
+    const { on } = await startPlan();
+    script([
+      { toolCalls: [toolCall('propose_reschedule', { changeType: 'ease', reason: 'fatigue', sessionId: on('2026-11-18').id, easeOption: 'rest' })] },
+      { text: '쉬도록 바꿀까요?' },
+    ]);
+    const usage = t.app.get(UsageService);
+    const original = usage.get.bind(usage);
+    // 첫 호출은 한도 확인, 둘째 호출은 커밋 뒤 응답 조립이다
+    vi.spyOn(usage, 'get').mockImplementationOnce(original).mockRejectedValueOnce(new Error('db'));
+    const clientMessageId = newId();
+
+    expect((await send('피곤해', { clientMessageId })).status).toBe(500);
+
+    expect(await prisma.chatMessage.findFirstOrThrow({ where: { clientMessageId } })).toMatchObject({ status: 'done' });
+    expect(await prisma.changeProposal.findFirstOrThrow()).toMatchObject({ status: 'pending' });
+    expect(await chatUsed()).toBe(1);
+    const again = await send('피곤해', { clientMessageId });
+    expect(again.status).toBe(200);
+    expect(again.body.replies[0]).toMatchObject({ content: '쉬도록 바꿀까요?', card: { type: 'proposal', proposal: { status: 'pending' } } });
+  });
+
+  test('2분이 지나 실패로 바뀐 처리는 늦게 끝나도 결과를 남기지 못한다', async () => {
+    const { on } = await startPlan();
+    script([
+      { toolCalls: [toolCall('propose_reschedule', { changeType: 'ease', reason: 'fatigue', sessionId: on('2026-11-18').id, easeOption: 'rest' })] },
+      async () => {
+        // 처리하는 동안 다른 요청이 이 메시지를 오래된 처리로 보고 실패로 바꿨다
+        await prisma.chatMessage.updateMany({ where: { userId: USER_A, status: 'processing' }, data: { status: 'failed' } });
+        return { text: '늦은 답', toolCalls: [], stopReason: 'end', inputTokens: 0, outputTokens: 0, costUsd: 0 };
+      },
+    ]);
+
+    const res = await send('피곤해');
+
+    expect(res.status).toBe(503);
+    expect(await prisma.chatMessage.count({ where: { role: 'assistant' } })).toBe(0);
+    expect(await chatUsed()).toBe(0);
+    expect(await prisma.changeProposal.findFirstOrThrow()).toMatchObject({ status: 'cancelled' });
+  });
+
+  test('처리하는 동안 한도에 닿으면 답을 남기지 않고 이용량도 넘기지 않는다 (DI-12)', async () => {
+    await prisma.usageCounter.create({ data: { userId: USER_A, month: '2026-11', chatCount: 4 } });
+    script([
+      async () => {
+        // 다른 경로가 남은 1회를 먼저 썼다
+        await prisma.usageCounter.updateMany({ where: { userId: USER_A }, data: { chatCount: 5 } });
+        return { text: '한도 밖의 답', toolCalls: [], stopReason: 'end', inputTokens: 0, outputTokens: 0, costUsd: 0 };
+      },
+    ]);
+    const clientMessageId = newId();
+
+    expect((await send('안녕', { clientMessageId })).status).toBe(503);
+
+    expect(await prisma.chatMessage.findFirstOrThrow({ where: { clientMessageId } })).toMatchObject({ status: 'failed' });
+    expect(await prisma.chatMessage.count({ where: { role: 'assistant' } })).toBe(0);
+    expect(await chatUsed()).toBe(5);
   });
 });
 

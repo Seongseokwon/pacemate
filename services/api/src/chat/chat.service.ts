@@ -100,80 +100,87 @@ export class ChatService {
       throw busy();
     }
 
-    // 한도를 넘으면 LLM을 부르지 않고 한도 안내를 남긴다(F04-R06, AC-F04-03)
-    const usage = await this.usage.get(userId);
-    if (usage.chat.used >= usage.chat.limit) {
-      const limitCard: Card = { cardType: 'limit', cardData: { resetsOn: usage.resetsOn } };
-      return { status: 200, body: await this.finish(userId, message, { role: 'system', content: LIMIT_MESSAGE, ...limitCard }, false) };
-    }
-    return { status: 200, body: await this.process(userId, message, request.sessionId) };
-  }
-
-  /** LLM과 도구를 반복하고 결과를 저장한다(§7.5의 4~6번) */
-  private async process(userId: string, message: ChatMessageRow, sessionId: string | undefined): Promise<ChatReplyResponse> {
+    // 메시지를 저장한 뒤의 실패는 모두 같은 정리를 거친다. 처리 중으로 남으면 사용자가 2분 동안 채팅을 못 쓴다
     const createdProposals: string[] = [];
+    let replyId: string;
     try {
-      const deadline = Date.now() + MESSAGE_PROCESSING_TIMEOUT_MS;
-      const { system, messages } = await this.context.build(userId, { id: message.id, content: message.content, sessionId });
-      const conversation: LlmMessage[] = [...messages];
-      const summaryCalls: LlmToolCall[] = [];
-
-      let text: string | undefined;
-      for (let round = 0; text === undefined; round++) {
-        // 남은 시간이 LLM 호출 1회의 제한 시간보다 짧으면 부르지 않는다. 앱이 먼저 끊지 않게 한다
-        if (deadline - Date.now() < LLM_CALL_TIMEOUT_MS) throw new ChatFailure('TIMEOUT');
-        const response = await this.gateway.complete(
-          { system, messages: conversation, tools: [...this.tools.definitions], maxOutputTokens: MAX_OUTPUT_TOKENS },
-          { userId, purpose: 'chat', promptVersion: PROMPT_VERSION },
-        );
-        if (response.toolCalls.length === 0) {
-          text = response.text;
-          break;
-        }
-        if (round >= MAX_TOOL_ROUNDS) throw new ChatFailure('TOO_MANY_TOOL_ROUNDS');
-        conversation.push({ role: 'assistant', content: response.text, toolCalls: response.toolCalls });
-        for (const call of response.toolCalls) {
-          const result = await this.tools.execute({ userId }, call);
-          if (result.proposalId) createdProposals.push(result.proposalId);
-          if (result.ok && (call.name === 'get_training_plan' || call.name === 'get_weekly_summary')) summaryCalls.push(call);
-          conversation.push({ role: 'tool', toolCallId: call.id, content: result.content });
-        }
-      }
-      if (!text.trim()) throw new ChatFailure('EMPTY_RESPONSE');
-
-      const card = (await this.proposalCard(userId, createdProposals)) ?? (await this.summaryCard(userId, summaryCalls.at(-1)));
-      return await this.finish(userId, message, { role: 'assistant', content: text.trim(), ...card }, true);
+      replyId = await this.handle(userId, message, request.sessionId, createdProposals);
     } catch (error) {
       await this.fail(userId, message, createdProposals, error);
       throw unavailable();
     }
+    // 여기부터는 결과가 커밋된 뒤다. 응답 조립이 실패해도 처리를 되돌리지 않고, 같은 ID로 다시 보내면 저장된 결과를 받는다
+    return { status: 200, body: await this.assemble(userId, message, replyId) };
   }
 
-  /** AI 메시지를 저장하고, 사용자 메시지를 완료로 바꾸고, 이용량을 올린다. 셋은 한 트랜잭션이다(§7.5의 5번) */
-  private async finish(
-    userId: string,
-    message: ChatMessageRow,
-    reply: Pick<Prisma.ChatMessageUncheckedCreateInput, 'role' | 'content'> & Card,
-    countsUsage: boolean,
-  ): Promise<ChatReplyResponse> {
-    const saved = await this.prisma.$transaction(async (tx) => {
+  /** 한도를 확인하고, LLM과 도구를 반복하고, 결과를 커밋한다(§7.5의 3~5번). 저장한 답의 ID를 돌려준다 */
+  private async handle(userId: string, message: ChatMessageRow, sessionId: string | undefined, createdProposals: string[]): Promise<string> {
+    // 한도를 넘으면 LLM을 부르지 않고 한도 안내를 남긴다(F04-R06, AC-F04-03)
+    const usage = await this.usage.get(userId);
+    if (usage.chat.used >= usage.chat.limit) {
+      return this.commit(userId, message, { role: 'system', content: LIMIT_MESSAGE, cardType: 'limit', cardData: { resetsOn: usage.resetsOn } }, false);
+    }
+
+    const deadline = Date.now() + MESSAGE_PROCESSING_TIMEOUT_MS;
+    const { system, messages } = await this.context.build(userId, { id: message.id, content: message.content, sessionId });
+    const conversation: LlmMessage[] = [...messages];
+    const summaryCalls: LlmToolCall[] = [];
+
+    let text: string | undefined;
+    for (let round = 0; text === undefined; round++) {
+      // 남은 시간이 LLM 호출 1회의 제한 시간보다 짧으면 부르지 않는다. 앱이 먼저 끊지 않게 한다
+      if (deadline - Date.now() < LLM_CALL_TIMEOUT_MS) throw new ChatFailure('TIMEOUT');
+      const response = await this.gateway.complete(
+        { system, messages: conversation, tools: [...this.tools.definitions], maxOutputTokens: MAX_OUTPUT_TOKENS },
+        { userId, purpose: 'chat', promptVersion: PROMPT_VERSION },
+      );
+      if (response.toolCalls.length === 0) {
+        text = response.text;
+        break;
+      }
+      if (round >= MAX_TOOL_ROUNDS) throw new ChatFailure('TOO_MANY_TOOL_ROUNDS');
+      conversation.push({ role: 'assistant', content: response.text, toolCalls: response.toolCalls });
+      for (const call of response.toolCalls) {
+        const result = await this.tools.execute({ userId }, call);
+        if (result.proposalId) createdProposals.push(result.proposalId);
+        if (result.ok && (call.name === 'get_training_plan' || call.name === 'get_weekly_summary')) summaryCalls.push(call);
+        conversation.push({ role: 'tool', toolCallId: call.id, content: result.content });
+      }
+    }
+    if (!text.trim()) throw new ChatFailure('EMPTY_RESPONSE');
+
+    const card = (await this.proposalCard(userId, createdProposals)) ?? (await this.summaryCard(userId, summaryCalls.at(-1)));
+    return this.commit(userId, message, { role: 'assistant', content: text.trim(), ...card }, true);
+  }
+
+  /**
+   * 답 저장, 사용자 메시지 완료, 이용량 증가를 한 트랜잭션으로 한다(§7.5의 5번).
+   * 메시지가 아직 처리 중일 때만 완료를 가져간다. 2분이 지나 실패로 바뀐 뒤 늦게 끝난 처리는 결과를 남기지 못한다.
+   * 이용량을 올리지 못하면(그 사이 한도에 닿음) 전부 되돌린다(DI-12).
+   */
+  private async commit(userId: string, message: ChatMessageRow, reply: Pick<Prisma.ChatMessageUncheckedCreateInput, 'role' | 'content'> & Card, countsUsage: boolean): Promise<string> {
+    return this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.chatMessage.updateMany({ where: { id: message.id, userId, status: 'processing' }, data: { status: 'done' } });
+      if (claimed.count !== 1) throw new ChatFailure('NOT_PROCESSING');
+      if (countsUsage && !(await this.usage.increment(tx, userId, 'chat'))) throw new ChatFailure('LIMIT_REACHED');
       // 답은 항상 사용자 메시지 뒤에 정렬되어야 한다. 같은 밀리초에 저장되면 순서가 ID에 따라 뒤바뀐다
       const createdAt = new Date(Math.max(Date.now(), message.createdAt.getTime() + 1));
-      const created = await tx.chatMessage.create({ data: { userId, status: 'done', createdAt, ...reply } });
-      await tx.chatMessage.update({ where: { id: message.id }, data: { status: 'done' } });
-      // 사용자당 동시에 처리하는 메시지가 1건이라 "확인 후 처리, 성공 시 증가"로도 한도를 넘지 않는다(DI-12)
-      if (countsUsage) await this.usage.increment(tx, userId, 'chat');
-      return created;
+      const created = await tx.chatMessage.create({ data: { userId, status: 'done', createdAt, ...reply }, select: { id: true } });
+      return created.id;
     });
-    const withProposal = await this.prisma.chatMessage.findUniqueOrThrow({ where: { id: saved.id }, include: { proposal: true } });
-    return this.replyOf(userId, { ...message, status: 'done' }, [withProposal]);
+  }
+
+  private async assemble(userId: string, message: ChatMessageRow, replyId: string): Promise<ChatReplyResponse> {
+    const reply = await this.prisma.chatMessage.findUniqueOrThrow({ where: { id: replyId }, include: { proposal: true } });
+    return this.replyOf(userId, { ...message, status: 'done' }, [reply]);
   }
 
   /** 실패하면 사용자 메시지를 실패로 바꾸고, 그 사이 만든 대기 제안을 취소한다. 이용량은 올리지 않는다(§7.5의 6번, F04-R10) */
   private async fail(userId: string, message: ChatMessageRow, proposalIds: string[], error: unknown): Promise<void> {
     const code = error instanceof ChatFailure || error instanceof LlmError ? error.code : error instanceof Error ? error.name : 'UNKNOWN';
     this.logger.warn(`채팅 처리 실패: ${code}`);
-    await this.prisma.chatMessage.update({ where: { id: message.id }, data: { status: 'failed' } });
+    // 이미 완료됐거나 다른 요청이 실패로 바꾼 메시지는 건드리지 않는다
+    await this.prisma.chatMessage.updateMany({ where: { id: message.id, userId, status: 'processing' }, data: { status: 'failed' } });
     for (const id of proposalIds) {
       // 이미 다른 제안으로 대체된 것은 그대로 둔다
       await this.proposals.cancel(userId, id).catch(() => undefined);
