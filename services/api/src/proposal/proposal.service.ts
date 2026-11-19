@@ -30,6 +30,7 @@ import { LEVEL_CLASSIFIER } from '../profile/level-classifier.js';
 import { paceOf } from '../profile/profile.service.js';
 import { UsageService } from '../usage/usage.service.js';
 import { engineProfileOf, planStateOf, sessionStateOf, snapshotOf, type SessionWithWorkout } from './plan-state.js';
+import { representativeWorkouts } from '../workout/similar.js';
 import { GOAL_CHANGE_MIN_WEEKS_WITH_RECORDS, GOAL_CHANGE_RECENT_WEEKS, SERVICE_UTC_OFFSET } from './proposal.config.js';
 import { consumesQuota, toChatMessage, toProposal } from './proposal.mapper.js';
 import { APPROVE_ERRORS, FAILURE_MESSAGES, reasonLineOf, RESULT_MESSAGES } from './proposal-text.js';
@@ -496,10 +497,9 @@ async function isQuotaExempt(tx: Db, { plan, sessions }: Loaded, date: string): 
  */
 async function recentWeeklyKmOf(tx: Db, userId: string, date: string): Promise<number | null> {
   const end = mondayOf(date);
-  const rows = await tx.workoutLog.findMany({
+  const rows = representativeWorkouts(await tx.workoutLog.findMany({
     where: { userId, date: { gte: toDbDate(addDays(end, -7 * GOAL_CHANGE_RECENT_WEEKS)), lt: toDbDate(end) } },
-    select: { date: true, distanceKm: true },
-  });
+  }));
   const weeks = new Set(rows.map((r) => mondayOf(toDateString(r.date))));
   if (weeks.size < GOAL_CHANGE_MIN_WEEKS_WITH_RECORDS) return null;
   const total = rows.reduce((sum, r) => sum + r.distanceKm.toNumber(), 0);

@@ -190,11 +190,17 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | `memo` | text | | 통증 내용. 기록 화면의 통증 입력칸에서 받는다. 최대 500자 |
 | `planned_session_id` | uuid | | `planned_sessions` 참조, **유일**. 비어 있으면 자유 러닝 |
 | `source` | enum `app` / `chat` / `healthkit` | ✓ | 입력 경로 |
+| `started_at` / `ended_at` | timestamptz | | Apple 건강 운동의 시작·종료 시각. 기존 기록은 비어 있을 수 있다 |
+| `healthkit_id` | uuid | | 가져온 기록의 HealthKit ID. 자동 연결의 동률을 일정하게 처리한다. 기존 기록은 비어 있을 수 있다 |
+| `auto_linked` | boolean | ✓ | Apple 건강 자동 연결 여부. 사용자가 연결을 선택하면 false |
+| `manual_link` | boolean | ✓ | 사용자가 연결 또는 자유 러닝을 직접 선택한 경우 true |
+| `separate_run` | boolean | ✓ | 사용자가 다른 달리기라고 확인하여 비슷한 기록 묶음에서 제외한 경우 true |
 | `created_at` / `updated_at` | timestamptz | ✓ | |
 
 - `planned_session_id`의 유일 제약이 훈련과 기록의 1:1 연결을 보장한다(`DI-10`).
 - 인덱스: `(user_id, date)`.
 - 평균 페이스는 `duration_sec / distance_km`로 계산한다(`F07-R02`).
+- 비슷한 기록 묶음은 저장된 운동 시각과 거리·시간으로 계산하며, `separate_run` 기록은 독립적으로 센다. 기존 Apple 건강 기록은 시각이 없어 수동 기록과만 비교할 수 있다.
 - 기록을 삭제하면 연결이 사라지고 훈련은 예정 또는 미완료로 돌아간다(`F07-R06`). 별도 갱신이 필요 없다.
 
 ### 3.5.1 `healthkit_imports`

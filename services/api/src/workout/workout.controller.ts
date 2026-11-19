@@ -13,6 +13,7 @@ export class WorkoutController {
   @Get('link-candidates') candidates(@CurrentUserId() user: string, @Query(new ZodPipe(linkCandidatesQuerySchema)) query: { date: string }) { return this.workouts.candidates(user, query.date); }
   @Post() create(@CurrentUserId() user: string, @Body(new ZodPipe(createWorkoutRequestSchema)) body: CreateWorkoutRequest) { return this.workouts.create(user, body); }
   @Post('healthkit') importHealthkit(@CurrentUserId() user: string, @Body(new ZodPipe(healthkitWorkoutRequestSchema)) body: HealthkitWorkoutRequest) { return this.workouts.importHealthkit(user, body); }
+  @Get(':id/similar') similar(@CurrentUserId() user: string, @Param('id', new ZodPipe(idSchema)) id: string) { return this.workouts.similar(user, id); }
   @Get(':id') get(@CurrentUserId() user: string, @Param('id', new ZodPipe(idSchema)) id: string) { return this.workouts.get(user, id); }
   @Patch(':id') update(@CurrentUserId() user: string, @Param('id', new ZodPipe(idSchema)) id: string, @Body(new ZodPipe(updateWorkoutRequestSchema)) body: UpdateWorkoutRequest) { return this.workouts.update(user, id, body); }
   @Delete(':id') @HttpCode(204) remove(@CurrentUserId() user: string, @Param('id', new ZodPipe(idSchema)) id: string) { return this.workouts.remove(user, id); }

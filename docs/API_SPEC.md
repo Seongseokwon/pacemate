@@ -279,12 +279,15 @@
 | `GET /v1/workouts/stats` | 이번 주·이번 달의 거리와 횟수. 응답: `{ week, month }`, 각각 `{ distanceKm, count }` |
 | `GET /v1/workouts/link-candidates?date=` | 그 날짜의 기록에 연결할 수 있는 훈련 후보 |
 | `POST /v1/workouts` | 기록 저장 |
-| `POST /v1/workouts/healthkit` | Apple 건강 기록 한 건 가져오기. 같은 날짜·거리·시간이 있으면 저장하지 않는다 |
+| `POST /v1/workouts/healthkit` | Apple 건강 기록 한 건 가져오기. 같은 HealthKit ID는 다시 저장하지 않는다 |
 | `GET /v1/workouts/{id}` | 기록 상세 |
+| `GET /v1/workouts/{id}/similar` | 같은 묶음의 다른 기록 |
 | `PATCH /v1/workouts/{id}` | 기록 수정 |
 | `DELETE /v1/workouts/{id}` | 기록 삭제 |
 
-**`POST /v1/workouts/healthkit`** 요청은 `externalId`(HealthKit workout UUID), `date`, `distanceKm`, `durationSec`, `averageHeartRate`(선택적 심박수가 없으면 null)를 받는다. 응답은 `{ imported: boolean }`이다. 같은 사용자의 HealthKit ID 또는 날짜·거리·시간이 같으면 저장하지 않고 `false`를 반환한다. 저장하거나 중복으로 판단한 ID는 기록 수정·삭제 후에도 재가져오지 않는다. 페이스가 허용 범위 밖이면 저장하지 않고 `false`를 반환한다. 같은 날짜에 연결되지 않은 활성 계획 훈련이 있으면 한 건을 연결한다.
+**`POST /v1/workouts/healthkit`** 요청은 `externalId`(HealthKit workout UUID), `date`, `startedAt`, `endedAt`(ISO 시각), `distanceKm`, `durationSec`, `averageHeartRate`(선택적 심박수가 없으면 null)를 받는다. 응답은 `{ imported: boolean }`이다. 같은 사용자의 HealthKit ID는 저장하지 않고 `false`를 반환하며 수정·삭제 후에도 재가져오지 않는다. 페이스가 허용 범위 밖이면 저장하지 않고 `false`를 반환한다. 같은 날짜의 활성 계획 훈련과 Apple 건강 기록을 거리 차이가 가장 작은 짝부터 자동 연결한다. 사용자가 직접 선택한 연결과 수동 기록의 연결은 유지한다.
+
+거리가 없는 시간 기반 훈련은 거리 기반 훈련을 연결한 다음, 훈련 시간과 기록 시간의 차이가 작은 짝부터 연결한다.
 
 **`POST /v1/workouts`** 요청
 
@@ -303,9 +306,12 @@
 - `condition`은 받지만 앱은 보내지 않는다(PRD `F07-R01`).
 - 응답: `201`과 `{ workout, weekProgress, coachLine }`. `workout`은 Workout, `weekProgress`는 `{ completed, planned }`(이번 주 완료·계획 훈련 수, 활성 계획이 없으면 null), `coachLine`은 `{ code, text }`로 서버 규칙의 템플릿 문구다. LLM을 호출하지 않는다(PRD `F07-R10`). 코드와 문구는 `packages/shared`에 둔다.
 - `WORKOUT_DUPLICATE`, `PACE_OUT_OF_RANGE`는 앱이 확인 창을 띄우고 해당 확인 필드를 붙여 다시 보낸다(`F07-R03`). 중복 확인은 연타나 재전송으로 같은 기록이 두 번 저장되는 것도 막는다.
-- `PATCH`는 같은 필드를 선택적으로 받는다. `plannedSessionId: null`은 연결 해제다.
+- `PATCH`는 같은 필드를 선택적으로 받는다. `plannedSessionId: null`은 연결 해제이고, `separateRun: true`는 해당 기록을 비슷한 기록 묶음에서 분리한다.
 
-**`GET /v1/workouts/link-candidates`** 응답: Session 배열. 같은 날짜의 훈련이 맨 앞이고, 이어서 같은 주의 예정·미완료 훈련이다(`F07-R04`). 이미 기록이 연결된 훈련은 빠진다.
+**`GET /v1/workouts/link-candidates`** 응답: Session 배열. 같은 날짜의 훈련이 맨 앞이고, 이어서 같은 주의 훈련이다(`F07-R04`). 이미 기록이 연결된 훈련도 포함한다.
+
+`GET /v1/workouts/{id}/similar`는 같은 묶음의 다른 기록을 `{ items: Workout[] }`로 반환한다. 통계와 최근 주간 거리는 묶음당 훈련에 연결된 기록을 우선하고 없으면 가장 긴 기록 하나를 센다.
+기록 목록의 각 항목에는 같은 묶음의 다른 기록 수인 `similarCount`가 포함된다.
 
 ### 3.5 채팅 (F04)
 

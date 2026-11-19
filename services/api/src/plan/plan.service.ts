@@ -21,6 +21,7 @@ import { PrismaService } from '../db/prisma.service.js';
 import { Prisma, type TrainingPlan } from '../generated/prisma/client.js';
 import { managerMessage } from './manager-message.js';
 import { toSession, toWorkout } from './session.mapper.js';
+import { representativeWorkouts } from '../workout/similar.js';
 import { TRAINING_ENGINE, type TrainingEngine } from './training-engine.js';
 
 const withWorkoutId = { workout: { select: { id: true } } } as const;
@@ -227,7 +228,6 @@ export class PlanService {
       this.prisma.plannedSession.findMany({ where: { planId: ended.id, userId, isSkipped: false }, include: withWorkoutId, orderBy: { date: 'asc' } }),
       this.prisma.workoutLog.findMany({
         where: { userId, date: { gte: toDbDate(addDays(mondayOf(date), -7 * MAINTENANCE_RECENT_WEEKS)), lt: toDbDate(date) } },
-        select: { date: true, distanceKm: true },
       }),
     ]);
     return {
@@ -243,7 +243,7 @@ export class PlanService {
           completed: session.workout !== null,
         })),
       },
-      workouts: workouts.map((workout) => ({ date: toDateString(workout.date), distanceKm: workout.distanceKm.toNumber() })),
+      workouts: representativeWorkouts(workouts).map((workout) => ({ date: toDateString(workout.date), distanceKm: workout.distanceKm.toNumber() })),
     };
   }
 

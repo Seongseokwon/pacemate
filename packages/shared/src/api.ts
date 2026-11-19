@@ -267,16 +267,18 @@ export type CreateWorkoutRequest = z.infer<typeof createWorkoutRequestSchema>;
 
 export const healthkitWorkoutRequestSchema = workoutFieldsSchema.pick({ date: true, distanceKm: true, durationSec: true }).extend({
   externalId: z.uuid(),
+  startedAt: dateTimeSchema,
+  endedAt: dateTimeSchema,
   averageHeartRate: z.int().positive().max(300).nullable(),
-});
+}).refine((value) => Date.parse(value.startedAt) < Date.parse(value.endedAt));
 export type HealthkitWorkoutRequest = z.infer<typeof healthkitWorkoutRequestSchema>;
 export const healthkitWorkoutResponseSchema = z.object({ imported: z.boolean() });
 
 /** `PATCH /v1/workouts/{id}`. `plannedSessionId: null`은 연결 해제다. */
-export const updateWorkoutRequestSchema = workoutFieldsSchema.partial();
+export const updateWorkoutRequestSchema = workoutFieldsSchema.partial().extend({ separateRun: z.boolean().optional() });
 export type UpdateWorkoutRequest = z.infer<typeof updateWorkoutRequestSchema>;
 
-export const workoutsResponseSchema = pageOf(workoutSchema);
+export const workoutsResponseSchema = pageOf(workoutSchema.extend({ similarCount: countSchema }));
 export type WorkoutsResponse = z.infer<typeof workoutsResponseSchema>;
 
 export const WORKOUT_COACH_LINE = { code: 'WORKOUT_SAVED', text: '오늘도 달리느라 수고하셨어요.' } as const;

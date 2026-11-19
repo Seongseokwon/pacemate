@@ -1,13 +1,13 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { ApiClientError } from '@/api/client';
-import { createWorkout, getCandidates, getWorkouts, getWorkoutStats } from '@/api/workouts';
+import { createWorkout, getCandidates, getSimilarWorkouts, getWorkouts, getWorkoutStats, updateWorkout } from '@/api/workouts';
 import Records from '../app/(tabs)/records';
 import { testQueryClient } from '../test-fixtures';
 
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 jest.mock('@/health/healthkit', () => ({ importHealthkitWorkouts: jest.fn() }));
-jest.mock('@/api/workouts', () => ({ getWorkouts: jest.fn(), getWorkoutStats: jest.fn(), getCandidates: jest.fn(), createWorkout: jest.fn(), updateWorkout: jest.fn(), deleteWorkout: jest.fn() }));
+jest.mock('@/api/workouts', () => ({ getWorkouts: jest.fn(), getWorkoutStats: jest.fn(), getCandidates: jest.fn(), getSimilarWorkouts: jest.fn(), createWorkout: jest.fn(), updateWorkout: jest.fn(), deleteWorkout: jest.fn() }));
 jest.mock('expo-router', () => ({ router: { replace: jest.fn(), canDismiss: jest.fn(() => false), dismissAll: jest.fn() } }));
 
 beforeEach(() => {
@@ -51,7 +51,7 @@ test('중복 확인에 동의하면 확인 값을 추가해 다시 저장한다'
 
 test('같은 날의 훈련을 연결하고 통증을 저장한다', async () => {
   const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-  jest.mocked(getCandidates).mockResolvedValue({ items: [{ id: 'session-1', date, type: 'easy' } as never] });
+  jest.mocked(getCandidates).mockResolvedValue({ items: [{ id: 'session-1', date, type: 'easy', workoutId: null } as never] });
   jest.mocked(createWorkout).mockResolvedValue({ workout: {} as never, weekProgress: null, coachLine: { code: 'WORKOUT_PAIN', text: '쉬면서 몸 상태를 살펴봐 주세요.' } });
   await render(<QueryClientProvider client={testQueryClient()}><Records /></QueryClientProvider>);
   await screen.findByText('아직 운동 기록이 없어요.');
@@ -65,4 +65,18 @@ test('같은 날의 훈련을 연결하고 통증을 저장한다', async () => 
   expect(await screen.findByText('쉬면서 몸 상태를 살펴봐 주세요.')).toBeOnTheScreen();
   expect(createWorkout).toHaveBeenCalledWith(expect.objectContaining({ plannedSessionId: 'session-1', memo: '무릎이 아파요' }));
   expect(screen.queryByText(/이번 주 \d+\/\d+회/)).not.toBeOnTheScreen();
+});
+
+
+test('비슷한 기록을 비교하고 다른 달리기로 분리한다', async () => {
+  const workout = { id: 'one', date: '2026-11-17', distanceKm: 5, durationSec: 1800, paceSecPerKm: 360, averageHeartRate: null, condition: null, rpe: null, memo: null, plannedSessionId: null, source: 'app' as const };
+  const other = { ...workout, id: 'two', distanceKm: 5.1, source: 'healthkit' as const };
+  jest.mocked(getWorkouts).mockResolvedValue({ items: [{ ...workout, similarCount: 1 }], hasMore: false });
+  jest.mocked(getSimilarWorkouts).mockResolvedValue({ items: [other] });
+  jest.mocked(updateWorkout).mockResolvedValue(other);
+  await render(<QueryClientProvider client={testQueryClient()}><Records /></QueryClientProvider>);
+  await fireEvent.press(await screen.findByText(/비슷한 기록 1개/));
+  expect(await screen.findByText('비슷한 기록')).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: '다른 달리기예요' }));
+  await waitFor(() => expect(updateWorkout).toHaveBeenCalledWith('two', { separateRun: true }));
 });
