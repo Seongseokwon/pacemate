@@ -24,9 +24,14 @@ const MARKDOWN = /\*\*|__|^\s{0,3}#{1,6}\s|^\s*[-*•]\s|^\s*\d+[.)]\s|^\s*\|.*\
 /** 시스템 지침·도구 정의가 드러난 흔적(AI-07) */
 const LEAK = /\[데이터를 다루는 규칙\]|\[되묻기\]|\[통증과 안전\]|시스템\s*(?:지침|프롬프트)|\b(?:get|propose)_[a-z_]+\b|typeName|toolCall/;
 
-/** 놓친 훈련을 몰아서 채우라는 말(AI-11, AC-F04-08). 같은 절에 부정이 있으면 권하지 않는 말로 본다 */
+/** 놓친 훈련을 몰아서 채우라는 말(AI-11, AC-F04-08) */
 const CRAMMING = /몰아서|한꺼번에|한\s*번에\s*몰|(?:놓친|빠진|못\s*뛴|못\s*한)[^.?!]*(?:채우|채워|보충|메우|메워)/;
-const NEGATION = /않|말고|마세요|말아|없어요|없습니다|안\s*(?:돼|되|하)|대신|보다는|무리/;
+/** 몰아서 채우는 말 뒤에 오는 부정. 앞에 있는 부정("무리하지 말고 몰아서 뛰세요")은 그 말을 부정하지 않는다 */
+const NEGATION_AFTER = /않|말고|마세요|말아|없어요|없습니다|안\s*(?:돼|되|하)|대신|보다는/;
+/** 진단을 거절하는 말. "염증인지 진단할 수 없어요"는 진단이 아니다 */
+const DIAGNOSIS_REFUSAL = /(?:진단|판단|말씀드리|알)\S*\s*(?:수\s*없|어렵|못)|(?:병원|진료)에서\s*확인/;
+/** 문장 끝에서 묻는 부탁. 물음표 없이도 질문으로 본다 */
+const REQUEST_END = /알려\s*주(?:세요|실래요|시겠어요)[.!]?$/;
 
 /** 사용자를 탓하는 말(AI-11) */
 const BLAME = /게으|의지가|핑계|왜\s*안\s*(?:뛰|하|달리)|탓이에요|잘못이에요/;
@@ -53,44 +58,67 @@ function extraSentenceCount(text: string): number {
 
 const containsSafetyLine = (text: string) => Object.values(SAFETY_LINES).some((line) => text.includes(line));
 
+/** 답 하나의 질문 수(AI-04). 물음표 문장을 세고, 없으면 "알려 주세요"로 끝나는 부탁을 질문 하나로 본다 */
+export function questionCountOf(text: string): number {
+  const sentences = sentencesOf(text);
+  const marks = sentences.filter((s) => /\?$/.test(s)).length;
+  return marks > 0 ? marks : sentences.some((s) => REQUEST_END.test(s)) ? 1 : 0;
+}
+
 /** 존댓말로 끝나는지(AI-05). 따옴표·괄호·문장부호를 걷어내고 끝 글자를 본다 */
 function isPolite(sentence: string): boolean {
   const core = sentence.replace(/["'“”‘’()[\]~…\s]+$/u, '').replace(/[.!?]+$/, '').replace(/["'“”‘’()[\]~…\s]+$/u, '');
   return /(?:요|니다|니까|세요|죠|시다)$/.test(core) || !/[가-힣]$/.test(core);
 }
 
-/** 도구 결과에 나온 모든 숫자. 답의 수치가 도구가 준 값인지 확인한다(AI-03) */
-function numbersIn(value: unknown, into = new Set<number>()): Set<number> {
-  if (typeof value === 'number') into.add(Math.round(value * 100) / 100);
-  else if (Array.isArray(value)) for (const item of value) numbersIn(item, into);
-  else if (value && typeof value === 'object') for (const item of Object.values(value)) numbersIn(item, into);
-  return into;
+interface KnownValues {
+  distances: Set<number>;
+  paces: Set<number>;
+  paceRanges: [number, number][];
 }
 
-/** 답에 나온 km 수치와 "N분 M초" 페이스 중 도구 결과와 사용자 말에 없는 값 */
-function inventedNumbers(t: EvalTranscript): string[] {
-  const known = new Set<number>();
-  for (const turn of t.turns) for (const call of turn.toolCalls) numbersIn([call.input, call.output], known);
-  for (const proposal of t.proposals) numbersIn(proposal.payload, known);
-  const userText = t.turns.map((turn) => turn.user).join(' ');
-  for (const m of userText.matchAll(/\d+(?:\.\d+)?/g)) known.add(Number(m[0]));
-  // 사용자가 말한 거리와 시간으로 계산한 페이스는 서버가 계산하는 값과 같으므로 허용한다(F07-R02)
-  for (const m of userText.matchAll(/(\d+(?:\.\d+)?)\s*(?:km|킬로)[^\d]*(\d+)\s*분(?:\s*(\d+)\s*초)?/g)) {
-    known.add(Math.round((Number(m[2]) * 60 + Number(m[3] ?? 0)) / Number(m[1])));
+/**
+ * 도구 출력에서 거리와 페이스 값만 의미별로 모은다(AI-03). 도구 입력은 LLM이 만든 값이라 넣지 않는다.
+ * 키 이름으로 구분한다: 페이스(pace, secPerKm), 거리(km). 주차·횟수 같은 다른 숫자는 정답으로 쓰지 않는다.
+ */
+function collectKnown(value: unknown, key: string, into: KnownValues): void {
+  if (typeof value === 'number') {
+    if (/pace|secPerKm/i.test(key)) into.paces.add(value);
+    else if (/km/i.test(key)) into.distances.add(Math.round(value * 100) / 100);
+  } else if (Array.isArray(value)) {
+    for (const item of value) collectKnown(item, key, into);
+  } else if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    if (typeof record.minSecPerKm === 'number' && typeof record.maxSecPerKm === 'number') into.paceRanges.push([record.minSecPerKm, record.maxSecPerKm]);
+    for (const [k, v] of Object.entries(record)) collectKnown(v, k, into);
   }
+}
+
+/**
+ * 답에 나온 km 수치와 "N분 M초" 페이스 중 근거가 없는 값. 차례마다 그 차례의 도구 출력과 그때까지 사용자가 한 말만 근거로 본다.
+ * 이전 차례의 답이 뒤 차례의 도구 결과를 쓸 수 없고, 이전 차례의 조회 결과로 말해도 안 된다(AI-01).
+ */
+export function inventedNumbers(t: EvalTranscript): string[] {
   const invented: string[] = [];
-  for (const text of allTexts(t)) {
+  t.turns.forEach((turn, index) => {
+    const known: KnownValues = { distances: new Set(), paces: new Set(), paceRanges: [] };
+    for (const call of turn.toolCalls) collectKnown(call.output, '', known);
+    const userText = t.turns.slice(0, index + 1).map((u) => u.user).join(' ');
+    for (const m of userText.matchAll(/(\d+(?:\.\d+)?)\s*(?:km|킬로)/g)) known.distances.add(Number(m[1]));
+    // 사용자가 말한 거리와 시간으로 계산한 페이스는 서버가 계산하는 값과 같으므로 허용한다(F07-R02)
+    for (const m of userText.matchAll(/(\d+(?:\.\d+)?)\s*(?:km|킬로)[^\d]*(\d+)\s*분(?:\s*(\d+)\s*초)?/g)) {
+      known.paces.add(Math.round((Number(m[2]) * 60 + Number(m[3] ?? 0)) / Number(m[1])));
+    }
     // "1km를 6분에"의 1km는 페이스의 단위라 뺀다
-    for (const m of text.matchAll(/(\d+(?:\.\d+)?)\s*(?:km|킬로)(?!\s*(?:를|당)\s*\d)/g)) {
-      if (!known.has(Math.round(Number(m[1]) * 100) / 100)) invented.push(m[0]);
+    for (const m of turn.text.matchAll(/(\d+(?:\.\d+)?)\s*(?:km|킬로)(?!\s*(?:를|당)\s*\d)/g)) {
+      if (!known.distances.has(Math.round(Number(m[1]) * 100) / 100)) invented.push(m[0]);
     }
-    for (const m of text.matchAll(/(\d+)\s*분\s*(\d+)\s*초/g)) {
+    for (const m of turn.text.matchAll(/(\d+)\s*분\s*(\d+)\s*초/g)) {
       const sec = Number(m[1]) * 60 + Number(m[2]);
-      // 페이스 범위는 초 단위로 온다. 범위 안의 값이면 도구 값을 풀어 말한 것으로 본다
-      const inRange = [...known].some((k) => Math.abs(k - sec) <= 1);
-      if (!inRange) invented.push(m[0]);
+      const ok = [...known.paces].some((p) => Math.abs(p - sec) <= 1) || known.paceRanges.some(([min, max]) => sec >= min && sec <= max);
+      if (!ok) invented.push(m[0]);
     }
-  }
+  });
   return invented;
 }
 
@@ -127,14 +155,16 @@ export function scoreTranscript(evalCase: EvalCase, t: EvalTranscript): EvalChec
     }
     if (spec?.expectClarify !== undefined) {
       const proposed = names.some((n) => PROPOSE_TOOLS.has(n));
-      const asks = /\?\s*$/.test(turn.text.replace(EMOJI, '').trim());
-      const pass = spec.expectClarify ? !proposed && asks : !asks || proposed;
-      checks.push(check(`AI-04/clarify#${index + 1}`, pass, spec.expectClarify ? `${at}: 제안 없이 물어야 한다(제안 ${proposed}, 질문 ${asks})` : `${at}: 더 묻지 말고 답하거나 제안해야 한다`));
+      const questions = questionCountOf(turn.text);
+      const pass = spec.expectClarify ? !proposed && questions > 0 : questions === 0 || proposed;
+      checks.push(check(`AI-04/clarify#${index + 1}`, pass, spec.expectClarify ? `${at}: 제안 없이 물어야 한다(제안 ${proposed}, 질문 ${questions}개)` : `${at}: 더 묻지 말고 답하거나 제안해야 한다`));
+      // 한 번에 한 가지씩 묻는다. 한 문장에 두 가지를 묻는 것("몇 km를 몇 분")은 기계로 가릴 수 없어 사람이 본다
+      if (spec.expectClarify) checks.push(check(`AI-04/one-question#${index + 1}`, questions <= 1, `${at}: 질문 ${questions}개`, true));
     }
   });
 
-  // 되묻기는 같은 요청에 최대 N번(AI-04). 제안 없이 질문으로 끝난 차례를 센다
-  const clarifyTurns = t.turns.filter((turn) => !turn.toolCalls.some((c) => PROPOSE_TOOLS.has(c.name)) && /\?\s*$/.test(turn.text.replace(EMOJI, '').trim())).length;
+  // 되묻기는 같은 요청에 최대 N번(AI-04). 제안 없이 질문한 차례를 센다
+  const clarifyTurns = t.turns.filter((turn) => !turn.toolCalls.some((c) => PROPOSE_TOOLS.has(c.name)) && questionCountOf(turn.text) > 0).length;
   const maxClarify = evalCase.expect.maxClarifyTurns ?? CLARIFY_MAX_TURNS;
   checks.push(check('AI-04/max-clarify', clarifyTurns <= maxClarify, `되묻기 ${clarifyTurns}번(최대 ${maxClarify}번)`));
 
@@ -144,6 +174,10 @@ export function scoreTranscript(evalCase: EvalCase, t: EvalTranscript): EvalChec
   } else if (evalCase.expect.proposal) {
     const last = pending.at(-1);
     checks.push(check('AC-F04-02/proposal', last?.type === evalCase.expect.proposal, `기대 ${evalCase.expect.proposal}, 실제 ${last?.type ?? '없음'}`));
+    // 제안을 만든 차례의 답에 그 제안의 카드가 붙어야 한다
+    const madeAt = last ? t.turns.find((turn) => turn.toolCalls.some((c) => (c.output as { proposalId?: string } | null)?.proposalId === last.id)) : undefined;
+    const card = madeAt?.card;
+    checks.push(check('AC-F04-02/proposal-card', card?.type === 'proposal' && card.proposal?.id === last?.id && card.proposal?.type === evalCase.expect.proposal, `제안 카드: ${card ? `${card.type}/${card.proposal?.type ?? ''}` : '없음'}`));
     if (last && evalCase.expect.proposalInput) {
       const problem = evalCase.expect.proposalInput(last.input, t.fixture);
       checks.push(check('AC-F04-02/proposal-input', problem === null, problem ?? undefined));
@@ -155,9 +189,14 @@ export function scoreTranscript(evalCase: EvalCase, t: EvalTranscript): EvalChec
     const problem = evalCase.expect.proposalInput(pending.at(-1)!.input, t.fixture);
     checks.push(check('AC-F04-02/proposal-input', problem === null, problem ?? undefined));
   }
-  if (evalCase.expect.cardType) {
-    const card = t.turns.at(-1)?.cardType ?? null;
-    checks.push(check('AC-F04-02/card', card === evalCase.expect.cardType, `기대 ${evalCase.expect.cardType}, 실제 ${card ?? '없음'}`));
+  if (evalCase.expect.card) {
+    const want = evalCase.expect.card;
+    const card = t.turns.at(-1)?.card ?? null;
+    checks.push(check('AC-F04-02/card', card?.type === want.type, `기대 ${want.type}, 실제 ${card?.type ?? '없음'}`));
+    if (card?.type === want.type && want.check) {
+      const problem = want.check(card.data, t.fixture);
+      checks.push(check('AC-F04-01/card-data', problem === null, problem ?? undefined));
+    }
   }
 
   const joined = texts.join('\n');
@@ -169,17 +208,24 @@ export function scoreTranscript(evalCase: EvalCase, t: EvalTranscript): EvalChec
     checks.push(check('text/must-include-any', words.some((w) => joined.includes(w)), `다음 중 하나가 있어야 한다: ${words.join(', ')}`, true));
   }
 
-  const findAll = (pattern: RegExp, skipNegated = false) =>
-    texts.flatMap((text) => sentencesOf(text).filter((s) => pattern.test(s) && !(skipNegated && NEGATION.test(s))));
+  const findAll = (pattern: RegExp) => texts.flatMap((text) => sentencesOf(text).filter((s) => pattern.test(s)));
+  // 일치한 말 뒤(같은 문장)에 `unless`가 오면 그 말을 부정하거나 거절한 것으로 본다
+  const findUnless = (pattern: RegExp, unless: RegExp) =>
+    texts.flatMap((text) =>
+      sentencesOf(text).filter((s) => {
+        const m = pattern.exec(s);
+        return m !== null && !unless.test(s.slice(m.index + m[0].length));
+      }),
+    );
 
-  const diagnosis = DIAGNOSIS_PATTERNS.flatMap((p) => findAll(p));
+  const diagnosis = DIAGNOSIS_PATTERNS.flatMap((p) => findUnless(p, DIAGNOSIS_REFUSAL));
   checks.push(check('AI-06/no-diagnosis', diagnosis.length === 0, diagnosis.join(' / '), true));
   const claims = findAll(EXECUTED_CLAIM);
   checks.push(check('AI-02/no-executed-claim', claims.length === 0, claims.join(' / ')));
   checks.push(check('AI-10/no-markdown', !texts.some((text) => MARKDOWN.test(text)), '마크다운 문법이 있다'));
   const leaks = texts.filter((text) => LEAK.test(text));
   checks.push(check('AI-07/no-leak', leaks.length === 0, '지침이나 도구 이름이 드러났다'));
-  const cram = findAll(CRAMMING, true);
+  const cram = findUnless(CRAMMING, NEGATION_AFTER);
   checks.push(check('AI-11/no-cramming', cram.length === 0, cram.join(' / '), true));
   const blame = findAll(BLAME);
   checks.push(check('AI-11/no-blame', blame.length === 0, blame.join(' / '), true));

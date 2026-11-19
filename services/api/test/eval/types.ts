@@ -28,8 +28,8 @@ export interface EvalTurnSpec {
 export interface EvalExpectation {
   /** 사례가 끝났을 때 대기 중인 제안. null이면 제안이 없어야 한다. 없으면 보지 않는다 */
   proposal?: ProposalType | null;
-  /** 마지막 답에 붙어야 하는 카드 */
-  cardType?: string;
+  /** 마지막 답에 붙어야 하는 카드(제안 카드 말고). `check`는 카드 내용을 확인하고 실패 이유를 돌려준다 */
+  card?: { type: 'plan_summary' | 'weekly_summary'; check?: (data: unknown, fixture: EvalFixture) => string | null };
   /** 만들어진 제안 도구 입력에 대한 확인. 실패 이유를 돌려준다. `proposal`이 없어도 제안이 있으면 확인한다 */
   proposalInput?: (input: Record<string, unknown>, fixture: EvalFixture) => string | null;
   /** 답에 그대로 들어 있어야 하는 문장(AI-12의 고정 문장 등) */
@@ -77,11 +77,18 @@ export interface EvalTurnResult {
   /** 사용자에게 보인 AI의 답 */
   text: string;
   toolCalls: EvalToolCall[];
-  /** 답에 붙은 카드 종류 */
-  cardType: string | null;
+  /** 답에 붙은 카드. 제안 카드면 proposal, 그 밖에는 data가 있다 */
+  card: EvalCard | null;
+}
+
+export interface EvalCard {
+  type: string;
+  data?: unknown;
+  proposal?: { id: string; type: ProposalType; status: string };
 }
 
 export interface EvalProposalResult {
+  id: string;
   type: ProposalType;
   status: string;
   /** 제안 도구에 들어온 입력 */

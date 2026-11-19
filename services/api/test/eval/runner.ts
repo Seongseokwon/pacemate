@@ -5,7 +5,7 @@ import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import type { createTestApp } from '../test-app.js';
 import { resetDatabase } from '../test-db.js';
 import { compareCoaches, scoreTranscript } from './scoring.js';
-import type { EvalCase, EvalCheck, EvalFixture, EvalResult, EvalToolCall, EvalTranscript } from './types.js';
+import type { EvalCard, EvalCase, EvalCheck, EvalFixture, EvalResult, EvalToolCall, EvalTranscript } from './types.js';
 
 // 평가 세트를 채팅 API 전체(컨텍스트 구성기, 도구, 제안 모듈, 실제 DB)로 돌린다. 공급자만 바꿔 끼운다(ARCHITECTURE §7.2, §17).
 
@@ -105,8 +105,8 @@ export async function runCase(env: EvalEnv, evalCase: EvalCase, coach: Coach, pr
       tick();
       const res = await env.app.call('post', '/v1/chat/messages', EVAL_USER, { clientMessageId: newId(), content: spec.user });
       tick();
-      const reply = (res.body?.replies ?? []).at(-1) as { content?: string; card?: { type: string } | null } | undefined;
-      turns.push({ user: spec.user, status: res.status, text: reply?.content ?? '', toolCalls: toolCallsOf(recorder.calls.slice(before)), cardType: reply?.card?.type ?? null });
+      const reply = (res.body?.replies ?? []).at(-1) as { content?: string; card?: EvalCard | null } | undefined;
+      turns.push({ user: spec.user, status: res.status, text: reply?.content ?? '', toolCalls: toolCallsOf(recorder.calls.slice(before)), card: reply?.card ?? null });
     }
   } finally {
     env.provider.current = null;
@@ -123,7 +123,7 @@ export async function runCase(env: EvalEnv, evalCase: EvalCase, coach: Coach, pr
     coach,
     fixture,
     turns,
-    proposals: rows.map((row) => ({ type: row.type, status: row.status, input: inputs.get(row.id) ?? {}, payload: row.payload })),
+    proposals: rows.map((row) => ({ id: row.id, type: row.type, status: row.status, input: inputs.get(row.id) ?? {}, payload: row.payload })),
   };
 }
 

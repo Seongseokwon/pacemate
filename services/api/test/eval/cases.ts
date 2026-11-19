@@ -5,6 +5,7 @@ import type { EvalCase, EvalFixture } from './types.js';
 
 // AI 응답 평가 세트 v1(PRD §12). 사례마다 확인하는 규칙 ID를 적는다. 모델이나 시스템 지침(PROMPT_VERSION)을 바꾸면 다시 돌린다.
 // 모든 사례는 2026-11-17(화)에 만든 5km 계획(수·금·일)에서 시작한다. 11/18(수)·11/20(금)·11/22(일), 11/25·11/27·11/29에 훈련이 있다.
+// 이 평가는 제안 카드를 만드는 단계까지만 본다. 승인·저장 뒤의 일정 변경, 이력, 기록 저장과 훈련 완료(AC-F05-01, S2·S4 주요 흐름)는 test/chat-flow.e2e.test.ts가 확인한다.
 // `fake`는 지침을 지킨 모범 답안이다. 가짜 공급자로 채점 틀이 끝까지 도는지 확인하는 데만 쓰고, 실제 공급자를 평가할 때는 쓰지 않는다.
 
 const PROPOSE: ToolName[] = ['propose_reschedule', 'propose_goal_change', 'propose_workout_log'];
@@ -29,6 +30,12 @@ function expectInput(want: (f: EvalFixture) => Record<string, unknown>) {
   };
 }
 
+/** 일정 카드의 훈련 날짜가 기대와 같은지 */
+const datesAre = (want: string[]) => (data: unknown) => {
+  const got = ((data as { sessions?: { date: string }[] }).sessions ?? []).map((s) => s.date);
+  return JSON.stringify(got) === JSON.stringify(want) ? null : `일정 카드 날짜: 기대 ${want.join(', ')}, 실제 ${got.join(', ')}`;
+};
+
 export const EVAL_CASES: EvalCase[] = [
   // ── PRD §6.6 발화 예시 (AC-F04-01, AC-F04-02) ──
   {
@@ -37,7 +44,8 @@ export const EVAL_CASES: EvalCase[] = [
     rules: ['AC-F04-01', 'AC-F04-02', 'AI-01'],
     today: '2026-11-18',
     turns: [{ user: '이번 주 훈련 알려 줘.', requiredTools: ['get_training_plan'], forbiddenTools: PROPOSE }],
-    expect: { proposal: null, cardType: 'plan_summary' },
+    // AC-F04-01: 카드의 일정이 캘린더의 실제 이번 주 일정과 같다
+    expect: { proposal: null, card: { type: 'plan_summary', check: datesAre(['2026-11-18', '2026-11-20', '2026-11-22']) } },
     fake: () =>
       script(({ call, say }) => [
         call('get_training_plan', { from: '2026-11-16', to: '2026-11-22' }),
@@ -71,7 +79,10 @@ export const EVAL_CASES: EvalCase[] = [
       { date: '2026-11-21', distanceKm: 4, durationSec: 1680 },
     ],
     turns: [{ user: '지난주 러닝 기록을 분석해 줘.', requiredTools: ['get_weekly_summary', 'get_workout_history'], forbiddenTools: PROPOSE }],
-    expect: { proposal: null },
+    expect: {
+      proposal: null,
+      card: { type: 'weekly_summary', check: (data) => ((data as { weekStart?: string }).weekStart === '2026-11-16' ? null : `주간 요약 카드의 주가 지난주가 아니다: ${(data as { weekStart?: string }).weekStart}`) },
+    },
     fake: () =>
       script(({ call, say }) => [
         call('get_weekly_summary', { weekStart: '2026-11-16' }),
