@@ -38,6 +38,7 @@ function CoachContent() {
   const usage = localUsage ?? me.data?.usage;
   const lock = useRef(false);
   const scroll = useRef<ScrollViewInstance>(null);
+  const scrollToLatest = useRef(true);
   const [sending, setSending] = useState<string>();
   const coach = me.data?.coach ?? DEFAULT_COACH;
   const send = async (request: SendChatMessageRequest) => {
@@ -51,6 +52,7 @@ function CoachContent() {
         response = await sendChatMessage(request);
       }
       while ('status' in response) { await new Promise((resolve) => setTimeout(resolve, 3000)); response = await sendChatMessage(request); }
+      scrollToLatest.current = true;
       setMessages((previous) => [...(previous ?? messages).filter((m) => m.id !== response.userMessage.id), response.userMessage, ...response.replies]);
       setUsage(response.usage); setSessionId(undefined);
     } catch (error) {
@@ -76,6 +78,7 @@ function CoachContent() {
   const loadMore = async () => {
     if (!hasMore || !messages.length || lock.current) return;
     lock.current = true;
+    scrollToLatest.current = false;
     try { const page = await getChatMessages(messages[0]!.id); setMessages((previous) => [...page.items.reverse(), ...(previous ?? messages)]); setHasMore(page.hasMore); }
     catch (error) { if (isRedirectError(error)) redirectOnApiError(error); else setCardError('이전 대화를 불러오지 못했어요.'); }
     finally { lock.current = false; }
@@ -85,7 +88,7 @@ function CoachContent() {
     <ScrollView horizontal keyboardShouldPersistTaps="handled"><Stack direction="row" gap={2}>{suggestions.data?.suggestions.map((s) => <Button key={s.code} variant="secondary" label={s.text} disabled={busy} onPress={() => start(s.text)} />)}</Stack></ScrollView>
     <Stack direction="row" gap={2} align="center"><Stack fill><Field label="메시지"><TextInput value={draft} onChangeText={setDraft} maxLength={CHAT_MESSAGE_MAX_LENGTH} editable={!busy} placeholder="코치에게 물어보세요" /></Field></Stack><Button label="보내기" disabled={busy || !draft.trim()} onPress={() => start(draft)} /></Stack>
   </Stack>}>
-    <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" onContentSizeChange={() => { if (!hasMore) scroll.current?.scrollToEnd({ animated: false }); }} onScroll={({ nativeEvent }) => { if (nativeEvent.contentOffset.y <= 0) void loadMore(); }} scrollEventThrottle={400}>
+    <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" onContentSizeChange={() => { if (scrollToLatest.current) { scroll.current?.scrollToEnd({ animated: false }); scrollToLatest.current = false; } }} onScroll={({ nativeEvent }) => { if (nativeEvent.contentOffset.y <= 0) void loadMore(); }} scrollEventThrottle={400}>
       <Stack>{messages.length === 0 && !busy && <><CoachAvatar coach={coach} size="profile" /><Text variant="title2">무엇이든 편하게 물어보세요</Text><Text tone="secondary">일정 조정, 훈련 방법, 기록 분석을 도와드려요.</Text></>}{messages.map((message, index) => <View key={message.id} style={{ alignSelf: message.role === 'user' ? 'flex-end' : 'stretch', gap: t.spacing[2] }}>{(index === 0 || messages[index - 1]?.createdAt.slice(0, 10) !== message.createdAt.slice(0, 10)) && <Text variant="caption" tone="secondary">{message.createdAt.slice(0, 10)}</Text>}<Stack direction="row" gap={2}>{message.role === 'assistant' && <CoachAvatar coach={coach} size="message" />}<View style={message.role === 'user' ? { backgroundColor: t.color.background.muted, borderRadius: t.radius.chat, padding: t.spacing[3] } : undefined}><Text>{message.content}</Text></View></Stack>{message.role === 'user' && message.status === 'failed' && <><Text tone="error">보내지 못했어요</Text><Button variant="secondary" label="다시 보내기" onPress={() => start(message.content)} disabled={busy} /></>}{message.card && <ChatCardView card={message.card} busy={busy} error={cardError} onApprove={(p) => void act(p, 'approve')} onCancel={(p) => void act(p, 'cancel')} onAlternative={(p) => void act(p, 'alternative')} />}</View>)}
       {sending && <Text>{sending}</Text>}{failure && <><Text>{failure.request.content}</Text><Text tone="error">보내지 못했어요</Text><Button label="다시 보내기" variant="secondary" onPress={() => void send({ ...failure.request, clientMessageId: failure.newId ? randomUUID() : failure.request.clientMessageId })} /></>}
       {busy && <Text>답변을 준비하고 있어요.</Text>}</Stack>
