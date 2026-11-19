@@ -195,6 +195,7 @@ model User {
   plans                TrainingPlan[]
   sessions             PlannedSession[]
   workouts             WorkoutLog[]
+  healthkitImports     HealthkitImport[]
   chatMessages         ChatMessage[]
   proposals            ChangeProposal[]
   planChangeLogs       PlanChangeLog[]
@@ -295,6 +296,15 @@ model WorkoutLog {
 
   @@index([userId, date])
   @@map("workout_logs")
+}
+
+model HealthkitImport {
+  userId     String @map("user_id") @db.Uuid
+  externalId String @map("external_id") @db.Uuid
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, externalId])
+  @@map("healthkit_imports")
 }
 
 model ChatMessage {

@@ -177,6 +177,8 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 
 ### 3.5 `workout_logs`
 
+Apple 건강 가져오기는 `healthkit_imports`에 사용자 ID와 HealthKit workout UUID를 기록한다. `(user_id, external_id)`를 기본 키로 하며 운동 기록을 수정하거나 삭제해도 이 식별자를 유지해 재가져오기를 막는다. 계정을 삭제하면 함께 삭제하고, 테이블에 행 수준 보안을 켠다.
+
 | 컬럼 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `id` | uuid | ✓ | 기본 키 |

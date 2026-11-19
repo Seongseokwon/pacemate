@@ -273,7 +273,7 @@
 | `PATCH /v1/workouts/{id}` | 기록 수정 |
 | `DELETE /v1/workouts/{id}` | 기록 삭제 |
 
-**`POST /v1/workouts/healthkit`** 요청은 `date`, `distanceKm`, `durationSec`, `averageHeartRate`(선택적 심박수가 없으면 null)를 받는다. 응답은 `{ imported: boolean }`이다. 같은 사용자의 날짜·거리·시간이 같으면 저장하지 않고 `false`를 반환한다. 같은 날짜에 연결되지 않은 활성 계획 훈련이 있으면 한 건을 연결한다.
+**`POST /v1/workouts/healthkit`** 요청은 `externalId`(HealthKit workout UUID), `date`, `distanceKm`, `durationSec`, `averageHeartRate`(선택적 심박수가 없으면 null)를 받는다. 응답은 `{ imported: boolean }`이다. 같은 사용자의 HealthKit ID 또는 날짜·거리·시간이 같으면 저장하지 않고 `false`를 반환한다. 저장하거나 중복으로 판단한 ID는 기록 수정·삭제 후에도 재가져오지 않는다. 페이스가 허용 범위 밖이면 저장하지 않고 `false`를 반환한다. 같은 날짜에 연결되지 않은 활성 계획 훈련이 있으면 한 건을 연결한다.
 
 **`POST /v1/workouts`** 요청
 

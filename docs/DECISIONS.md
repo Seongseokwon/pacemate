@@ -2,6 +2,10 @@
 
 제품·기술 의사결정을 날짜순으로 기록한다. 결정의 배경과 대안은 `docs/PRD.md` §13, §15에 있으며 여기에는 복제하지 않는다.
 
+## 2026-11-19 — HealthKit 라이브러리 선택
+
+`@kingstinct/react-native-healthkit`과 필수 의존성 `react-native-nitro-modules`를 사용한다. Expo 설정 플러그인과 React Native New Architecture를 지원하며 운동과 심박수 통계 조회를 제공한다. `react-native-health`도 Expo 플러그인을 제공하지만, 현재 앱의 New Architecture에 맞는 라이브러리를 선택했다. iOS 개발 빌드 및 실기기 호환성은 B-21에서 확인한다.
+
 ## 2026-11-18 — Apple 건강 연동을 MVP 범위에 넣음 (iOS 먼저)
 
 개발자가 방향 검토 후 Apple 건강(HealthKit) 연동을 MVP에 포함하기로 결정했다. Android Health Connect는 P1(MVP 직후)로 미룬다.

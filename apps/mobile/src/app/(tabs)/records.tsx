@@ -26,7 +26,7 @@ export default function Records() {
   const stats = useQuery({ queryKey: ['workout-stats'], queryFn: getWorkoutStats });
   const refresh = async () => { await client.invalidateQueries(); };
   const remove = useMutation({ mutationFn: deleteWorkout, onSuccess: async () => { setDeleting(false); setSelected(null); await refresh(); }, onError: (error) => { if (!isRedirectError(error)) { setDeleting(false); setDeleteError(message(error)); } } });
-  const health = useMutation({ mutationFn: importHealthkitWorkouts, onSuccess: async (result) => { setHealthMessage(`${result.imported}개 기록을 가져왔어요. ${result.skipped}개는 중복 또는 저장할 수 없는 기록이에요.`); await refresh(); }, onError: (error) => { if (!isRedirectError(error)) setHealthMessage(message(error)); void refresh(); } });
+  const health = useMutation({ mutationFn: importHealthkitWorkouts, onSuccess: async (result) => { setHealthMessage(result.total === 0 ? '건강 앱에서 러닝 기록을 찾지 못했어요. 건강 앱의 데이터 접근 권한을 확인해 주세요.' : `${result.imported}개를 가져왔어요. ${result.skipped}개는 중복 또는 저장할 수 없는 기록이며, ${result.failed}개를 가져오지 못했어요.`); await refresh(); }, onError: (error) => { if (!isRedirectError(error)) setHealthMessage(message(error)); void refresh(); } });
   const items = list.data?.pages.flatMap((page) => page.items) ?? [];
   const failure = list.error ?? stats.error;
   return (

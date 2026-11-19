@@ -68,6 +68,10 @@ export class WorkoutService {
       await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
       const distanceKm = new Prisma.Decimal(input.distanceKm).toDecimalPlaces(2);
       const date = toDbDate(input.date);
+      const pace = input.durationSec / distanceKm.toNumber();
+      if (pace < WORKOUT_LIMITS.paceSecPerKm.min || pace > WORKOUT_LIMITS.paceSecPerKm.max) return { imported: false };
+      if (await tx.healthkitImport.findUnique({ where: { userId_externalId: { userId, externalId: input.externalId } } })) return { imported: false };
+      await tx.healthkitImport.create({ data: { userId, externalId: input.externalId } });
       if (await tx.workoutLog.findFirst({ where: { userId, date, distanceKm, durationSec: input.durationSec } })) return { imported: false };
       const session = await tx.plannedSession.findFirst({ where: { userId, date, isSkipped: false, workout: null, plan: { status: 'active' } }, orderBy: { createdAt: 'asc' } });
       if (session) await tx.$queryRaw`SELECT id FROM training_plans WHERE id = ${session.planId}::uuid AND user_id = ${userId}::uuid FOR UPDATE`;
