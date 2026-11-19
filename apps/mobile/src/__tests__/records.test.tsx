@@ -5,6 +5,7 @@ import { createWorkout, getCandidates, getWorkouts, getWorkoutStats } from '@/ap
 import Records from '../app/(tabs)/records';
 
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
+jest.mock('@/health/healthkit', () => ({ importHealthkitWorkouts: jest.fn() }));
 jest.mock('@/api/workouts', () => ({ getWorkouts: jest.fn(), getWorkoutStats: jest.fn(), getCandidates: jest.fn(), createWorkout: jest.fn(), updateWorkout: jest.fn(), deleteWorkout: jest.fn() }));
 jest.mock('expo-router', () => ({ router: { replace: jest.fn(), canDismiss: jest.fn(() => false), dismissAll: jest.fn() } }));
 

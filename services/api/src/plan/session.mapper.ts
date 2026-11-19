@@ -37,6 +37,7 @@ export function toWorkout(row: WorkoutLog): Workout {
     date: toDateString(row.date),
     distanceKm,
     durationSec: row.durationSec,
+    averageHeartRate: row.averageHeartRate,
     paceSecPerKm: Math.round(row.durationSec / distanceKm),
     condition: row.condition,
     rpe: row.rpe,

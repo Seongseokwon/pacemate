@@ -268,9 +268,12 @@
 | `GET /v1/workouts/stats` | 이번 주·이번 달의 거리와 횟수. 응답: `{ week, month }`, 각각 `{ distanceKm, count }` |
 | `GET /v1/workouts/link-candidates?date=` | 그 날짜의 기록에 연결할 수 있는 훈련 후보 |
 | `POST /v1/workouts` | 기록 저장 |
+| `POST /v1/workouts/healthkit` | Apple 건강 기록 한 건 가져오기. 같은 날짜·거리·시간이 있으면 저장하지 않는다 |
 | `GET /v1/workouts/{id}` | 기록 상세 |
 | `PATCH /v1/workouts/{id}` | 기록 수정 |
 | `DELETE /v1/workouts/{id}` | 기록 삭제 |
+
+**`POST /v1/workouts/healthkit`** 요청은 `date`, `distanceKm`, `durationSec`, `averageHeartRate`(선택적 심박수가 없으면 null)를 받는다. 응답은 `{ imported: boolean }`이다. 같은 사용자의 날짜·거리·시간이 같으면 저장하지 않고 `false`를 반환한다. 같은 날짜에 연결되지 않은 활성 계획 훈련이 있으면 한 건을 연결한다.
 
 **`POST /v1/workouts`** 요청
 

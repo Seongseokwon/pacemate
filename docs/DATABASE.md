@@ -184,11 +184,12 @@ users ─1:N─ usage_counters, ai_call_logs, weekly_summaries, push_tokens, not
 | `date` | date | ✓ | 오늘 이전(오늘 포함). 서버에서 검증 |
 | `distance_km` | numeric(5,2) | ✓ | 체크: 0.1~100 |
 | `duration_sec` | integer | ✓ | 체크: 60~43200 |
+| `average_heart_rate` | integer | | Apple 건강에서 가져온 평균 심박수(bpm) |
 | `condition` | smallint | | 체크: 1~5. MVP의 화면과 채팅은 받지 않아 비어 있다(PRD `F07-R01`). 컬럼은 남겨 둔다 |
 | `rpe` | smallint | | 운동 강도(주관적 운동 강도). 체크: 1~10. 선택 입력 |
 | `memo` | text | | 통증 내용. 기록 화면의 통증 입력칸에서 받는다. 최대 500자 |
 | `planned_session_id` | uuid | | `planned_sessions` 참조, **유일**. 비어 있으면 자유 러닝 |
-| `source` | enum `app` / `chat` | ✓ | 입력 경로 |
+| `source` | enum `app` / `chat` / `healthkit` | ✓ | 입력 경로 |
 | `created_at` / `updated_at` | timestamptz | ✓ | |
 
 - `planned_session_id`의 유일 제약이 훈련과 기록의 1:1 연결을 보장한다(`DI-10`).

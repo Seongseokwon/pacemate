@@ -40,6 +40,16 @@ test('동시 중복 요청, 이상 페이스 확인과 통계 (F07-R03, F07-R08)
   expect((await app.call('get', '/v1/workouts/stats', user)).body).toEqual({ week: { distanceKm: 5, count: 1 }, month: { distanceKm: 5, count: 1 } });
 });
 
+test('Apple 건강 기록은 동시 가져오기에도 중복되지 않고 같은 날 훈련에 연결된다 (F07-R11)', async () => {
+  const plan = await db.trainingPlan.create({ data: { userId: user, status: 'active', kind: 'race_prep', goalDistance: 'ten_k', startDate: day('2026-11-16'), endDate: day('2026-12-20'), engineVersion: 'test' } });
+  const session = await db.plannedSession.create({ data: { userId: user, planId: plan.id, date: day(date), type: 'easy', distanceKm: 5, weekNumber: 1 } });
+  const body = { date, distanceKm: 5, durationSec: 1800, averageHeartRate: 140 };
+  const results = await Promise.all([app.call('post', '/v1/workouts/healthkit', user, body), app.call('post', '/v1/workouts/healthkit', user, body)]);
+  expect(results.map((r) => r.body.imported).sort()).toEqual([false, true]);
+  expect((await app.call('get', '/v1/workouts', user)).body.items).toMatchObject([{ source: 'healthkit', plannedSessionId: session.id, averageHeartRate: 140 }]);
+  expect((await app.call('post', '/v1/workouts/healthkit', other, body)).body.imported).toBe(true);
+});
+
 test('통증 기록을 저장하면 휴식을 권한다', async () => {
   const result = await app.call('post', '/v1/workouts', user, { date, distanceKm: 5, durationSec: 1800, memo: '무릎이 아파요' });
   expect(result.body.coachLine).toMatchObject({ code: 'WORKOUT_PAIN', text: expect.stringContaining('쉬') });
