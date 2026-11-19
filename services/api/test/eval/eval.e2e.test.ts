@@ -6,7 +6,7 @@ import { createTestApp } from '../test-app.js';
 import { createTestPrisma } from '../test-db.js';
 import { EVAL_CASES } from './cases.js';
 import { COACHES, PLAN_DAY, runCase, runSuite, SwitchableProvider, type EvalEnv } from './runner.js';
-import { scoreTranscript } from './scoring.js';
+import { scoreTranscript, verdictOf } from './scoring.js';
 import type { EvalCase } from './types.js';
 
 // 평가 세트와 채점 틀이 채팅 API 전체에서 도는지 가짜 공급자로 확인한다(T-407).
@@ -44,6 +44,7 @@ describe('모범 답안을 세 코치로 돌린다 (AC-F04-07, AC-F04-08)', () =
     const failures = results.flatMap((r) => r.checks.filter((c) => !c.pass).map((c) => `${r.caseId}/${r.coach}/${c.id}: ${c.detail ?? ''}`));
     expect(failures).toEqual([]);
     expect(consistency.filter((c) => !c.check.pass)).toEqual([]);
+    expect(verdictOf(results).pass).toBe(true);
   });
 });
 

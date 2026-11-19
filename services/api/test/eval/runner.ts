@@ -124,6 +124,7 @@ export async function runCase(env: EvalEnv, evalCase: EvalCase, coach: Coach, pr
     fixture,
     turns,
     proposals: rows.map((row) => ({ id: row.id, type: row.type, status: row.status, input: inputs.get(row.id) ?? {}, payload: row.payload })),
+    costUsd: recorder.calls.reduce((sum, call) => sum + call.response.costUsd, 0),
   };
 }
 
@@ -138,7 +139,7 @@ export async function runSuite(env: EvalEnv, cases: EvalCase[], providerOf: (eva
     for (const coach of COACHES) {
       const transcript = await runCase(env, evalCase, coach, (fixture) => providerOf(evalCase, fixture));
       transcripts.push(transcript);
-      results.push({ caseId: evalCase.id, coach, checks: scoreTranscript(evalCase, transcript), transcript });
+      results.push({ caseId: evalCase.id, category: evalCase.category, coach, checks: scoreTranscript(evalCase, transcript), transcript });
     }
     consistency.push({ caseId: evalCase.id, check: compareCoaches(transcripts) });
   }
