@@ -11,6 +11,12 @@ import { ConsentGuard } from './auth/consent.guard.js';
 import { CoachController } from './auth/coach.controller.js';
 import { MeController } from './auth/me.controller.js';
 import { JWKS, TokenVerifier } from './auth/token-verifier.js';
+import { ChatController } from './chat/chat.controller.js';
+import { ChatService } from './chat/chat.service.js';
+import { ContextBuilder } from './chat/context-builder.js';
+import { LlmGateway } from './chat/llm/llm-gateway.js';
+import { LLM_PROVIDER } from './chat/llm/llm-provider.js';
+import { UnconfiguredLlmProvider } from './chat/llm/unconfigured-llm-provider.js';
 import { toolRegistryProvider } from './chat/tools/chat-tools.js';
 import { AppVersionGuard } from './common/app-version.guard.js';
 import { ErrorFilter } from './common/error.filter.js';
@@ -33,7 +39,7 @@ import { WorkoutService } from './workout/workout.service.js';
 
 @Module({
   imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: RATE_LIMIT_PER_MINUTE.default }])],
-  controllers: [HealthController, MeController, CoachController, ProfileController, PlanController, WorkoutController, ProposalController],
+  controllers: [HealthController, MeController, CoachController, ProfileController, PlanController, WorkoutController, ProposalController, ChatController],
   providers: [
     { provide: APP_CONFIG, useFactory: () => loadConfig() },
     {
@@ -52,6 +58,11 @@ import { WorkoutService } from './workout/workout.service.js';
     ProposalService,
     SummaryService,
     toolRegistryProvider,
+    ContextBuilder,
+    LlmGateway,
+    // LLM 공급자를 정하면(D-03, T-407) 실제 구현으로 바꾼다
+    { provide: LLM_PROVIDER, useClass: UnconfiguredLlmProvider },
+    ChatService,
     { provide: TRAINING_ENGINE, useValue: { generate, validate, reschedule, version: ENGINE_VERSION } satisfies TrainingEngine },
     // 인증 서비스의 관리 키가 생기면(D-A1) 실제 구현으로 바꾼다
     { provide: AUTH_ADMIN, useClass: UnconfiguredAuthAdmin },

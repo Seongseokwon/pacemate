@@ -10,8 +10,8 @@ import {
 } from '@pacemate/shared';
 import { addDays } from '../../common/dates.js';
 import { today } from '../../common/today.js';
-import type { CreateResult, ProposalService } from '../../proposal/proposal.service.js';
-import { defineTool, type ToolResult } from './tool.js';
+import type { CreateGuard, CreateResult, ProposalService } from '../../proposal/proposal.service.js';
+import { defineTool, type ToolContext, type ToolResult } from './tool.js';
 
 // 제안 도구 3개(API_SPEC §6). 대기 상태 제안을 만드는 것까지만 한다. 실제 변경은 사용자가 카드에서 승인할 때만 일어난다(PRD §6.1).
 // 훈련의 거리·강도는 입력에 없다. Training Engine이 정한 값을 결과로 돌려준다(AI-03).
@@ -67,6 +67,19 @@ function toResult(result: CreateResult): ToolResult {
   return { output: { created: true, proposalId: proposal.id, summary: proposalSummaryOf(proposal, today()) }, proposalId: proposal.id };
 }
 
+export class MessageNotProcessingError extends Error {
+  override readonly name = 'MessageNotProcessingError';
+}
+
+/** 처리 소유권 확인. 메시지 행을 잠그고 아직 처리 중인지 본다. 오래되어 실패로 바뀐 처리는 제안을 만들거나 새 제안을 대체하지 못한다 */
+const guardOf = ({ userId, messageId }: ToolContext): CreateGuard | undefined =>
+  messageId === undefined
+    ? undefined
+    : async (tx) => {
+        const rows = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM chat_messages WHERE id = ${messageId}::uuid AND user_id = ${userId}::uuid AND status = 'processing' FOR UPDATE`;
+        if (rows.length === 0) throw new MessageNotProcessingError();
+      };
+
 const AFTER_CREATED = '만들어지면 카드가 함께 보인다. 아직 바뀐 것이 아니므로 "이렇게 바꿀까요?"처럼 묻고, 카드의 [적용하기]를 누르면 바뀐다고 안내한다.';
 
 export function proposalTools(proposals: ProposalService) {
@@ -79,7 +92,7 @@ export function proposalTools(proposals: ProposalService) {
       'reason: schedule(일정), fatigue(피로), pain(통증). 통증이 심하다고 하면 이 도구를 쓰지 말고 쉬기와 진료를 안내한다. ' +
       AFTER_CREATED,
     inputSchema: proposeRescheduleInputSchema,
-    execute: async ({ userId }, input) => toResult(await proposals.createReschedule(userId, input)),
+    execute: async (context, input) => toResult(await proposals.createReschedule(context.userId, input, guardOf(context))),
   });
 
   const proposeGoalChange = defineTool({
@@ -90,7 +103,7 @@ export function proposalTools(proposals: ProposalService) {
       'RECENT_DISTANCE_REQUIRED를 받으면 "요즘 일주일에 얼마나 달려요?"를 묻고, 그 답(km)을 recentWeeklyKm에 넣어 다시 호출한다. 그 밖에는 recentWeeklyKm을 넣지 않는다. ' +
       AFTER_CREATED,
     inputSchema: proposeGoalChangeInputSchema,
-    execute: async ({ userId }, input) => toResult(await proposals.createGoalChangeFromChat(userId, input)),
+    execute: async (context, input) => toResult(await proposals.createGoalChangeFromChat(context.userId, input, guardOf(context))),
   });
 
   const proposeWorkoutLog = defineTool({
@@ -100,7 +113,7 @@ export function proposalTools(proposals: ProposalService) {
       'date(YYYY-MM-DD), distanceKm, durationSec(초)는 꼭 넣는다. rpe(운동 강도 1~10)는 사용자가 말했을 때만, memo에는 사용자가 말한 통증 내용만 넣는다. ' +
       'sessionId는 그날 계획된 훈련과 연결할 때 get_training_plan에서 얻은 값을 넣는다.',
     inputSchema: proposeWorkoutLogInputSchema,
-    execute: async ({ userId }, input) => toResult(await proposals.createWorkoutLog(userId, input)),
+    execute: async (context, input) => toResult(await proposals.createWorkoutLog(context.userId, input, guardOf(context))),
   });
 
   return [proposeReschedule, proposeGoalChange, proposeWorkoutLog];

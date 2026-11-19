@@ -4,6 +4,8 @@ import type { z } from 'zod';
 /** 도구 실행에 서버가 넣는 값. 사용자 ID는 검증된 토큰에서 온다(DI-07, ARCHITECTURE §7.3) */
 export interface ToolContext {
   userId: string;
+  /** 지금 처리 중인 사용자 메시지. 제안 도구가 이 메시지가 아직 처리 중일 때만 제안을 만든다 */
+  messageId?: string;
 }
 
 /** 도구 실행 결과. `output`은 LLM에 그대로 전달된다 */

@@ -109,3 +109,16 @@ test('제안 카드에는 제안이 있어야 하고, 모르는 카드 종류는
   expect(chatMessageSchema.safeParse(message({ type: 'proposal' })).success).toBe(false);
   expect(chatMessageSchema.safeParse(message({ type: 'banner', data: {} })).success).toBe(false);
 });
+
+test('요약·한도·결과 카드는 카드별 형식으로 검증한다 (DATABASE §3.6)', () => {
+  const message = (card: unknown) => ({ id: '11111111-1111-4111-8111-111111111111', role: 'assistant', content: '', status: 'done', createdAt: '2026-11-19T00:00:00.000Z', card });
+  expect(chatMessageSchema.safeParse(message({ type: 'limit', data: { resetsOn: '2026-12-01' } })).success).toBe(true);
+  expect(chatMessageSchema.safeParse(message({ type: 'limit', data: {} })).success).toBe(false);
+  expect(chatMessageSchema.safeParse(message({ type: 'result', data: { proposalType: 'reschedule' } })).success).toBe(true);
+  expect(chatMessageSchema.safeParse(message({ type: 'plan_summary', data: { from: '2026-11-16', to: '2026-11-22', sessions: [] } })).success).toBe(true);
+  expect(
+    chatMessageSchema.safeParse(
+      message({ type: 'weekly_summary', data: { weekStart: '2026-11-16', plannedCount: 3, completedCount: 1, totalDistanceKm: 5, completionRate: 1.5, nextSession: null } }),
+    ).success,
+  ).toBe(false);
+});
