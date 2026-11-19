@@ -49,6 +49,12 @@ type GoalChangeInput = {
 
 type Loaded = { plan: TrainingPlan; profile: RunnerProfile; sessions: SessionWithWorkout[] };
 
+/**
+ * 채팅에서 제안을 만들 때, 사용자 잠금을 잡은 같은 트랜잭션 안에서 부르는 확인. 던지면 제안을 만들지 않는다.
+ * 채팅은 이 메시지가 아직 처리 중인지 확인해, 오래되어 실패로 바뀐 처리가 새 대기 제안을 대체하지 못하게 한다.
+ */
+export type CreateGuard = (tx: Db) => Promise<void>;
+
 const withWorkoutId = { workout: { select: { id: true } } } as const;
 const fail = (reasonCode: ProposalFailureCode): CreateResult => ({ created: false, reasonCode, message: FAILURE_MESSAGES[reasonCode] });
 
@@ -68,10 +74,11 @@ export class ProposalService {
   // 생성
 
   /** 채팅의 일정 변경 제안(F05-R01). 변경안은 Training Engine이 만들고, 저장 전에 검증기로 다시 검사한다(TE-S12). */
-  async createReschedule(userId: string, input: ProposeRescheduleInput): Promise<CreateResult> {
+  async createReschedule(userId: string, input: ProposeRescheduleInput, guard?: CreateGuard): Promise<CreateResult> {
     const date = today();
     return this.prisma.$transaction(async (tx) => {
       await lockUser(tx, userId);
+      await guard?.(tx);
       const loaded = await loadActive(tx, userId, date);
       if (!loaded) return fail('NO_ACTIVE_PLAN');
       const state = planStateOf(loaded.plan, loaded.profile, loaded.sessions);
@@ -97,9 +104,9 @@ export class ProposalService {
   }
 
   /** 채팅의 목표 변경 제안(`propose_goal_change`). 승인하면 AI 일정 변경 1회를 차감한다(PRD §6.5). */
-  createGoalChangeFromChat(userId: string, input: ProposeGoalChangeInput): Promise<CreateResult> {
+  createGoalChangeFromChat(userId: string, input: ProposeGoalChangeInput, guard?: CreateGuard): Promise<CreateResult> {
     const { recentWeeklyKm, ...goal } = input;
-    return this.createGoalChange(userId, { goal, recentWeeklyKm }, 'chat');
+    return this.createGoalChange(userId, { goal, recentWeeklyKm }, 'chat', guard);
   }
 
   /** 마이페이지의 목표·프로필 변경(`POST /v1/proposals/goal-change`). 차감하지 않는다(PRD §6.5). */
@@ -119,10 +126,11 @@ export class ProposalService {
   }
 
   /** 채팅의 기록 등록 제안(`propose_workout_log`). 승인하면 기록을 저장한다(AC-F07-05). 차감하지 않는다. */
-  async createWorkoutLog(userId: string, input: ProposeWorkoutLogInput): Promise<CreateResult> {
+  async createWorkoutLog(userId: string, input: ProposeWorkoutLogInput, guard?: CreateGuard): Promise<CreateResult> {
     const date = today();
     return this.prisma.$transaction(async (tx) => {
       await lockUser(tx, userId);
+      await guard?.(tx);
       const distanceKm = new Prisma.Decimal(input.distanceKm).toDecimalPlaces(2).toNumber();
       const pace = input.durationSec / distanceKm;
       if (input.date > date || pace < WORKOUT_LIMITS.paceSecPerKm.min || pace > WORKOUT_LIMITS.paceSecPerKm.max) return fail('INVALID_VALUE');
@@ -147,10 +155,11 @@ export class ProposalService {
    * 목표·프로필 변경. 목표를 고치고 오늘 이후의 기록 없는 훈련을 새 계획으로 바꾼다(F02-R09, DATABASE §4).
    * 새 계획은 앱에 쌓인 최근 기록을 최근 주간 거리로 삼아 만든다.
    */
-  private async createGoalChange(userId: string, input: GoalChangeInput, source: 'chat' | 'settings'): Promise<CreateResult> {
+  private async createGoalChange(userId: string, input: GoalChangeInput, source: 'chat' | 'settings', guard?: CreateGuard): Promise<CreateResult> {
     const date = today();
     return this.prisma.$transaction(async (tx) => {
       await lockUser(tx, userId);
+      await guard?.(tx);
       const loaded = await loadActive(tx, userId, date);
       if (!loaded) return fail('NO_ACTIVE_PLAN');
       const { plan, profile: row, sessions } = loaded;

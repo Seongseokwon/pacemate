@@ -87,10 +87,13 @@ export class ChatService {
       if (!session) throw new AppError('NOT_FOUND', '훈련을 찾을 수 없어요.');
     }
 
+    // 새 사용자 메시지는 이 사용자의 어떤 메시지보다도 뒤에 둔다. 답은 그 사용자 메시지와 다음 사용자 메시지 사이에만 있게 된다
+    const last = await this.prisma.chatMessage.findFirst({ where: { userId }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } });
+    const createdAt = new Date(Math.max(Date.now(), (last?.createdAt.getTime() ?? 0) + 1));
     let message: ChatMessageRow;
     try {
       message = await this.prisma.chatMessage.create({
-        data: { userId, role: 'user', content: request.content, status: 'processing', clientMessageId: request.clientMessageId },
+        data: { userId, role: 'user', content: request.content, status: 'processing', clientMessageId: request.clientMessageId, createdAt },
       });
     } catch (error) {
       if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')) throw error;
@@ -141,7 +144,7 @@ export class ChatService {
       if (round >= MAX_TOOL_ROUNDS) throw new ChatFailure('TOO_MANY_TOOL_ROUNDS');
       conversation.push({ role: 'assistant', content: response.text, toolCalls: response.toolCalls });
       for (const call of response.toolCalls) {
-        const result = await this.tools.execute({ userId }, call);
+        const result = await this.tools.execute({ userId, messageId: message.id }, call);
         if (result.proposalId) createdProposals.push(result.proposalId);
         if (result.ok && (call.name === 'get_training_plan' || call.name === 'get_weekly_summary')) summaryCalls.push(call);
         conversation.push({ role: 'tool', toolCallId: call.id, content: result.content });
@@ -222,8 +225,8 @@ export class ChatService {
     if (message.status === 'processing') return { status: 202, body: { status: 'processing' } };
     if (message.status === 'failed') throw unavailable();
     const next = await this.prisma.chatMessage.findFirst({
-      where: { userId, role: 'user', OR: [{ createdAt: { gt: message.createdAt } }, { createdAt: message.createdAt, id: { gt: message.id } }] },
-      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      where: { userId, role: 'user', createdAt: { gt: message.createdAt } },
+      orderBy: { createdAt: 'asc' },
       select: { createdAt: true },
     });
     const rows = await this.prisma.chatMessage.findMany({
@@ -231,7 +234,8 @@ export class ChatService {
         userId,
         role: { not: 'user' },
         OR: [{ cardType: null }, { cardType: { not: 'result' } }],
-        createdAt: { gte: message.createdAt, ...(next && { lt: next.createdAt }) },
+        // 사용자 메시지는 앞의 모든 메시지보다 늦고, 답은 사용자 메시지보다 늦다. 그래서 두 사용자 메시지 사이가 정확히 그 답이다
+        createdAt: { gt: message.createdAt, ...(next && { lt: next.createdAt }) },
       },
       include: { proposal: true },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],

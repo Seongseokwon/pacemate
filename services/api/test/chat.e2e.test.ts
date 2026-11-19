@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi 
 import { FakeLlmProvider, type FakeLlmStep } from '../src/chat/llm/fake-llm-provider.js';
 import { LLM_PROVIDER, LlmError, type LlmProvider, type LlmRequest } from '../src/chat/llm/llm-provider.js';
 import { SAFETY_LINES } from '../src/chat/prompts/safety.js';
+import { ProposalService } from '../src/proposal/proposal.service.js';
 import { UsageService } from '../src/usage/usage.service.js';
 import { createTestApp } from './test-app.js';
 import { createTestPrisma, resetDatabase } from './test-db.js';
@@ -265,6 +266,28 @@ describe('실패 정리와 완료 확정 (§7.5의 5~6번)', () => {
     expect(await prisma.changeProposal.findFirstOrThrow()).toMatchObject({ status: 'cancelled' });
   });
 
+  test('실패로 바뀐 오래된 처리는 제안 도구를 실행해도 새 요청의 대기 제안을 대체하지 못한다 (DI-05)', async () => {
+    const { on } = await startPlan();
+    let newerProposalId = '';
+    script([
+      async () => {
+        // 이 처리가 2분을 넘겨 실패로 바뀌었고, 그 사이 새 요청이 대기 제안을 만들었다
+        await prisma.chatMessage.updateMany({ where: { userId: USER_A, status: 'processing' }, data: { status: 'failed' } });
+        const created = await t.app.get(ProposalService).createReschedule(USER_A, { changeType: 'ease', reason: 'fatigue', sessionId: on('2026-11-18').id, easeOption: 'lighter' });
+        if (!created.created) throw new Error('새 요청의 제안을 만들지 못했다');
+        newerProposalId = created.proposal.id;
+        return { text: '', toolCalls: [toolCall('propose_reschedule', { changeType: 'ease', reason: 'fatigue', sessionId: on('2026-11-18').id, easeOption: 'rest' })], stopReason: 'tool_calls', inputTokens: 0, outputTokens: 0, costUsd: 0 };
+      },
+      { text: '쉬도록 바꿀까요?' },
+    ]);
+
+    const res = await send('피곤해');
+
+    expect(res.status).toBe(503);
+    expect(JSON.parse((toolResults(provider.requests[1]!)[0] as { content: string }).content)).toMatchObject({ error: 'TOOL_FAILED' });
+    expect(await prisma.changeProposal.findMany()).toEqual([expect.objectContaining({ id: newerProposalId, status: 'pending' })]);
+  });
+
   test('처리하는 동안 한도에 닿으면 답을 남기지 않고 이용량도 넘기지 않는다 (DI-12)', async () => {
     await prisma.usageCounter.create({ data: { userId: USER_A, month: '2026-11', chatCount: 4 } });
     script([
@@ -296,6 +319,26 @@ describe('중복 전송과 동시 처리 (§7.5의 1~2번)', () => {
     expect(again.body).toEqual(first.body);
     expect(provider.requests).toHaveLength(1);
     expect(await chatUsed()).toBe(1);
+  });
+
+  test('같은 밀리초에 다음 메시지를 보내도 재전송하면 각자의 답만 받는다', async () => {
+    await prisma.usageCounter.create({ data: { userId: USER_A, month: '2026-11', chatCount: 5 } });
+    const first = newId();
+    const second = newId();
+    // 시계를 움직이지 않는다. 한도 답(+1ms)과 다음 메시지가 같은 시각에 저장될 수 있는 경우다
+    const post = (clientMessageId: string, content: string) => t.call('post', '/v1/chat/messages', USER_A, { clientMessageId, content });
+    await post(first, '첫 질문');
+    await post(second, '둘째 질문');
+
+    const replayFirst = await post(first, '첫 질문');
+    const replaySecond = await post(second, '둘째 질문');
+
+    expect(replayFirst.body.userMessage.content).toBe('첫 질문');
+    expect(replayFirst.body.replies).toHaveLength(1);
+    expect(replaySecond.body.replies).toHaveLength(1);
+    expect(replayFirst.body.replies[0].id).not.toBe(replaySecond.body.replies[0].id);
+    const page = await t.call('get', '/v1/chat/messages', USER_A);
+    expect(page.body.items.map((m: { role: string }) => m.role)).toEqual(['system', 'user', 'system', 'user']);
   });
 
   test('같은 ID가 처리 중이면 202, 다른 메시지가 처리 중이면 CHAT_BUSY', async () => {
