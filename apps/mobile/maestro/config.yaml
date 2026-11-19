@@ -11,3 +11,7 @@ executionOrder:
     - b19-coach-select
     - b16-icons
     - b10-b13-onboarding
+    # 로그인과 T-407이 준비된 계정에서 각각 실행한다.
+    - b22-chat-s2
+    - b23-chat-s3
+    - b24-chat-s4
