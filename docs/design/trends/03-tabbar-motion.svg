@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="520" viewBox="0 0 880 520" font-family="Apple SD Gothic Neo, Pretendard, Noto Sans KR, sans-serif">
+  <defs><linearGradient id="btn" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FF8A3D"/><stop offset="1" stop-color="#FF5A1F"/></linearGradient></defs>
+  <rect width="880" height="520" fill="#05080D"/>
+  <text x="440" y="40" fill="#FF8A5C" font-size="18" text-anchor="middle" font-weight="700">제안: 떠 있는 탭 바와 스프링 모션 (P-04, P-05)</text>
+
+  <!-- 1. 기본 -->
+  <text x="40" y="90" fill="#F3F5F8" font-size="15" font-weight="800">① 기본: 바닥에서 떨어진 둥근 탭 바</text>
+  <rect x="40" y="104" width="380" height="120" rx="20" fill="#0B1018" stroke="#252F3C"/>
+  <rect x="60" y="120" width="340" height="26" rx="8" fill="#151C26"/><rect x="60" y="152" width="240" height="14" rx="7" fill="#151C26"/>
+  <rect x="58" y="166" width="344" height="48" rx="24" fill="#151C26" fill-opacity="0.92" stroke="#334052"/>
+  <g font-size="11" fill="#97A1B0" text-anchor="middle"><rect x="66" y="172" width="60" height="36" rx="18" fill="#3A2419"/><text x="96" y="195" fill="#FF8A5C" font-weight="700">홈</text><text x="162" y="195">AI 코치</text><text x="228" y="195">캘린더</text><text x="294" y="195">기록</text><text x="364" y="195">마이</text></g>
+
+  <!-- 2. 스크롤 축소 -->
+  <text x="460" y="90" fill="#F3F5F8" font-size="15" font-weight="800">② 아래로 스크롤하면 줄어든다</text>
+  <rect x="460" y="104" width="380" height="120" rx="20" fill="#0B1018" stroke="#252F3C"/>
+  <rect x="480" y="120" width="340" height="14" rx="7" fill="#151C26"/><rect x="480" y="140" width="300" height="14" rx="7" fill="#151C26"/><rect x="480" y="160" width="320" height="14" rx="7" fill="#151C26"/>
+  <rect x="478" y="172" width="96" height="40" rx="20" fill="#151C26" fill-opacity="0.92" stroke="#334052"/><text x="526" y="197" fill="#FF8A5C" font-size="12" text-anchor="middle" font-weight="700">홈</text>
+  <rect x="766" y="172" width="56" height="40" rx="20" fill="#151C26" fill-opacity="0.92" stroke="#334052"/><circle cx="794" cy="192" r="9" fill="none" stroke="#F3F5F8" stroke-width="2"/><circle cx="790" cy="192" r="1.5" fill="#F3F5F8"/><circle cx="794" cy="192" r="1.5" fill="#F3F5F8"/><circle cx="798" cy="192" r="1.5" fill="#F3F5F8"/>
+  <text x="650" y="246" fill="#7D8899" font-size="12" text-anchor="middle">코치 바로가기는 줄어도 남긴다. 위로 스크롤하면 원래대로</text>
+
+  <!-- 3. 스프링 -->
+  <text x="40" y="300" fill="#F3F5F8" font-size="15" font-weight="800">③ 주 버튼 눌림: 스프링으로 살짝 눌렸다 돌아온다</text>
+  <g transform="translate(40,320)">
+    <rect x="0" y="10" width="200" height="48" rx="24" fill="url(#btn)"/><text x="100" y="40" fill="#0B1018" font-size="15" text-anchor="middle" font-weight="800">기록하기</text>
+    <text x="100" y="84" fill="#B4BCC8" font-size="12" text-anchor="middle">평소 1.00</text>
+    <rect x="236" y="13" width="188" height="42" rx="21" fill="url(#btn)"/><text x="330" y="40" fill="#0B1018" font-size="14" text-anchor="middle" font-weight="800">기록하기</text>
+    <text x="330" y="84" fill="#B4BCC8" font-size="12" text-anchor="middle">누름 0.96 + 가벼운 햅틱</text>
+    <rect x="456" y="8" width="204" height="52" rx="26" fill="url(#btn)"/><text x="558" y="40" fill="#0B1018" font-size="15" text-anchor="middle" font-weight="800">기록하기</text>
+    <text x="558" y="84" fill="#B4BCC8" font-size="12" text-anchor="middle">뗌: 1.02로 튀었다 1.00</text>
+    <path d="M690 40 C 710 40, 715 10, 730 10 S 745 60, 760 52 S 780 36, 800 40" fill="none" stroke="#FF8A5C" stroke-width="2.5"/>
+    <text x="745" y="84" fill="#B4BCC8" font-size="12" text-anchor="middle">스프링 곡선</text>
+  </g>
+  <rect x="40" y="430" width="800" height="62" rx="14" fill="#151C26"/>
+  <text x="60" y="456" fill="#F3F5F8" font-size="13">"동작 줄이기"가 켜져 있으면 크기 변화와 축소 애니메이션을 끄고 투명도 전환만 쓴다(UI_UX §3.8).</text>
+  <text x="60" y="478" fill="#B4BCC8" font-size="13">탭 바 바탕은 흐림 효과 없이 반투명 패널로 시작한다. 흐림·유리 효과는 의존성 검토 뒤에 정한다.</text>
+</svg>

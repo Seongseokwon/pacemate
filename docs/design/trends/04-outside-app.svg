@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="700" viewBox="0 0 880 700" font-family="Apple SD Gothic Neo, Pretendard, Noto Sans KR, sans-serif">
+  <defs>
+    <linearGradient id="lock" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#26324A"/><stop offset="1" stop-color="#0B1018"/></linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1F2938"/><stop offset="1" stop-color="#0B1018"/></linearGradient>
+  </defs>
+  <rect width="880" height="700" fill="#05080D"/>
+  <text x="225" y="40" fill="#FF8A5C" font-size="18" text-anchor="middle" font-weight="700">제안: 잠금 화면 위젯 (P-07, 출시 후)</text>
+  <text x="655" y="40" fill="#FF8A5C" font-size="18" text-anchor="middle" font-weight="700">제안: 기록 공유 카드 (P-06, 출시 후)</text>
+
+  <!-- 잠금 화면 -->
+  <g transform="translate(30,60)">
+    <rect width="390" height="620" rx="44" fill="url(#lock)" stroke="#252F3C"/>
+    <text x="195" y="70" fill="#F3F5F8" font-size="15" text-anchor="middle">11월 19일 목요일</text>
+    <text x="195" y="150" fill="#F3F5F8" font-size="80" text-anchor="middle" font-weight="300">7:30</text>
+    <!-- 작은 위젯 2개 -->
+    <rect x="70" y="180" width="118" height="56" rx="18" fill="#FFFFFF" fill-opacity="0.12"/>
+    <text x="86" y="203" fill="#F3F5F8" font-size="11">오늘의 훈련</text><text x="86" y="224" fill="#F3F5F8" font-size="15" font-weight="800">가볍게 4km</text>
+    <rect x="202" y="180" width="118" height="56" rx="18" fill="#FFFFFF" fill-opacity="0.12"/>
+    <path d="M220 222 A 14 14 0 1 1 248 222" fill="none" stroke="#FFFFFF" stroke-opacity="0.3" stroke-width="5" stroke-linecap="round"/>
+    <path d="M220 222 A 14 14 0 0 1 226 210" fill="none" stroke="#F3F5F8" stroke-width="5" stroke-linecap="round"/>
+    <text x="258" y="203" fill="#F3F5F8" font-size="11">이번 주</text><text x="258" y="224" fill="#F3F5F8" font-size="15" font-weight="800">1/3회</text>
+    <!-- 알림형 카드 -->
+    <rect x="20" y="430" width="350" height="96" rx="24" fill="#151C26" fill-opacity="0.9"/>
+    <circle cx="52" cy="462" r="16" fill="#FF8A3D"/><text x="52" y="467" fill="#0B1018" font-size="11" text-anchor="middle" font-weight="800">온이</text>
+    <text x="78" y="458" fill="#F3F5F8" font-size="14" font-weight="700">오늘은 가볍게 4km예요</text>
+    <text x="78" y="480" fill="#B4BCC8" font-size="12">숨이 차지 않을 만큼 편하게 달려요</text>
+    <rect x="78" y="492" width="80" height="24" rx="12" fill="#FF5A1F"/><text x="118" y="509" fill="#0B1018" font-size="11" text-anchor="middle" font-weight="800">기록하기</text>
+    <text x="195" y="572" fill="#7D8899" font-size="12" text-anchor="middle">잠금 화면에는 거리와 훈련 이름만. 통증·메모는 보이지 않는다</text>
+    <text x="195" y="592" fill="#7D8899" font-size="12" text-anchor="middle">시스템 위젯은 단색으로 칠해지므로 주황 대신 흰 글자</text>
+  </g>
+
+  <!-- 공유 카드 -->
+  <g transform="translate(480,80)">
+    <rect width="350" height="560" rx="28" fill="url(#card)" stroke="#334052"/>
+    <text x="28" y="52" fill="#B4BCC8" font-size="14">11월 19일 · 가볍게 달리기</text>
+    <path d="M60 200 C 80 110, 170 100, 200 150 S 260 250, 300 170" fill="none" stroke="#FF5A1F" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="60" cy="200" r="7" fill="#F3F5F8"/><circle cx="300" cy="170" r="7" fill="#FF5A1F"/>
+    <text x="28" y="320" fill="#F3F5F8" font-size="72" font-weight="800">4.0<tspan font-size="28" fill="#B4BCC8"> km</tspan></text>
+    <line x1="28" y1="350" x2="322" y2="350" stroke="#252F3C"/>
+    <text x="28" y="384" fill="#B4BCC8" font-size="13">시간</text><text x="128" y="384" fill="#B4BCC8" font-size="13">페이스</text><text x="238" y="384" fill="#B4BCC8" font-size="13">이번 주</text>
+    <text x="28" y="414" fill="#F3F5F8" font-size="22" font-weight="800">24:10</text><text x="128" y="414" fill="#F3F5F8" font-size="22" font-weight="800">6'02"</text><text x="238" y="414" fill="#F3F5F8" font-size="22" font-weight="800">2/3회</text>
+    <rect x="28" y="446" width="294" height="54" rx="16" fill="#151C26"/>
+    <circle cx="54" cy="473" r="14" fill="#FF8A3D"/>
+    <text x="78" y="478" fill="#F3F5F8" font-size="13">"이번 주 두 번째 달리기, 잘했어요."</text>
+    <text x="28" y="536" fill="#7D8899" font-size="12">PaceMate(가칭)</text>
+    <text x="322" y="536" fill="#7D8899" font-size="12" text-anchor="end">5km 완주 준비 3주 차</text>
+  </g>
+  <text x="655" y="670" fill="#7D8899" font-size="12" text-anchor="middle">경로선은 장식용 선이다. 위치 정보는 받지 않는다(PRD §1.4)</text>
+</svg>
