@@ -44,6 +44,9 @@ export const toolSessionOf = (session: Session) => ({
   distanceKm: session.distanceKm,
   durationMin: session.durationMin,
   runIntervalMin: session.runIntervalMin,
+  // Engine이 정한 권장 페이스(초/km). LLM이 페이스를 지어내지 않고 이 값을 말하게 한다(AI-03)
+  paceRange: session.paceRange,
+  guidance: SESSION_TYPE_LABELS[session.type].guidance,
   status: session.status,
   statusName: SESSION_STATUS_LABELS[session.status],
 });
@@ -126,7 +129,8 @@ export function queryTools({ prisma, plans, profiles, summaries }: QueryToolDeps
             kind: plan.kind,
             startDate: plan.startDate,
             endDate: plan.endDate,
-            currentWeek: weekNumberOf(plan.startDate, date),
+            // 끝난 계획은 새 계획을 확정할 때까지 활성으로 남지만, 지금 몇째 주인지는 없다
+            currentWeek: plan.isFinished ? null : weekNumberOf(plan.startDate, date),
             totalWeeks: daysBetween(mondayOf(plan.startDate), mondayOf(plan.endDate)) / 7 + 1,
             progress: plan.progress,
             isFinished: plan.isFinished,

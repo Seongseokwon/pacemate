@@ -135,9 +135,30 @@ describe('get_training_plan', () => {
       distanceKm: on('2026-11-18').distanceKm?.toNumber() ?? null,
       durationMin: on('2026-11-18').durationMin,
       runIntervalMin: on('2026-11-18').runIntervalMin,
+      paceRange: { minSecPerKm: on('2026-11-18').paceMinSecPerKm, maxSecPerKm: on('2026-11-18').paceMaxSecPerKm },
+      guidance: expect.any(String),
       status: 'planned',
       statusName: expect.any(String),
     });
+    // 최근 기록이 있는 사용자는 Engine이 계산한 권장 페이스를 조회할 수 있다(AI-01, AI-03)
+    expect(on('2026-11-18').paceMinSecPerKm).not.toBeNull();
+  });
+
+  test('끝난 계획은 활성으로 남아 있어도 지금 몇째 주를 알려 주지 않는다', async () => {
+    await startPlan();
+    const plan = await prisma.trainingPlan.findFirstOrThrow({ where: { userId: USER_A, status: 'active' } });
+    const endDate = plan.endDate.toISOString().slice(0, 10);
+    const period = { from: endDate, to: endDate };
+
+    vi.setSystemTime(NOON_KST(endDate));
+    const lastDay = (await run('get_training_plan', period)).output.plan;
+    expect(lastDay).toMatchObject({ isFinished: false, currentWeek: lastDay.totalWeeks });
+
+    vi.setSystemTime(new Date(NOON_KST(endDate).getTime() + 86_400_000));
+    expect((await run('get_training_plan', period)).output.plan).toMatchObject({ isFinished: true, currentWeek: null });
+
+    vi.setSystemTime(new Date(NOON_KST(endDate).getTime() + 21 * 86_400_000));
+    expect((await run('get_training_plan', period)).output.plan).toMatchObject({ isFinished: true, currentWeek: null });
   });
 
   test('첫 주가 오기 전이면 몇째 주는 null이고, 계획이 없으면 계획은 null이다', async () => {
