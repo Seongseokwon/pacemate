@@ -436,15 +436,17 @@ LLM에 제공하는 도구 7개의 입력과 출력이다(PRD §6.2). HTTP 엔�
 - 출력에는 LLM이 사용자에게 설명하는 데 필요한 값만 넣는다. 내부 ID 중 다음 도구 호출에 필요한 것(`sessionId`)은 포함한다.
 - 데이터를 바꾸는 도구는 없다.
 - 고른 코치는 도구 입력·출력에 넣지 않는다. 코치는 시스템 지침의 말투 부분만 바꾸고(PRD `AI-11`), 도구의 동작과 결과는 코치와 관계없이 같다.
+- 훈련 종류(`type`)와 상태(`status`)에는 `packages/shared`의 표시 이름을 함께 넣는다. LLM이 전문 용어 대신 화면과 같은 이름을 쓰게 한다(PRD `AI-05`).
+- 입력 검증에 실패하면 `INVALID_INPUT`, 없는 도구 이름이면 `UNKNOWN_TOOL`, 실행 중 오류면 `TOOL_FAILED`를 `{ error, message }`로 돌려준다. 어느 경우에도 실행하지 않았거나 실패했음을 LLM이 사용자에게 알린다(PRD §6.3의 5단계).
 
 ### 조회 도구
 
 | 도구 | 입력 | 출력 |
 |---|---|---|
-| `get_runner_profile` | 없음 | 프로필, 수준, 목표(거리·기록·대회 날짜), 대회까지 남은 날. 활성 계획이 없으면 목표는 null. 목표 없음이면 목표는 `{ goalDistance: 'none', focus }`이고 기록·대회 날짜·남은 날을 넣지 않는다 |
-| `get_training_plan` | `from`, `to` (날짜, 최대 28일) | 계획 요약(주차, 진행률)과 기간 내 훈련 목록: `sessionId`, `date`, 요일, `type`, `distanceKm`, `durationMin`, `status` |
-| `get_workout_history` | `from`, `to` (날짜, 최대 90일) | 기록 목록: `date`, `distanceKm`, `durationSec`, `paceSecPerKm`, `rpe`(운동 강도), `memo`(통증 내용), 연결된 훈련의 `type` |
-| `get_weekly_summary` | `weekStart` (월요일) | §3.7의 수치 |
+| `get_runner_profile` | 없음 | 오늘 날짜, 프로필, 수준, 목표(거리·기록·대회 날짜), 대회까지 남은 날. 프로필이 없으면 프로필과 수준은 null. 활성 계획이 없으면 목표는 null. 목표 없음이면 목표는 `{ goalDistance: 'none', focus }`이고 기록·대회 날짜·남은 날을 넣지 않는다 |
+| `get_training_plan` | `from`, `to` (날짜, 최대 28일) | 오늘 날짜, 계획 요약(지금 몇째 주, 전체 주 수, 진행률. 첫 주가 오기 전이거나 계획이 끝났으면 주차는 null)과 기간 내 훈련 목록: `sessionId`, `date`, 요일, `type`, `distanceKm`, `durationMin`, `runIntervalMin`, `paceRange`(권장 페이스), 훈련 안내 문구, `status`. 활성 계획이 없으면 계획 요약은 null |
+| `get_workout_history` | `from`, `to` (날짜, 최대 90일) | 기록 목록: `date`, 요일, `distanceKm`, `durationSec`, `paceSecPerKm`, `rpe`(운동 강도), `memo`(통증 내용), 연결된 훈련의 `type` |
+| `get_weekly_summary` | `weekStart` (월요일) | §3.7의 수치(`aiFeedback` 제외). 횟수와 다음 훈련은 계획 진행률과 같이 대회와 생략한 훈련을 빼고 본다. 거리는 훈련에 연결되지 않은 기록까지 합한다 |
 
 ### 제안 도구
 
@@ -470,7 +472,7 @@ LLM에 제공하는 도구 7개의 입력과 출력이다(PRD §6.2). HTTP 엔�
 
 | 상황 | 출력 |
 |---|---|
-| 제안 생성 | `{ created: true, proposalId, summary }`. `summary`는 변경 목록, 영향 요약, 경고를 LLM이 설명할 수 있는 형태로 담는다 |
+| 제안 생성 | `{ created: true, proposalId, summary }`. `summary`는 변경 목록, 영향 요약, 경고(문구로 바꾼 것)를 LLM이 설명할 수 있는 형태로 담는다. 목표 변경은 계획 전체 대신 지우고 만드는 훈련 수와 앞으로 2주의 새 훈련만 담는다 |
 | 만들 수 없음 | `{ created: false, reasonCode, message }` |
 
 `reasonCode` 값

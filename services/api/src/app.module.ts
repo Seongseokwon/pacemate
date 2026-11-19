@@ -11,6 +11,7 @@ import { ConsentGuard } from './auth/consent.guard.js';
 import { CoachController } from './auth/coach.controller.js';
 import { MeController } from './auth/me.controller.js';
 import { JWKS, TokenVerifier } from './auth/token-verifier.js';
+import { toolRegistryProvider } from './chat/tools/chat-tools.js';
 import { AppVersionGuard } from './common/app-version.guard.js';
 import { ErrorFilter } from './common/error.filter.js';
 import { UserThrottlerGuard } from './common/user-throttler.guard.js';
@@ -25,6 +26,7 @@ import { ProfileController } from './profile/profile.controller.js';
 import { ProfileService } from './profile/profile.service.js';
 import { ProposalController } from './proposal/proposal.controller.js';
 import { ProposalService } from './proposal/proposal.service.js';
+import { SummaryService } from './summary/summary.service.js';
 import { UsageService } from './usage/usage.service.js';
 import { WorkoutController } from './workout/workout.controller.js';
 import { WorkoutService } from './workout/workout.service.js';
@@ -48,6 +50,8 @@ import { WorkoutService } from './workout/workout.service.js';
     { provide: LEVEL_CLASSIFIER, useValue: classifyLevel },
     PlanService,
     ProposalService,
+    SummaryService,
+    toolRegistryProvider,
     { provide: TRAINING_ENGINE, useValue: { generate, validate, reschedule, version: ENGINE_VERSION } satisfies TrainingEngine },
     // 인증 서비스의 관리 키가 생기면(D-A1) 실제 구현으로 바꾼다
     { provide: AUTH_ADMIN, useClass: UnconfiguredAuthAdmin },
