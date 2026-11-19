@@ -145,6 +145,17 @@
 
 `card.type`이 `proposal`이면 `card.proposal`에 Proposal 객체가 **현재 상태로** 담긴다. 과거 대화를 다시 열어도 버튼 활성 여부가 정확하다.
 
+그 밖의 카드는 `card.data`에 응답 시점의 값을 그대로 담는다(`DATABASE.md` §3.6).
+
+| `type` | `data` | 언제 |
+|---|---|---|
+| `plan_summary` | `{ from, to, sessions }`. `sessions`는 Session 배열 | 제안 없이 답한 메시지에서 AI가 `get_training_plan`으로 일정을 조회했을 때. 조회한 기간이다 |
+| `weekly_summary` | §3.7의 수치(`weekStart`, `plannedCount`, `completedCount`, `totalDistanceKm`, `completionRate`, `nextSession`) | 제안 없이 답한 메시지에서 AI가 `get_weekly_summary`를 조회했을 때 |
+| `limit` | `{ resetsOn }` | 한도를 넘은 메시지에 대한 `system` 메시지 |
+| `result` | `{ proposalType }` | 제안을 승인한 뒤의 `system` 메시지 |
+
+한 메시지에 카드는 하나다. 제안이 만들어졌으면 제안 카드, 아니면 마지막으로 조회한 일정이나 주간 요약 카드를 붙인다. 카드 내용은 서버가 다시 조회한 값이며 LLM의 문장이 아니다(PRD §6.1).
+
 ---
 
 ## 3. 엔드포인트
@@ -297,7 +308,7 @@
 
 | 메서드 · 경로 | 설명 |
 |---|---|
-| `GET /v1/chat/messages?before=&limit=` | 대화 조회 |
+| `GET /v1/chat/messages?before=&limit=` | 대화 조회. 최신 메시지부터 돌려준다. `before`는 앞 페이지의 마지막 메시지 ID다. 실패한 사용자 메시지도 들어 있다 |
 | `POST /v1/chat/messages` | 메시지 전송, AI 응답 수신 |
 | `GET /v1/chat/suggestions` | 빠른 질문 추천 |
 
@@ -323,8 +334,10 @@
 - 응답이 끊기거나 시간 초과가 나면 앱은 **같은 `clientMessageId`로 다시 보낸다.** `202`면 잠시 뒤(초기값 3초) 다시 보낸다. 별도의 상태 조회 엔드포인트는 없다.
 - `503` 이후 사용자가 [다시 보내기]를 누르면 새 `clientMessageId`로 보낸다.
 - 앱의 요청 제한 시간은 75초(초기값)다. 서버의 메시지 처리 제한 시간 60초보다 길어야 한다.
+- 한도를 넘은 메시지도 대화에 남는다. 사용자 메시지는 `done`이고, `replies`의 `system` 메시지에 `limit` 카드가 붙는다.
+- 처리 중인 메시지가 2분(초기값) 넘게 끝나지 않으면 서버가 실패로 바꾸고 새 메시지를 받는다.
 
-**`GET /v1/chat/suggestions`** 응답: `{ suggestions: [{ code, text }] }`. 고정 목록에서 상황에 맞게 고른 것이다(`F04-R05`).
+**`GET /v1/chat/suggestions`** 응답: `{ suggestions: [{ code, text }] }`. 고정 목록에서 상황에 맞게 고른 것이다(`F04-R05`). 최대 3개다. 오늘 하지 않은 훈련이 있으면 `TODAY_SESSION`, `TODAY_TIRED`, 이번 주 미완료 훈련이 있으면 `MISSED_ADJUST`를 앞에 두고, 그 뒤로 `THIS_WEEK`, `LOG_WORKOUT`, `LAST_WEEK_REVIEW`를 채운다. 진행 중인 계획이 없으면 `NO_PLAN_START`, `LOG_WORKOUT`이다. 문구는 서버가 정한다.
 
 ### 3.6 변경 제안 (F05)
 
