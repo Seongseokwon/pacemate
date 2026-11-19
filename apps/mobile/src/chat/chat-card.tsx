@@ -168,7 +168,8 @@ function useExpired(proposal: Proposal): boolean {
   const [now, setNow] = useState(() => Date.now());
   const expiresAt = Date.parse(proposal.expiresAt);
   useEffect(() => {
-    if (proposal.status !== 'pending') return;
+    // 이미 지났으면 처음 그릴 때 만료로 보이므로 타이머가 필요 없다
+    if (proposal.status !== 'pending' || expiresAt <= Date.now()) return;
     const timer = setTimeout(() => setNow(Date.now()), Math.min(MAX_TIMER_MS, Math.max(0, expiresAt - Date.now())));
     return () => clearTimeout(timer);
   }, [proposal.status, expiresAt]);
