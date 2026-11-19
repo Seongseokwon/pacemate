@@ -71,3 +71,17 @@ test('다른 방법은 제안을 취소하고 입력창만 채운다', async () 
   expect(screen.getByText('취소한 제안이에요')).toBeOnTheScreen();
   expect(mockFetch.mock.calls.filter(([path, , options]) => path === '/v1/chat/messages' && options?.method === 'POST')).toHaveLength(0);
 });
+
+test('기록 제안을 승인하면 서버 결과와 저장 메시지를 표시한다', async () => {
+  const proposal = { id: '00000000-0000-4000-8000-000000000004', type: 'workout_log', status: 'pending', expiresAt: '2099-01-01T00:00:00Z', reasonLine: null, consumesQuota: false, changes: [], impact: null, warnings: [], goal: null, workout: null };
+  const original = mockFetch.getMockImplementation()!;
+  mockFetch.mockImplementation(async (path, schema, options) => {
+    if (path === '/v1/chat/messages' && !options?.method) return { items: [{ ...reply, card: { type: 'proposal', proposal } }], hasMore: false };
+    if (path.includes('/approve')) return { proposal: { ...proposal, status: 'approved' }, resultMessage: { ...reply, id: '00000000-0000-4000-8000-000000000005', role: 'system', content: '기록을 저장했어요' }, usage };
+    return original(path, schema, options);
+  });
+  await show();
+  await fireEvent.press(await screen.findByRole('button', { name: '기록 저장' }));
+  expect(await screen.findByText('기록을 저장했어요')).toBeOnTheScreen();
+  expect(screen.getByText('적용했어요')).toBeOnTheScreen();
+});
