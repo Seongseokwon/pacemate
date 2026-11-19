@@ -245,7 +245,8 @@ describe('propose_reschedule', () => {
     expect(result.ok).toBe(true);
     const row = await prisma.changeProposal.findUniqueOrThrow({ where: { id: result.proposalId! } });
     expect(row.request).not.toHaveProperty('distanceKm');
-    expect(JSON.stringify(result.output.summary.changes)).not.toContain('42');
+    // 거리는 Engine이 정한 값이다. 문자열 비교는 ID에 같은 숫자가 섞일 수 있어 값으로 본다
+    for (const change of result.output.summary.changes) expect(change.after?.distanceKm).not.toBe(42);
   });
 
   test('만들 수 없으면 사유 코드와 문장을 돌려주고 제안을 저장하지 않는다', async () => {
