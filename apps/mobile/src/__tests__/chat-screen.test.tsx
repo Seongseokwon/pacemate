@@ -200,7 +200,8 @@ describe('서버와 대화 상태 맞추기', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: '보내기' })).toBeEnabled());
   });
 
-  test('처리 중이던 메시지가 실패로 끝나면 다시 보내기를 보여 준다', async () => {
+  // 서버가 처리 중에 멈추면 2분 뒤 대화 조회가 실패로 바꿔 준다(API_SPEC §3.5)
+  test('처리 중이던 메시지가 실패로 끝나면 입력을 풀고 다시 보내기를 보여 준다', async () => {
     let reads = 0;
     const original = mockFetch.getMockImplementation()!;
     mockFetch.mockImplementation(async (path, schema, options) => {
@@ -210,5 +211,7 @@ describe('서버와 대화 상태 맞추기', () => {
     await show();
     expect(await screen.findByText('보내지 못했어요')).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: '다시 보내기' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '보내기' })).toBeEnabled();
+    expect(screen.getByDisplayValue('훈련을 바꾸고 싶어요')).toBeOnTheScreen();
   });
 });

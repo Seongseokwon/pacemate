@@ -62,6 +62,8 @@ export class ChatService {
 
   /** 대화 조회. 최신 메시지부터 돌려준다. 제안 카드는 제안의 현재 상태로 그린다(API_SPEC §2.5) */
   async list(userId: string, { before, limit }: ListQuery): Promise<ChatMessagesResponse> {
+    // 앱을 다시 열어 조회만 반복하는 동안에도 멈춘 처리가 실패로 바뀌어야 입력이 풀린다
+    await this.failStaleProcessing(userId);
     const cursor = before ? await this.prisma.chatMessage.findFirst({ where: { id: before, userId } }) : null;
     if (before && !cursor) throw new AppError('NOT_FOUND', '메시지를 찾을 수 없어요.');
     const rows = await this.prisma.chatMessage.findMany({
@@ -76,12 +78,16 @@ export class ChatService {
     return { items: rows.slice(0, limit).map((row) => toChatMessage(row, row.proposal)), hasMore: rows.length > limit };
   }
 
-  async send(userId: string, request: SendChatMessageRequest): Promise<SendResult> {
-    // 오래 처리 중인 메시지는 실패로 본다. 서버가 처리 중에 멈춰도 사용자가 계속 막히지 않는다(§7.5의 2번)
+  /** 오래 처리 중인 메시지는 실패로 본다. 서버가 처리 중에 멈춰도 사용자가 계속 막히지 않는다(§7.5의 2번) */
+  private async failStaleProcessing(userId: string): Promise<void> {
     await this.prisma.chatMessage.updateMany({
       where: { userId, status: 'processing', createdAt: { lt: new Date(Date.now() - STALE_PROCESSING_MS) } },
       data: { status: 'failed' },
     });
+  }
+
+  async send(userId: string, request: SendChatMessageRequest): Promise<SendResult> {
+    await this.failStaleProcessing(userId);
     const existing = await this.findByClientId(userId, request.clientMessageId);
     if (existing) return this.replay(userId, existing);
 

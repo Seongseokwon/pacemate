@@ -413,6 +413,21 @@ describe('중복 전송과 동시 처리 (§7.5의 1~2번)', () => {
     expect((await send('새 메시지')).status).toBe(200);
     expect(await prisma.chatMessage.findUniqueOrThrow({ where: { id: stale.id } })).toMatchObject({ status: 'failed' });
   });
+
+  test('서버가 처리 중에 멈춘 뒤 2분이 지나면 대화 조회에서도 실패로 보인다', async () => {
+    const recent = await prisma.chatMessage.create({
+      data: { userId: USER_B, role: 'user', content: '아직 처리 중', status: 'processing', clientMessageId: newId(), createdAt: new Date(base.getTime() - 60_000) },
+    });
+    const stale = await prisma.chatMessage.create({
+      data: { userId: USER_A, role: 'user', content: '멈춘 메시지', status: 'processing', clientMessageId: newId(), createdAt: new Date(base.getTime() - 121_000) },
+    });
+
+    const page = await t.call('get', '/v1/chat/messages', USER_A);
+    expect(page.status).toBe(200);
+    expect(page.body.items).toEqual([expect.objectContaining({ id: stale.id, status: 'failed' })]);
+    // 2분이 안 된 처리와 다른 사용자의 처리는 그대로 둔다
+    expect((await t.call('get', '/v1/chat/messages', USER_B)).body.items).toEqual([expect.objectContaining({ id: recent.id, status: 'processing' })]);
+  });
 });
 
 describe('컨텍스트 (ARCHITECTURE §7.4)', () => {
