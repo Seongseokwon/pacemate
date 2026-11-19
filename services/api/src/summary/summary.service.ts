@@ -1,12 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import type { WeeklySummaryResponse } from '@pacemate/shared';
+import type { WeeklyNumbers } from '@pacemate/shared';
 import { addDays, toDbDate } from '../common/dates.js';
 import { today } from '../common/today.js';
 import { PrismaService } from '../db/prisma.service.js';
 import { toSession } from '../plan/session.mapper.js';
-
-/** 주간 요약의 수치(F08-R01). AI 피드백(T-602)을 뺀 부분이다 */
-export type WeeklyNumbers = Omit<WeeklySummaryResponse, 'aiFeedback' | 'aiFeedbackAvailable'>;
 
 /** 주간 요약. 화면, 채팅 도구, 주간 피드백이 같은 수치를 쓴다(F08-R05). */
 @Injectable()

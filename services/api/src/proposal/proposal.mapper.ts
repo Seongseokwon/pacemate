@@ -1,4 +1,5 @@
 import {
+  chatCardSchema,
   goalChangePayloadSchema,
   reschedulePayloadSchema,
   workoutLogPayloadSchema,
@@ -59,6 +60,6 @@ export function toProposal(row: ChangeProposal, now: Date = new Date()): Proposa
 export function toChatMessage(row: ChatMessageRow, proposal: ChangeProposal | null = null): ChatMessage {
   let card: ChatCard | null = null;
   if (row.cardType === 'proposal' && proposal) card = { type: 'proposal', proposal: toProposal(proposal) };
-  else if (row.cardType && row.cardType !== 'proposal') card = { type: row.cardType, data: (row.cardData ?? {}) as Record<string, unknown> };
+  else if (row.cardType && row.cardType !== 'proposal') card = chatCardSchema.parse({ type: row.cardType, data: row.cardData });
   return { id: row.id, role: row.role, content: row.content, status: row.status, createdAt: row.createdAt.toISOString(), card };
 }

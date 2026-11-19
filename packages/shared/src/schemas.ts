@@ -120,15 +120,33 @@ export const proposalSchema = z.object({
 export type Proposal = z.infer<typeof proposalSchema>;
 
 // §2.5 ChatMessage
-// shortcut: 요약·한도·결과 카드의 data 형식이 아직 없다, 카드를 만드는 T-406에서 카드별 스키마로 좁힌다
-const cardDataSchema = z.record(z.string(), z.unknown());
+/** 주간 요약의 수치(F08-R01). `GET /v1/summaries/weekly`의 응답과 주간 요약 카드가 함께 쓴다 */
+export const weeklyNumbersSchema = z.object({
+  weekStart: dateSchema,
+  plannedCount: countSchema,
+  completedCount: countSchema,
+  totalDistanceKm: z.number().nonnegative(),
+  /** 0~1 */
+  completionRate: z.number().min(0).max(1),
+  nextSession: sessionSchema.nullable(),
+});
+export type WeeklyNumbers = z.infer<typeof weeklyNumbersSchema>;
+
+// 요약·한도·결과 카드의 표시 내용. 응답 시점의 값을 그대로 저장한다(DATABASE §3.6)
+/** 기간의 훈련 일정 카드. AI가 `get_training_plan`으로 조회한 기간이다 */
+export const planSummaryCardDataSchema = z.object({ from: dateSchema, to: dateSchema, sessions: z.array(sessionSchema) });
+export const weeklySummaryCardDataSchema = weeklyNumbersSchema;
+/** 이번 달 한도를 다 썼을 때의 안내(UI_UX §7.3) */
+export const limitCardDataSchema = z.object({ resetsOn: dateSchema });
+/** 제안을 승인한 결과 */
+export const resultCardDataSchema = z.object({ proposalType: proposalTypeSchema });
 
 export const chatCardSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('proposal'), proposal: proposalSchema }),
-  z.object({ type: z.literal('plan_summary'), data: cardDataSchema }),
-  z.object({ type: z.literal('weekly_summary'), data: cardDataSchema }),
-  z.object({ type: z.literal('limit'), data: cardDataSchema }),
-  z.object({ type: z.literal('result'), data: cardDataSchema }),
+  z.object({ type: z.literal('plan_summary'), data: planSummaryCardDataSchema }),
+  z.object({ type: z.literal('weekly_summary'), data: weeklySummaryCardDataSchema }),
+  z.object({ type: z.literal('limit'), data: limitCardDataSchema }),
+  z.object({ type: z.literal('result'), data: resultCardDataSchema }),
 ]);
 export type ChatCard = z.infer<typeof chatCardSchema>;
 

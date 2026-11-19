@@ -31,6 +31,7 @@ import {
   sessionSchema,
   sessionSnapshotSchema,
   usageSchema,
+  weeklyNumbersSchema,
   workoutSchema,
 } from './schemas.js';
 
@@ -353,14 +354,7 @@ export const weeklySummaryQuerySchema = z.object({
     .optional(),
 });
 
-export const weeklySummaryResponseSchema = z.object({
-  weekStart: dateSchema,
-  plannedCount: countSchema,
-  completedCount: countSchema,
-  totalDistanceKm: z.number().nonnegative(),
-  /** 0~1 */
-  completionRate: z.number().min(0).max(1),
-  nextSession: sessionSchema.nullable(),
+export const weeklySummaryResponseSchema = weeklyNumbersSchema.extend({
   /** Pro 사용자이고 그 주의 피드백이 만들어져 있을 때만 값이 있다 */
   aiFeedback: z.string().nullable(),
   /** false면 무료 사용자다 */
