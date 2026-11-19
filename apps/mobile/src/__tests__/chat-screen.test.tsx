@@ -1,15 +1,17 @@
+import type { Usage } from '@pacemate/shared';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { router } from 'expo-router';
 import { apiFetch, ApiClientError } from '@/api/client';
 import Coach from '../app/(tabs)/coach';
 import { testQueryClient } from '../test-fixtures';
 
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 jest.mock('expo-router/js-tabs', () => ({ BottomTabBarHeightContext: jest.requireActual('react').createContext(undefined) }));
-jest.mock('expo-router', () => ({ useLocalSearchParams: () => ({ draft: '훈련을 바꾸고 싶어요' }), router: { replace: jest.fn() } }));
+jest.mock('expo-router', () => ({ useLocalSearchParams: () => ({ draft: '훈련을 바꾸고 싶어요' }), router: { replace: jest.fn(), navigate: jest.fn() } }));
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn(() => '00000000-0000-4000-8000-000000000001') }));
 jest.mock('@/api/client', () => ({ ...jest.requireActual('@/api/client'), apiFetch: jest.fn() }));
-const usage = { tier: 'free', chat: { used: 2, limit: 5 }, reschedule: { used: 0, limit: 1 }, resetsOn: '2026-12-01' };
+const usage: Usage = { tier: 'free', chat: { used: 2, limit: 5 }, reschedule: { used: 0, limit: 1 }, resetsOn: '2026-12-01' };
 const userMessage = { id: '00000000-0000-4000-8000-000000000002', role: 'user', status: 'done', content: '훈련을 바꾸고 싶어요', createdAt: '2026-11-19T00:00:00Z', card: null };
 const reply = { ...userMessage, id: '00000000-0000-4000-8000-000000000003', role: 'assistant', content: '어떻게 도와드릴까요?' };
 const mockFetch = jest.mocked(apiFetch);
@@ -85,4 +87,80 @@ test('기록 제안을 승인하면 서버 결과와 저장 메시지를 표시�
   await fireEvent.press(await screen.findByRole('button', { name: '기록 저장' }));
   expect(await screen.findByText('기록을 저장했어요')).toBeOnTheScreen();
   expect(screen.getByText('적용했어요')).toBeOnTheScreen();
+});
+
+describe('승인 실패와 중복 승인 (AC-F05-04, AC-F05-05, AC-F05-11)', () => {
+  const proposal = { id: '00000000-0000-4000-8000-000000000004', type: 'reschedule', status: 'pending', expiresAt: '2099-01-01T00:00:00Z', reasonLine: null, consumesQuota: true, changes: [], impact: null, warnings: [], goal: null, workout: null };
+  const approveCalls = () => mockFetch.mock.calls.filter(([path]) => path.endsWith('/approve'));
+  const withApprove = (approve: () => Promise<unknown>, extra: (path: string) => unknown = () => undefined) => {
+    const original = mockFetch.getMockImplementation()!;
+    mockFetch.mockImplementation(async (path, schema, options) => {
+      if (path === '/v1/chat/messages' && !options?.method) return { items: [{ ...reply, card: { type: 'proposal', proposal } }], hasMore: false };
+      if (path.endsWith('/approve')) return approve();
+      return extra(path) ?? original(path, schema, options);
+    });
+  };
+  const approved = { proposal: { ...proposal, status: 'approved' }, resultMessage: { ...reply, id: '00000000-0000-4000-8000-000000000005', role: 'system', content: '일정을 변경했어요' }, usage: { ...usage, reschedule: { used: 1, limit: 1 } } };
+
+  test('적용하기를 연속으로 눌러도 승인 요청은 한 번만 보낸다', async () => {
+    let finish: (value: unknown) => void = () => undefined;
+    withApprove(() => new Promise((resolve) => { finish = resolve; }));
+    await show();
+    const button = await screen.findByRole('button', { name: '적용하기' });
+    await fireEvent.press(button);
+    await fireEvent.press(button);
+    await fireEvent.press(screen.getByRole('button', { name: '적용하기' }));
+    expect(approveCalls()).toHaveLength(1);
+    finish(approved);
+    expect(await screen.findByText('일정을 변경했어요')).toBeOnTheScreen();
+    expect(screen.getByText('적용했어요')).toBeOnTheScreen();
+    expect(screen.getByText('AI 일정 변경 1/1회 사용')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: '캘린더에서 보기' }));
+    expect(router.navigate).toHaveBeenCalledWith('/(tabs)/calendar');
+  });
+
+  test('계획이 바뀌어 거절되면 서버 문구를 보여 주고 버튼을 없앤다', async () => {
+    withApprove(() => Promise.reject(new ApiClientError('PLAN_CHANGED', '계획이 바뀌었어요. 다시 요청해 주세요.')));
+    await show();
+    await fireEvent.press(await screen.findByRole('button', { name: '적용하기' }));
+    expect(await screen.findByText('계획이 바뀌었어요. 다시 요청해 주세요.')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: '적용하기' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '다른 방법 보기' })).toBeNull();
+  });
+
+  test('만료로 거절되면 카드를 만료 상태로 바꾼다', async () => {
+    withApprove(() => Promise.reject(new ApiClientError('PROPOSAL_EXPIRED', '이 제안은 만료됐어요. 다시 물어봐 주세요.')));
+    await show();
+    await fireEvent.press(await screen.findByRole('button', { name: '적용하기' }));
+    expect(await screen.findByText('이 제안은 만료됐어요. 다시 물어봐 주세요')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: '적용하기' })).toBeNull();
+  });
+
+  test('이미 처리된 제안이면 다시 불러와 실제 상태를 보여 준다', async () => {
+    withApprove(
+      () => Promise.reject(new ApiClientError('PROPOSAL_NOT_PENDING', '이미 처리된 제안이에요.')),
+      (path) => (path === `/v1/proposals/${proposal.id}` ? { ...proposal, status: 'superseded' } : undefined),
+    );
+    await show();
+    await fireEvent.press(await screen.findByRole('button', { name: '적용하기' }));
+    expect(await screen.findByText('새 제안으로 바뀌었어요')).toBeOnTheScreen();
+  });
+
+  test('연결이 끊겨 실패하면 다시 시도로 같은 승인을 보낸다', async () => {
+    let attempts = 0;
+    withApprove(() => (++attempts === 1 ? Promise.reject(new ApiClientError('NETWORK_ERROR', '인터넷 연결을 확인하고 다시 시도해 주세요.')) : Promise.resolve(approved)));
+    await show();
+    await fireEvent.press(await screen.findByRole('button', { name: '적용하기' }));
+    await fireEvent.press(await screen.findByRole('button', { name: '다시 시도' }));
+    expect(await screen.findByText('적용했어요')).toBeOnTheScreen();
+    expect(approveCalls()).toHaveLength(2);
+  });
+
+  test('일정 변경 한도를 넘으면 카드는 그대로 두고 한도 안내를 붙인다', async () => {
+    withApprove(() => Promise.reject(new ApiClientError('LIMIT_REACHED', '이번 달 일정 변경을 모두 썼어요.', { usage: { ...usage, reschedule: { used: 1, limit: 1 } } })));
+    await show();
+    await fireEvent.press(await screen.findByRole('button', { name: '적용하기' }));
+    expect(await screen.findByText('이번 달 AI 일정 변경을 모두 썼어요')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: '적용하기' })).toBeEnabled();
+  });
 });

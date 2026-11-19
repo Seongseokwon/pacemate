@@ -9,7 +9,7 @@ export { Pager, Screen, SegmentedControl, Stepper, TabBar } from './navigation';
 export { BottomSheet, Dialog } from './overlay';
 export { Heading, Text } from './text';
 export { type Status, type Tone, useTheme } from './theme';
-export { addDays, deviceToday, firstOfMonth, formatDate, formatDday, formatDuration, formatKm, formatMonthDay, formatPace, formatShortDate, mondayOf, monthGridDates, weekdayOf } from './dates';
+export { addDays, deviceToday, firstOfMonth, formatDate, formatDday, formatDuration, formatKm, formatMonthDay, formatPace, formatShortDate, localDateOf, mondayOf, monthGridDates, weekdayOf } from './dates';
 export { MonthGrid, WeekStrip } from './calendar';
 export { RaceGoalCard, TodayCard, WeekGauge } from './home';
 export { originalLine, SessionList, SessionRow, sessionAmount, StatTile, StatusChip } from './session';

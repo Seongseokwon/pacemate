@@ -23,3 +23,5 @@ export const approveProposal = (id: string) =>
 
 export const cancelProposal = (id: string) =>
   apiFetch(`/v1/proposals/${encodeURIComponent(id)}/cancel`, proposalSchema, { method: 'POST' });
+
+export const getProposal = (id: string) => apiFetch(`/v1/proposals/${encodeURIComponent(id)}`, proposalSchema);

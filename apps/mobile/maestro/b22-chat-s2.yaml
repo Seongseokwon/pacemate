@@ -11,3 +11,5 @@ appId: com.pacemate.app
 - tapOn: "적용하기"
 - extendedWaitUntil: { visible: "적용했어요", timeout: 15000 }
 - takeScreenshot: b22-s2-applied
+- tapOn: "캘린더에서 보기"
+- takeScreenshot: b22-s2-calendar

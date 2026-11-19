@@ -11,3 +11,5 @@ appId: com.pacemate.app
 - tapOn: "기록 저장"
 - extendedWaitUntil: { visible: "적용했어요", timeout: 15000 }
 - takeScreenshot: b24-s4-saved
+- tapOn: "기록"
+- takeScreenshot: b24-s4-records
