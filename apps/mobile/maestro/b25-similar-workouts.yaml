@@ -1,0 +1,10 @@
+# B-25: 비슷한 수동 기록과 Apple 건강 기록이 준비된 로그인 계정에서 실행한다.
+appId: com.pacemate.app
+---
+- openLink: pacemate://records
+- extendedWaitUntil: { visible: '.*비슷한 기록.*', timeout: 15000 }
+- tapOn: '.*비슷한 기록.*'
+- assertVisible: '비슷한 기록'
+- takeScreenshot: b25-similar-workouts
+- tapOn: '다른 달리기예요'
+- takeScreenshot: b25-separated-workout

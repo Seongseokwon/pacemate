@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { apiFetch } from './client';
 
 export const getWorkouts = (before?: string) => apiFetch(`/v1/workouts${before ? `?before=${encodeURIComponent(before)}` : ''}`, workoutsResponseSchema);
+export const getSimilarWorkouts = (id: string) => apiFetch(`/v1/workouts/${id}/similar`, z.object({ items: z.array(workoutSchema) }));
 export const getWorkoutStats = () => apiFetch('/v1/workouts/stats', workoutStatsResponseSchema);
 export const getCandidates = (date: string) => apiFetch(`/v1/workouts/link-candidates?date=${encodeURIComponent(date)}`, linkCandidatesResponseSchema);
 export const createWorkout = (body: CreateWorkoutRequest) => apiFetch('/v1/workouts', createWorkoutResponseSchema, { method: 'POST', body });

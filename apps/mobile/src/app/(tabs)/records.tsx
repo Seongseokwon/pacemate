@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Modal, Platform } from 'react-native';
 import { ApiClientError } from '@/api/client';
 import { isRedirectError } from '@/api/query-client';
-import { createWorkout, deleteWorkout, getCandidates, getWorkouts, getWorkoutStats, updateWorkout } from '@/api/workouts';
+import { createWorkout, deleteWorkout, getCandidates, getSimilarWorkouts, getWorkouts, getWorkoutStats, updateWorkout } from '@/api/workouts';
 import { importHealthkitWorkouts } from '@/health/healthkit';
 import { BottomSheet, Button, Card, DateInput, Dialog, EmptyState, Field, formatDate, Heading, List, ListItem, NumberInput, ProgressBar, ScaleInput, Screen, SegmentedControl, Selector, Stack, Text, TextArea } from '@/ui';
 
@@ -24,9 +24,11 @@ export default function Records() {
   const [healthMessage, setHealthMessage] = useState<string | null>(null);
   const list = useInfiniteQuery({ queryKey: ['workouts'], queryFn: ({ pageParam }) => getWorkouts(pageParam), initialPageParam: undefined as string | undefined, getNextPageParam: (last) => last.hasMore ? last.items.at(-1)?.id : undefined });
   const stats = useQuery({ queryKey: ['workout-stats'], queryFn: getWorkoutStats });
+  const similar = useQuery({ queryKey: ['similar-workouts', selected?.id], queryFn: () => getSimilarWorkouts(selected!.id), enabled: selected !== null });
   const refresh = async () => { await client.invalidateQueries(); };
   const remove = useMutation({ mutationFn: deleteWorkout, onSuccess: async () => { setDeleting(false); setSelected(null); await refresh(); }, onError: (error) => { if (!isRedirectError(error)) { setDeleting(false); setDeleteError(message(error)); } } });
-  const health = useMutation({ mutationFn: importHealthkitWorkouts, onSuccess: async (result) => { setHealthMessage(result.total === 0 ? '건강 앱에서 러닝 기록을 찾지 못했어요. 건강 앱의 데이터 접근 권한을 확인해 주세요.' : `${result.imported}개를 가져왔어요. ${result.skipped}개는 중복 또는 저장할 수 없는 기록이에요.${result.failed > 0 ? ` ${result.failed}개를 가져오지 못했어요.` : ''}`); await refresh(); }, onError: (error) => { if (!isRedirectError(error)) setHealthMessage(message(error)); void refresh(); } });
+  const separate = useMutation({ mutationFn: (id: string) => updateWorkout(id, { separateRun: true }), onSuccess: refresh, onError: (error) => { if (!isRedirectError(error)) setDeleteError(message(error)); } });
+  const health = useMutation({ mutationFn: importHealthkitWorkouts, onSuccess: async (result) => { setHealthMessage(result.total === 0 ? '건강 앱에서 러닝 기록을 찾지 못했어요. 건강 앱의 데이터 접근 권한을 확인해 주세요.' : `${result.imported}개를 가져왔어요. ${result.skipped}개는 이미 가져왔거나 저장할 수 없는 기록이에요. 거리가 없는 기록 ${result.missingDistance}개.${result.failed > 0 ? ` ${result.failed}개를 가져오지 못했어요.` : ''}`); await refresh(); }, onError: (error) => { if (!isRedirectError(error)) setHealthMessage(message(error)); void refresh(); } });
   const items = list.data?.pages.flatMap((page) => page.items) ?? [];
   const failure = list.error ?? stats.error;
   return (
@@ -39,11 +41,11 @@ export default function Records() {
           <Stack direction="row"><Stack fill><Card><Text>이번 달 거리</Text><Heading level={2}>{stats.data.month.distanceKm}km</Heading></Card></Stack><Stack fill><Card><Text>이번 달 횟수</Text><Heading level={2}>{stats.data.month.count}회</Heading></Card></Stack></Stack>
         </Stack>}
         <Heading level={2}>운동 기록</Heading>
-        {items.length === 0 ? <EmptyState icon="info" message="아직 운동 기록이 없어요." actionLabel="기록 추가" onAction={() => setEditing('new')} /> : <List>{items.map((item, index) => <Stack key={item.id}>{(index === 0 || items[index - 1]?.date.slice(0, 7) !== item.date.slice(0, 7)) && <Text variant="label">{item.date.slice(0, 4)}년 {Number(item.date.slice(5, 7))}월</Text>}<ListItem title={`${item.distanceKm}km · ${formatDate(item.date)}`} description={`${durationText(item.durationSec)} · ${paceText(item.paceSecPerKm)}${item.source === 'healthkit' ? ' · Apple 건강' : ''}`} onPress={() => setSelected(item)} /></Stack>)}</List>}
+        {items.length === 0 ? <EmptyState icon="info" message="아직 운동 기록이 없어요." actionLabel="기록 추가" onAction={() => setEditing('new')} /> : <List>{items.map((item, index) => <Stack key={item.id}>{(index === 0 || items[index - 1]?.date.slice(0, 7) !== item.date.slice(0, 7)) && <Text variant="label">{item.date.slice(0, 4)}년 {Number(item.date.slice(5, 7))}월</Text>}<ListItem title={`${item.distanceKm}km · ${formatDate(item.date)}`} description={`${durationText(item.durationSec)} · ${paceText(item.paceSecPerKm)}${item.source === 'healthkit' ? ' · Apple 건강' : ''}${item.similarCount ? ` · 비슷한 기록 ${item.similarCount}개` : ''}`} onPress={() => setSelected(item)} /></Stack>)}</List>}
         {list.hasNextPage && <Button variant="secondary" label="더 보기" loading={list.isFetchingNextPage} onPress={() => { void list.fetchNextPage(); }} />}
         {list.isFetchNextPageError && <Text tone="error">기록을 더 불러오지 못했어요. 다시 시도해 주세요.</Text>}
       </Stack>
-      <BottomSheet visible={selected !== null && !deleting && editing === null} title="운동 기록" onClose={() => { setSelected(null); setDeleteError(null); }}><Stack gap={4}>{selected && <><Text>{formatDate(selected.date)} · {selected.distanceKm}km</Text><Text>{durationText(selected.durationSec)} · {paceText(selected.paceSecPerKm)}</Text>{selected.source === 'healthkit' && <Text>Apple 건강에서 가져옴</Text>}{selected.averageHeartRate != null && <Text>평균 심박수 {selected.averageHeartRate}회/분</Text>}{selected.rpe !== null && <Text>운동 강도 {selected.rpe}/10</Text>}{selected.memo && <Text>통증: {selected.memo}</Text>}{deleteError && <Text tone="error">{deleteError}</Text>}<Button label="수정하기" onPress={() => { setEditing(selected); setDeleteError(null); }} /><Button variant="danger" label="삭제하기" onPress={() => setDeleting(true)} /></>}</Stack></BottomSheet>
+      <BottomSheet visible={selected !== null && !deleting && editing === null} title="운동 기록" onClose={() => { setSelected(null); setDeleteError(null); }}><Stack gap={4}>{selected && <><Text>{formatDate(selected.date)} · {selected.distanceKm}km</Text><Text>{durationText(selected.durationSec)} · {paceText(selected.paceSecPerKm)}</Text>{selected.source === 'healthkit' && <Text>Apple 건강에서 가져옴</Text>}{selected.averageHeartRate != null && <Text>평균 심박수 {selected.averageHeartRate}회/분</Text>}{selected.rpe !== null && <Text>운동 강도 {selected.rpe}/10</Text>}{selected.memo && <Text>통증: {selected.memo}</Text>}{similar.isError && <Text tone="error">비슷한 기록을 불러오지 못했어요.</Text>}{similar.data && similar.data.items.length > 0 && <><Heading level={2}>비슷한 기록</Heading><Stack direction="row"><Stack fill><Text>이 기록</Text><Text>{selected.distanceKm}km · {durationText(selected.durationSec)}</Text></Stack><Stack fill>{similar.data.items.map((item) => <Stack key={item.id}><Text>{item.source === 'healthkit' ? 'Apple 건강' : '직접 입력'}</Text><Text>{item.distanceKm}km · {durationText(item.durationSec)}</Text><Button variant="text" label="다른 달리기예요" loading={separate.isPending} onPress={() => separate.mutate(item.id)} /></Stack>)}</Stack></Stack></>}{deleteError && <Text tone="error">{deleteError}</Text>}<Button label="수정하기" onPress={() => { setEditing(selected); setDeleteError(null); }} /><Button variant="danger" label="삭제하기" onPress={() => setDeleting(true)} /></>}</Stack></BottomSheet>
       <Dialog visible={deleting} title="기록을 삭제할까요?" message="연결된 훈련의 완료 표시도 사라져요." danger confirmLabel="삭제" onCancel={() => setDeleting(false)} onConfirm={() => { if (selected && !remove.isPending) remove.mutate(selected.id); }} />
       <Modal visible={editing !== null} animationType="slide" onRequestClose={() => { setEditing(null); setSelected(null); setResult(null); }}>
         <BottomTabBarHeightContext.Provider value={undefined}>
@@ -69,7 +71,7 @@ function WorkoutForm({ workout, onBack, onSaved }: { workout: Workout | null; on
   const [confirmation, setConfirmation] = useState<'WORKOUT_DUPLICATE' | 'PACE_OUT_OF_RANGE' | null>(null);
   const [confirmed, setConfirmed] = useState({ confirmDuplicate: false, confirmPace: false });
   const candidates = useQuery({ queryKey: ['workout-candidates', date], queryFn: () => getCandidates(date) });
-  const sessionId = chosenSession ?? candidates.data?.items.find((s) => s.date === date)?.id ?? 'free';
+  const sessionId = chosenSession ?? candidates.data?.items.find((s) => s.date === date && s.workoutId === null)?.id ?? 'free';
   const seconds = (hour ?? 0) * 3600 + (minute ?? 0) * 60 + (second ?? 0);
   const valid = distance !== null && distance >= WORKOUT_LIMITS.distanceKm.min && distance <= WORKOUT_LIMITS.distanceKm.max && seconds >= WORKOUT_LIMITS.durationSec.min && seconds <= WORKOUT_LIMITS.durationSec.max && (minute ?? 0) < 60 && (second ?? 0) < 60 && date <= today() && (pain === 'no' || memo.trim().length > 0);
   const mutation = useMutation({ mutationFn: async (flags: typeof confirmed) => {
