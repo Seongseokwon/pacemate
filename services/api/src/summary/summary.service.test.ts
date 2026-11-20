@@ -62,6 +62,18 @@ describe('SummaryService.weeklyNumbers', () => {
     expect(numbers.nextSession).toMatchObject({ date: '2026-11-20', status: 'planned' });
   });
 
+  test('같은 달리기를 직접 입력하고 Apple 건강에서도 가져오면 거리를 한 번만 센다 (F07-R11, F08-R05)', async () => {
+    await seedUser(USER);
+    await workout(USER, '2026-11-18', 5);
+    await prisma.workoutLog.create({
+      data: { userId: USER, date: day('2026-11-18'), distanceKm: 5.02, durationSec: 1810, source: 'healthkit', healthkitId: '33333333-3333-4333-8333-333333333333', startedAt: new Date('2026-11-17T22:00:00Z'), endedAt: new Date('2026-11-17T22:30:10Z') },
+    });
+    await workout(USER, '2026-11-19', 3);
+
+    // 묶음에서는 더 긴 기록 하나만 센다. 기록 화면의 통계(GET /v1/workouts/stats)와 같은 값이다
+    expect((await service.weeklyNumbers(USER, '2026-11-16')).totalDistanceKm).toBe(8.02);
+  });
+
   test('대회만 남았으면 다음 훈련은 없다 (PRD §7.2)', async () => {
     const plan = await seedUser(USER);
     const last = await session(plan.id, USER, '2026-11-18');

@@ -67,6 +67,28 @@ test('같은 날의 훈련을 연결하고 통증을 저장한다', async () => 
   expect(screen.queryByText(/이번 주 \d+\/\d+회/)).not.toBeOnTheScreen();
 });
 
+test('기록을 고칠 때 연결한 훈련을 바꾸지 않으면 연결 값을 보내지 않는다 (F07-R11)', async () => {
+  const workout = { id: 'one', date: '2026-11-17', distanceKm: 3, durationSec: 1080, paceSecPerKm: 360, averageHeartRate: null, condition: null, rpe: null, memo: null, plannedSessionId: 'session-1', source: 'healthkit' as const };
+  jest.mocked(getWorkouts).mockResolvedValue({ items: [{ ...workout, similarCount: 0 }], hasMore: false });
+  jest.mocked(getSimilarWorkouts).mockResolvedValue({ items: [] });
+  jest.mocked(updateWorkout).mockResolvedValue(workout);
+  await render(<QueryClientProvider client={testQueryClient()}><Records /></QueryClientProvider>);
+  await fireEvent.press(await screen.findByText(/3km/));
+  await fireEvent.press(await screen.findByRole('button', { name: '수정하기' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: '저장' })).toBeEnabled());
+  await fireEvent.press(screen.getByRole('button', { name: '저장' }));
+  await waitFor(() => expect(updateWorkout).toHaveBeenCalledTimes(1));
+  expect(jest.mocked(updateWorkout).mock.calls[0]![1]).not.toHaveProperty('plannedSessionId');
+
+  // 자유 러닝으로 바꾸면 연결 해제(null)를 보낸다
+  await fireEvent.press(await screen.findByText(/3km/));
+  await fireEvent.press(await screen.findByRole('button', { name: '수정하기' }));
+  await fireEvent.press(await screen.findByText('현재 연결된 훈련'));
+  await fireEvent.press(await screen.findByText('자유 러닝'));
+  await waitFor(() => expect(screen.getByRole('button', { name: '저장' })).toBeEnabled());
+  await fireEvent.press(screen.getByRole('button', { name: '저장' }));
+  await waitFor(() => expect(updateWorkout).toHaveBeenLastCalledWith('one', expect.objectContaining({ plannedSessionId: null })));
+});
 
 test('비슷한 기록을 비교하고 다른 달리기로 분리한다', async () => {
   const workout = { id: 'one', date: '2026-11-17', distanceKm: 5, durationSec: 1800, paceSecPerKm: 360, averageHeartRate: null, condition: null, rpe: null, memo: null, plannedSessionId: null, source: 'app' as const };
