@@ -1,4 +1,4 @@
-import type { ContinuousRun, Experience, GoalDistance } from '@pacemate/shared';
+import type { ContinuousRun, Experience } from '@pacemate/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
@@ -18,9 +18,9 @@ import {
   STEPS,
   toProfileRequest,
 } from '@/onboarding/draft';
+import { GoalFields } from '@/onboarding/goal-fields';
 import {
   Button,
-  DateInput,
   Field,
   Heading,
   NumberInput,
@@ -56,13 +56,6 @@ const CONTINUOUS_RUNS: [ContinuousRun, string][] = [
   ['under_30m', '10~30분'],
   ['under_60m', '30~60분'],
   ['over_60m', '60분 이상'],
-];
-const GOAL_DISTANCES: [GoalDistance, string, string?][] = [
-  ['five_k', '5km'],
-  ['ten_k', '10km'],
-  ['half', '하프마라톤 (21.1km)'],
-  // 목표 없음(F02-R07, UI_UX §6.2)
-  ['none', '아직 목표가 없어요', '가볍게 시작하고 싶어요'],
 ];
 const RUN_COUNTS = (['2', '3', '4', '5'] as const).map((value) => ({ value, label: `${value}번` }));
 
@@ -103,11 +96,6 @@ const NumberField = ({ label, ...input }: { label: string; value: number | null;
     </Field>
   </Stack>
 );
-
-const tomorrow = () => {
-  const date = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-};
 
 /** 온보딩(F02, PRD §5.3). 한 화면에 질문 하나. 답은 기기에 저장해 두고 마지막에 프로필로 보낸다. */
 export default function Onboarding() {
@@ -201,28 +189,9 @@ export default function Onboarding() {
         )}
       </Stack>
     ),
-    goalDistance: (
-      <Choices
-        options={GOAL_DISTANCES}
-        value={draft.goalDistance}
-        // 목표 없음이면 목표 기록과 대회 날짜를 남기지 않는다(F02-R07)
-        onChange={(goalDistance) =>
-          update(goalDistance === 'none' ? { goalDistance, goalHour: null, goalMin: null, goalSec: null, raceDate: null } : { goalDistance })
-        }
-      />
-    ),
-    goalTime: (
-      <Stack direction="row">
-        <NumberField label="시간" value={draft.goalHour} onChange={(goalHour) => update({ goalHour })} />
-        <NumberField label="분" value={draft.goalMin} onChange={(goalMin) => update({ goalMin })} />
-        <NumberField label="초" value={draft.goalSec} onChange={(goalSec) => update({ goalSec })} />
-      </Stack>
-    ),
-    raceDate: (
-      <Field label="대회 날짜">
-        <DateInput value={draft.raceDate} min={tomorrow()} onChange={(raceDate) => update({ raceDate })} />
-      </Field>
-    ),
+    goalDistance: <GoalFields step="goalDistance" draft={draft} update={update} />,
+    goalTime: <GoalFields step="goalTime" draft={draft} update={update} />,
+    raceDate: <GoalFields step="raceDate" draft={draft} update={update} />,
   };
 
   return (
