@@ -16,3 +16,4 @@ executionOrder:
     - b23-chat-s3
     - b24-chat-s4
     - b25-similar-workouts
+    - b26-goal-change
