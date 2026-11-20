@@ -75,8 +75,12 @@ function WorkoutForm({ workout, onBack, onSaved }: { workout: Workout | null; on
   const seconds = (hour ?? 0) * 3600 + (minute ?? 0) * 60 + (second ?? 0);
   const valid = distance !== null && distance >= WORKOUT_LIMITS.distanceKm.min && distance <= WORKOUT_LIMITS.distanceKm.max && seconds >= WORKOUT_LIMITS.durationSec.min && seconds <= WORKOUT_LIMITS.durationSec.max && (minute ?? 0) < 60 && (second ?? 0) < 60 && date <= today() && (pain === 'no' || memo.trim().length > 0);
   const mutation = useMutation({ mutationFn: async (flags: typeof confirmed) => {
-    const body: CreateWorkoutRequest = { date, distanceKm: distance!, durationSec: seconds, rpe, memo: pain === 'yes' ? memo.trim() : null, plannedSessionId: sessionId === 'free' ? null : sessionId, ...flags };
-    return workout ? (await updateWorkout(workout.id, body), null) : createWorkout(body);
+    const fields = { date, distanceKm: distance!, durationSec: seconds, rpe, memo: pain === 'yes' ? memo.trim() : null, ...flags };
+    const plannedSessionId = sessionId === 'free' ? null : sessionId;
+    if (!workout) return createWorkout({ ...fields, plannedSessionId } satisfies CreateWorkoutRequest);
+    // 연결을 바꾸지 않았으면 보내지 않는다. 보내면 서버가 자동 연결을 사용자가 고른 연결로 고정한다(F07-R11)
+    await updateWorkout(workout.id, plannedSessionId === workout.plannedSessionId ? fields : { ...fields, plannedSessionId });
+    return null;
   }, onSuccess: (response) => { void onSaved(response); }, onError: (err) => {
     if (err instanceof ApiClientError && (err.code === 'WORKOUT_DUPLICATE' || err.code === 'PACE_OUT_OF_RANGE')) setConfirmation(err.code);
     else if (!isRedirectError(err)) setError(message(err));
