@@ -3,7 +3,9 @@ import type { WeeklyNumbers } from '@pacemate/shared';
 import { addDays, toDbDate } from '../common/dates.js';
 import { today } from '../common/today.js';
 import { PrismaService } from '../db/prisma.service.js';
+import { Prisma } from '../generated/prisma/client.js';
 import { toSession } from '../plan/session.mapper.js';
+import { representativeWorkouts } from '../workout/similar.js';
 
 /** 주간 요약. 화면, 채팅 도구, 주간 피드백이 같은 수치를 쓴다(F08-R05). */
 @Injectable()
@@ -15,11 +17,11 @@ export class SummaryService {
     const date = today();
     const week = { gte: toDbDate(weekStart), lte: toDbDate(addDays(weekStart, 6)) };
     const counted = { userId, date: week, isSkipped: false, type: { not: 'race' } } as const;
-    const [plannedCount, completedCount, distance, next] = await Promise.all([
+    const [plannedCount, completedCount, workouts, next] = await Promise.all([
       this.prisma.plannedSession.count({ where: counted }),
       this.prisma.plannedSession.count({ where: { ...counted, workout: { isNot: null } } }),
-      // 거리는 훈련에 연결되지 않은 기록까지 합한다
-      this.prisma.workoutLog.aggregate({ where: { userId, date: week }, _sum: { distanceKm: true } }),
+      // 거리는 훈련에 연결되지 않은 기록까지 합하되, 비슷한 기록은 기록 화면 통계처럼 묶음당 하나만 센다(F07-R11)
+      this.prisma.workoutLog.findMany({ where: { userId, date: week } }),
       this.prisma.plannedSession.findFirst({
         // 대회는 훈련이 아니다(PRD §7.2)
         where: { userId, plan: { status: 'active' }, date: { gte: toDbDate(date) }, isSkipped: false, workout: null, type: { not: 'race' } },
@@ -31,7 +33,7 @@ export class SummaryService {
       weekStart,
       plannedCount,
       completedCount,
-      totalDistanceKm: distance._sum.distanceKm?.toNumber() ?? 0,
+      totalDistanceKm: representativeWorkouts(workouts).reduce((sum, row) => sum.plus(row.distanceKm), new Prisma.Decimal(0)).toNumber(),
       completionRate: plannedCount === 0 ? 0 : Math.min(1, completedCount / plannedCount),
       nextSession: next ? toSession(next, date) : null,
     };
