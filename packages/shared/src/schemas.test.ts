@@ -72,8 +72,8 @@ test('API_SPEC §2의 예시 객체가 스키마를 통과한다', () => {
   expect(
     usageSchema.safeParse({
       tier: 'free',
-      chat: { used: 3, limit: 10 },
-      reschedule: { used: 1, limit: 2 },
+      chat: { used: 3, limit: 10, pool: 'month' },
+      reschedule: { used: 1, limit: 2, pool: 'month' },
       resetsOn: '2026-12-01',
     }).success,
   ).toBe(true);

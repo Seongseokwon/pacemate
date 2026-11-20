@@ -11,7 +11,7 @@ jest.mock('expo-router/js-tabs', () => ({ BottomTabBarHeightContext: jest.requir
 jest.mock('expo-router', () => ({ useLocalSearchParams: () => ({ draft: '훈련을 바꾸고 싶어요' }), router: { replace: jest.fn(), navigate: jest.fn() } }));
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn(() => '00000000-0000-4000-8000-000000000001') }));
 jest.mock('@/api/client', () => ({ ...jest.requireActual('@/api/client'), apiFetch: jest.fn() }));
-const usage: Usage = { tier: 'free', chat: { used: 2, limit: 5 }, reschedule: { used: 0, limit: 1 }, resetsOn: '2026-12-01' };
+const usage: Usage = { tier: 'free', chat: { used: 2, limit: 5, pool: 'month' }, reschedule: { used: 0, limit: 1, pool: 'month' }, resetsOn: '2026-12-01' };
 const userMessage = { id: '00000000-0000-4000-8000-000000000002', role: 'user', status: 'done', content: '훈련을 바꾸고 싶어요', createdAt: '2026-11-19T00:00:00Z', card: null };
 const reply = { ...userMessage, id: '00000000-0000-4000-8000-000000000003', role: 'assistant', content: '어떻게 도와드릴까요?' };
 const mockFetch = jest.mocked(apiFetch);
@@ -100,7 +100,7 @@ describe('승인 실패와 중복 승인 (AC-F05-04, AC-F05-05, AC-F05-11)', () 
       return extra(path) ?? original(path, schema, options);
     });
   };
-  const approved = { proposal: { ...proposal, status: 'approved' }, resultMessage: { ...reply, id: '00000000-0000-4000-8000-000000000005', role: 'system', content: '일정을 변경했어요' }, usage: { ...usage, reschedule: { used: 1, limit: 1 } } };
+  const approved = { proposal: { ...proposal, status: 'approved' }, resultMessage: { ...reply, id: '00000000-0000-4000-8000-000000000005', role: 'system', content: '일정을 변경했어요' }, usage: { ...usage, reschedule: { used: 1, limit: 1, pool: 'month' } } };
 
   test('적용하기를 연속으로 눌러도 승인 요청은 한 번만 보낸다', async () => {
     let finish: (value: unknown) => void = () => undefined;
@@ -157,7 +157,7 @@ describe('승인 실패와 중복 승인 (AC-F05-04, AC-F05-05, AC-F05-11)', () 
   });
 
   test('일정 변경 한도를 넘으면 카드는 그대로 두고 한도 안내를 붙인다', async () => {
-    withApprove(() => Promise.reject(new ApiClientError('LIMIT_REACHED', '이번 달 일정 변경을 모두 썼어요.', { usage: { ...usage, reschedule: { used: 1, limit: 1 } } })));
+    withApprove(() => Promise.reject(new ApiClientError('LIMIT_REACHED', '이번 달 일정 변경을 모두 썼어요.', { usage: { ...usage, reschedule: { used: 1, limit: 1, pool: 'month' } } })));
     await show();
     await fireEvent.press(await screen.findByRole('button', { name: '적용하기' }));
     expect(await screen.findByText('이번 달 AI 일정 변경을 모두 썼어요')).toBeOnTheScreen();
