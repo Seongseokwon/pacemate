@@ -184,6 +184,7 @@ model User {
   id                  String       @id @db.Uuid
   authProvider        AuthProvider @map("auth_provider")
   coach               Coach        @default(oni)
+  identityHash        String?      @unique @map("identity_hash")
   termsAgreedAt       DateTime     @map("terms_agreed_at") @db.Timestamptz(3)
   privacyAgreedAt     DateTime     @map("privacy_agreed_at") @db.Timestamptz(3)
   healthDataAgreedAt  DateTime     @map("health_data_agreed_at") @db.Timestamptz(3)
@@ -401,6 +402,15 @@ model SubscriptionEvent {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("subscription_events")
+}
+
+model UsageTrial {
+  identityHash     String    @id @map("identity_hash")
+  chatCount        Int       @default(0) @map("chat_count")
+  rescheduleCount  Int       @default(0) @map("reschedule_count")
+  accountDeletedAt DateTime? @map("account_deleted_at") @db.Timestamptz(3)
+
+  @@map("usage_trials")
 }
 
 model UsageCounter {

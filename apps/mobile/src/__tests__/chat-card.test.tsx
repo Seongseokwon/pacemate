@@ -21,7 +21,7 @@ const proposal: Proposal = {
   goal: null,
   workout: null,
 };
-const usage: Usage = { tier: 'free', chat: { used: 2, limit: 5 }, reschedule: { used: 0, limit: 1 }, resetsOn: '2026-12-01' };
+const usage: Usage = { tier: 'free', chat: { used: 2, limit: 5, pool: 'month' }, reschedule: { used: 0, limit: 1, pool: 'month' }, resetsOn: '2026-12-01' };
 const callbacks = { onApprove: jest.fn(), onCancel: jest.fn(), onAlternative: jest.fn(), onRetry: jest.fn(), onOpenCalendar: jest.fn() };
 const view = (card: ChatCard, state?: ProposalCardState, disabled = false) => (
   <ChatCardView card={card} usage={usage} state={state} disabled={disabled} {...callbacks} />

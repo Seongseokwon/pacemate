@@ -16,5 +16,5 @@ export function createTestPrisma(): PrismaClient {
 
 /** 모든 사용자 데이터를 지운다. 계정을 지워도 남는 두 테이블은 따로 비운다. */
 export async function resetDatabase(prisma: PrismaClient): Promise<void> {
-  await prisma.$executeRaw`TRUNCATE "users", "ai_call_logs", "subscription_events" CASCADE`;
+  await prisma.$executeRaw`TRUNCATE "users", "ai_call_logs", "subscription_events", "usage_trials" CASCADE`;
 }

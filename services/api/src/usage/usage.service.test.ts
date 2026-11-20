@@ -20,7 +20,7 @@ test('DI-12 동시 요청은 한도를 넘지 않고 월별로 분리된다', as
   ));
   const { chat, reschedule } = PLAN_LIMITS.free;
   expect(results.filter(Boolean)).toHaveLength(reschedule);
-  expect(await usage.get(userId, '2026-12-31')).toEqual({ tier: 'free', chat: { used: 0, limit: chat }, reschedule: { used: reschedule, limit: reschedule }, resetsOn: '2027-01-01' });
+  expect(await usage.get(userId, '2026-12-31')).toEqual({ tier: 'free', chat: { used: 0, limit: chat, pool: 'month' }, reschedule: { used: reschedule, limit: reschedule, pool: 'month' }, resetsOn: '2027-01-01' });
   expect((await usage.get(userId, '2027-01-01')).reschedule.used).toBe(0);
 });
 
@@ -52,5 +52,41 @@ test('DI-12 동시 채팅 이용량은 무료 한도까지 증가한다', async 
   ));
   const limit = PLAN_LIMITS.free.chat;
   expect(results.filter(Boolean)).toHaveLength(limit);
-  expect((await usage.get(userId, '2026-11-16')).chat).toEqual({ used: limit, limit });
+  expect((await usage.get(userId, '2026-11-16')).chat).toEqual({ used: limit, limit, pool: 'month' });
+});
+
+test('AC-F10-05 체험분을 먼저 쓰고 한 번 소진되면 다음 달에도 월 한도를 쓴다', async () => {
+  await prisma.user.update({ where: { id: userId }, data: { identityHash: 'trial-user' } });
+  const start = await usage.get(userId, '2026-11-16');
+  expect(start.chat).toEqual({ used: 0, limit: 30, pool: 'trial' });
+  for (let i = 0; i < 30; i++) expect(await prisma.$transaction((tx) => usage.increment(tx, userId, 'chat', '2026-11-16'))).toBe(true);
+  expect((await usage.get(userId, '2026-11-16')).chat).toEqual({ used: 0, limit: 5, pool: 'month' });
+  expect(await prisma.$transaction((tx) => usage.increment(tx, userId, 'chat', '2026-11-16'))).toBe(true);
+  expect((await usage.get(userId, '2026-12-01')).chat).toEqual({ used: 0, limit: 5, pool: 'month' });
+});
+
+test('AC-F10-04 체험분과 월 한도 경계의 동시 차감은 한도를 넘지 않는다', async () => {
+  await prisma.user.update({ where: { id: userId }, data: { identityHash: 'trial-user' } });
+  await prisma.usageTrial.create({ data: { identityHash: 'trial-user', rescheduleCount: 2 } });
+  const results = await Promise.all(Array.from({ length: 8 }, () => prisma.$transaction((tx) => usage.increment(tx, userId, 'reschedule', '2026-11-16'))));
+  expect(results.filter(Boolean)).toHaveLength(2);
+  expect((await prisma.usageTrial.findUniqueOrThrow({ where: { identityHash: 'trial-user' } })).rescheduleCount).toBe(3);
+  expect((await usage.get(userId, '2026-11-16')).reschedule).toEqual({ used: 1, limit: 1, pool: 'month' });
+});
+
+test('AC-F10-05 Pro에서는 체험분이 줄지 않고 무료 복귀 후 이어진다', async () => {
+  await prisma.user.update({ where: { id: userId }, data: { identityHash: 'trial-user' } });
+  await prisma.usageTrial.create({ data: { identityHash: 'trial-user', chatCount: 10 } });
+  await prisma.subscription.create({ data: { userId, productId: 'monthly', store: 'app_store', expiresAt: new Date('2100-01-01'), willRenew: false } });
+  expect(await prisma.$transaction((tx) => usage.increment(tx, userId, 'chat', '2026-11-16'))).toBe(true);
+  expect((await prisma.usageTrial.findUniqueOrThrow({ where: { identityHash: 'trial-user' } })).chatCount).toBe(10);
+  await prisma.subscription.update({ where: { userId }, data: { expiresAt: new Date('2000-01-01') } });
+  expect((await usage.get(userId, '2026-11-16')).chat).toEqual({ used: 10, limit: 30, pool: 'trial' });
+});
+
+test('DI-11 계정을 삭제해도 해시별 체험분 행은 남는다', async () => {
+  await prisma.user.update({ where: { id: userId }, data: { identityHash: 'trial-user' } });
+  await prisma.$transaction((tx) => usage.increment(tx, userId, 'chat', '2026-11-16'));
+  await prisma.user.delete({ where: { id: userId } });
+  expect((await prisma.usageTrial.findUniqueOrThrow({ where: { identityHash: 'trial-user' } })).chatCount).toBe(1);
 });

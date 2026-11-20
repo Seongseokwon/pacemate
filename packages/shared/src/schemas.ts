@@ -23,7 +23,7 @@ export const idSchema = z.uuid();
 export const countSchema = z.int().nonnegative();
 
 // §2.1 Usage
-const usageCounterSchema = z.object({ used: countSchema, limit: countSchema });
+const usageCounterSchema = z.object({ used: countSchema, limit: countSchema, pool: z.enum(['trial', 'month']) });
 export const usageSchema = z.object({
   tier: tierSchema,
   chat: usageCounterSchema,
