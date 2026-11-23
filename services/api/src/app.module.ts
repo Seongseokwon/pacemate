@@ -16,7 +16,7 @@ import { ChatService } from './chat/chat.service.js';
 import { ContextBuilder } from './chat/context-builder.js';
 import { LlmGateway } from './chat/llm/llm-gateway.js';
 import { LLM_PROVIDER } from './chat/llm/llm-provider.js';
-import { UnconfiguredLlmProvider } from './chat/llm/unconfigured-llm-provider.js';
+import { createLlmProvider } from './chat/llm/create-llm-provider.js';
 import { toolRegistryProvider } from './chat/tools/chat-tools.js';
 import { AppVersionGuard } from './common/app-version.guard.js';
 import { ErrorFilter } from './common/error.filter.js';
@@ -32,6 +32,7 @@ import { ProfileController } from './profile/profile.controller.js';
 import { ProfileService } from './profile/profile.service.js';
 import { ProposalController } from './proposal/proposal.controller.js';
 import { ProposalService } from './proposal/proposal.service.js';
+import { SummaryController } from './summary/summary.controller.js';
 import { SummaryService } from './summary/summary.service.js';
 import { UsageService } from './usage/usage.service.js';
 import { WorkoutController } from './workout/workout.controller.js';
@@ -39,7 +40,7 @@ import { WorkoutService } from './workout/workout.service.js';
 
 @Module({
   imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: RATE_LIMIT_PER_MINUTE.default }])],
-  controllers: [HealthController, MeController, CoachController, ProfileController, PlanController, WorkoutController, ProposalController, ChatController],
+  controllers: [HealthController, MeController, CoachController, ProfileController, PlanController, WorkoutController, ProposalController, ChatController, SummaryController],
   providers: [
     { provide: APP_CONFIG, useFactory: () => loadConfig() },
     {
@@ -60,8 +61,7 @@ import { WorkoutService } from './workout/workout.service.js';
     toolRegistryProvider,
     ContextBuilder,
     LlmGateway,
-    // LLM 공급자를 정하면(D-03, T-407) 실제 구현으로 바꾼다
-    { provide: LLM_PROVIDER, useClass: UnconfiguredLlmProvider },
+    { provide: LLM_PROVIDER, useFactory: createLlmProvider, inject: [APP_CONFIG] },
     ChatService,
     { provide: TRAINING_ENGINE, useValue: { generate, validate, reschedule, version: ENGINE_VERSION } satisfies TrainingEngine },
     { provide: AUTH_ADMIN, useFactory: createAuthAdmin, inject: [APP_CONFIG] },

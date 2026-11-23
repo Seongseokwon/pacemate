@@ -18,6 +18,7 @@
     "@supabase/auth-js": "2.119.2",
     "@tanstack/react-query": "^5.107.1",
     "expo": "~58.0.25",
+    "expo-apple-authentication": "~58.0.3",
     "expo-constants": "~58.0.16",
     "expo-crypto": "~58.0.8",
     "expo-dev-client": "~58.0.20",
@@ -43,6 +44,9 @@
   },
   "jest": {
     "preset": "jest-expo",
-    "testTimeout": 15000
+    "testTimeout": 15000,
+    "setupFiles": [
+      "./jest.setup.ts"
+    ]
   }
 }

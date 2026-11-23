@@ -9,7 +9,7 @@ export interface LlmToolCall {
 
 export type LlmMessage =
   | { role: 'user'; content: string }
-  | { role: 'assistant'; content: string; toolCalls: LlmToolCall[] }
+  | { role: 'assistant'; content: string; toolCalls: LlmToolCall[]; providerData?: unknown }
   | { role: 'tool'; toolCallId: string; content: string };
 
 export interface LlmToolDefinition {
@@ -37,6 +37,11 @@ export interface LlmResponse {
   cachedInputTokens?: number;
   /** 비용 추정치. 단가를 아는 공급자 구현이 계산한다 */
   costUsd: number;
+  /**
+   * 같은 공급자가 다음 호출에서 그대로 돌려받아야 하는 응답 원본(예: 도구 호출과 함께 온 추론 블록).
+   * 도구를 부른 뒤 이어서 호출할 때 assistant 메시지에 그대로 넣는다. 저장하지 않는다
+   */
+  providerData?: unknown;
 }
 
 export type LlmErrorCode = 'TIMEOUT' | 'MAX_TOKENS' | 'REFUSAL' | 'PROVIDER_ERROR';

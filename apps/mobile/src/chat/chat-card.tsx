@@ -36,6 +36,7 @@ import {
   useTheme,
 } from '@/ui';
 import type { ProposalFailure } from './proposal-failure';
+import { rescheduleUsageLabel } from '@/usage/labels';
 
 /** 카드 하나의 승인·취소 진행 상태. 화면이 제안 ID별로 들고 있다. */
 export type ProposalCardState = {
@@ -232,7 +233,7 @@ function ProposalCard({ proposal: p, usage, state, disabled, onApprove, onCancel
   );
 }
 
-const rescheduleUsageText = (usage: Usage) => `AI 일정 변경 ${usage.reschedule.used}/${usage.reschedule.limit}회 사용`;
+const rescheduleUsageText = (usage: Usage) => rescheduleUsageLabel(usage.reschedule);
 
 type PendingActionsProps = {
   proposal: Proposal;

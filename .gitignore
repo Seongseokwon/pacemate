@@ -14,3 +14,4 @@ coverage/
 .DS_Store
 
 .idea/
+services/api/test/eval/reports/

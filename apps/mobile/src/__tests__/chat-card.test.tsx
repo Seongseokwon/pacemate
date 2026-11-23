@@ -44,6 +44,12 @@ describe('일정 변경 카드 (UI_UX §7.2)', () => {
     expect(screen.getByText('AI 일정 변경 0/1회 사용 · 오늘 자정까지')).toBeOnTheScreen();
   });
 
+  test('체험분을 쓰는 동안에는 남은 체험 일정 변경 횟수를 보여 준다', async () => {
+    const trial: Usage = { ...usage, reschedule: { used: 1, limit: 3, pool: 'trial' } };
+    await render(<ChatCardView card={withProposal({})} usage={trial} disabled={false} {...callbacks} />);
+    expect(screen.getByText('체험 일정 변경 2회 남음 · 오늘 자정까지')).toBeOnTheScreen();
+  });
+
   test('차감되지 않는 일정 변경은 횟수를 쓰지 않는다고 알린다', async () => {
     await show(withProposal({ consumesQuota: false }));
     expect(screen.getByText('이번 변경은 횟수를 쓰지 않아요 · 오늘 자정까지')).toBeOnTheScreen();

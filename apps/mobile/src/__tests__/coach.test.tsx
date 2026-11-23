@@ -24,7 +24,7 @@ const ME: MeResponse = {
   hasActivePlan: true,
   authProvider: 'apple',
   coach: 'oni',
-  usage: { tier: 'free', chat: { used: 0, limit: 30 }, logParse: { used: 0, limit: 30 }, resetsOn: '2026-12-01', trial: null } as never,
+  usage: { tier: 'free', chat: { used: 0, limit: 30, pool: 'trial' }, reschedule: { used: 0, limit: 3, pool: 'trial' }, resetsOn: '2026-12-01' },
   subscription: null,
 };
 let queryClient: QueryClient;

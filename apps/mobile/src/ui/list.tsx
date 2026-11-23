@@ -25,11 +25,13 @@ type ListItemProps = {
   left?: ReactNode;
   right?: ReactNode;
   onPress?: () => void;
+  /** 되돌릴 수 없는 동작(계정 삭제)은 위험 색으로 쓴다 */
+  tone?: 'danger';
   /** 한 덩어리로 읽힐 문장. 없으면 제목과 설명을 읽는다 */
   accessibilityLabel?: string;
 };
 
-export function ListItem({ title, description, left, right, onPress, accessibilityLabel }: ListItemProps) {
+export function ListItem({ title, description, left, right, onPress, tone, accessibilityLabel }: ListItemProps) {
   const t = useTheme();
   const style = {
     flexDirection: 'row',
@@ -42,7 +44,9 @@ export function ListItem({ title, description, left, right, onPress, accessibili
     <>
       {left}
       <View style={{ flex: 1 }}>
-        <Text variant="title3">{title}</Text>
+        <Text variant="title3" tone={tone === 'danger' ? 'error' : 'primary'}>
+          {title}
+        </Text>
         {description !== undefined && (
           <Text variant="supporting" tone="secondary">
             {description}

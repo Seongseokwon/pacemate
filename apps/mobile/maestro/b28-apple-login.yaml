@@ -1,0 +1,14 @@
+# B-28: Apple 로그인(T-106). Apple 개발자 계정으로 서명한 빌드에서 실행한다. Apple 확인 창은 사람이 누른다
+appId: com.pacemate.app
+---
+- openLink: pacemate://login
+- extendedWaitUntil: { visible: "Apple로 계속하기", timeout: 15000 }
+- tapOn: "Apple로 계속하기"
+- takeScreenshot: b28-apple-sheet
+# 여기서 개발자가 Apple 로그인을 마친다(최대 90초)
+- extendedWaitUntil: { notVisible: "Apple로 계속하기", timeout: 90000 }
+- takeScreenshot: b28-after-login
+- stopApp
+- launchApp: { clearState: false }
+- extendedWaitUntil: { notVisible: "Apple로 계속하기", timeout: 15000 }
+- takeScreenshot: b28-relaunch

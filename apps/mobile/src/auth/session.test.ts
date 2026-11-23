@@ -1,5 +1,6 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { AuthClient } from '@supabase/auth-js';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { setAccessTokenProvider } from '@/api/client';
 import { queryClient } from '@/api/query-client';
 import { resetAccountFirstRun } from '@/first-run/store';
@@ -20,6 +21,12 @@ jest.mock('@supabase/auth-js', () => {
   };
   return { auth, AuthClient: jest.fn(() => auth) };
 });
+jest.mock('expo-apple-authentication', () => ({ signInAsync: jest.fn() }));
+jest.mock('expo-crypto', () => ({
+  CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
+  randomUUID: jest.fn(() => 'raw-nonce'),
+  digestStringAsync: jest.fn(async (_algorithm: string, value: string) => `hashed:${value}`),
+}));
 jest.mock('@/api/client', () => ({ setAccessTokenProvider: jest.fn() }));
 jest.mock('@/api/query-client', () => ({ queryClient: { clear: jest.fn() } }));
 jest.mock('@/first-run/store', () => ({ resetAccountFirstRun: jest.fn(() => Promise.resolve()) }));
@@ -99,9 +106,40 @@ describe('Google 로그인 (F01-R01)', () => {
     expect(google.signIn).not.toHaveBeenCalled();
   });
 
-  test('Apple 로그인은 아직 연결되지 않아 실패한다', async () => {
-    const { signIn } = load(CONFIGURED);
+  test('로그인 설정이 없으면 Apple 로그인도 성공한 것처럼 넘어가지 않는다', async () => {
+    const { signIn } = load(UNCONFIGURED);
     await expect(signIn('apple')).rejects.toThrow();
+    expect(AppleAuthentication.signInAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe('Apple 로그인 (F01-R01)', () => {
+  const APPLE = CONFIGURED;
+
+  test('해시한 nonce로 Apple에 로그인하고, 원래 nonce와 ID 토큰을 인증 서비스에 넘긴다', async () => {
+    const { signIn } = load(APPLE);
+    jest.mocked(AppleAuthentication.signInAsync).mockResolvedValue({ identityToken: 'apple-id-token' } as never);
+
+    await expect(signIn('apple')).resolves.toBe(true);
+
+    expect(AppleAuthentication.signInAsync).toHaveBeenCalledWith({ requestedScopes: [], nonce: 'hashed:raw-nonce' });
+    expect(auth.signInWithIdToken).toHaveBeenCalledWith({ provider: 'apple', token: 'apple-id-token', nonce: 'raw-nonce' });
+  });
+
+  test('로그인 창을 닫으면 false를 돌려준다', async () => {
+    const { signIn } = load(APPLE);
+    jest.mocked(AppleAuthentication.signInAsync).mockRejectedValue(Object.assign(new Error('canceled'), { code: 'ERR_REQUEST_CANCELED' }));
+
+    await expect(signIn('apple')).resolves.toBe(false);
+    expect(auth.signInWithIdToken).not.toHaveBeenCalled();
+  });
+
+  test('인증 서비스가 거절하면 실패로 알린다', async () => {
+    const { signIn } = load(APPLE);
+    jest.mocked(AppleAuthentication.signInAsync).mockResolvedValue({ identityToken: 'apple-id-token' } as never);
+    auth.signInWithIdToken!.mockResolvedValue({ data: {}, error: new Error('invalid nonce') });
+
+    await expect(signIn('apple')).rejects.toThrow('invalid nonce');
   });
 });
 

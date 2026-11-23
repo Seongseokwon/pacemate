@@ -13,9 +13,14 @@ executionOrder:
     - b10-b13-onboarding
     # 로그인 설정(.env)이 된 빌드에서 사람이 Google 계정을 고른다. 아래 흐름은 이 로그인을 이어 쓴다
     - b27-google-login
+    # Apple 개발자 계정으로 서명한 빌드에서만
+    - b28-apple-login
     # 로그인과 T-407이 준비된 계정에서 각각 실행한다.
     - b22-chat-s2
     - b23-chat-s3
     - b24-chat-s4
     - b25-similar-workouts
     - b26-goal-change
+    - b30-weekly-summary
+    # 로그아웃으로 끝나므로 맨 끝에 둔다
+    - b29-my-page

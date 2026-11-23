@@ -23,3 +23,9 @@ export const CLARIFY_MAX_TURNS = 2;
 
 /** LLM 응답의 최대 출력 토큰. 코치 답변은 2~4문장이다(AI-11) */
 export const MAX_OUTPUT_TOKENS = 1000;
+
+/** 답변 출력 토큰에 더해 공급자 모델의 추론(thinking)에 쓰도록 남기는 토큰. 추론도 출력 한도에 들어간다 */
+export const LLM_REASONING_HEADROOM_TOKENS = 4000;
+
+/** Claude 호출의 기본 effort. 채팅은 짧은 답이라 낮게 시작하고 평가 세트로 조정한다(T-407). `LLM_EFFORT`로 바꾼다 */
+export const DEFAULT_CLAUDE_EFFORT = 'low';
