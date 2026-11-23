@@ -1,0 +1,17 @@
+# B-27: Google 로그인(T-106). 계정 고르기는 사람이 한다. 흐름은 로그인 화면을 벗어날 때까지 기다린다
+appId: com.pacemate.app
+---
+- openLink: pacemate://login
+- extendedWaitUntil: { visible: "Google 계정으로 계속하기", timeout: 15000 }
+- tapOn: "Google 계정으로 계속하기"
+# iOS가 "google.com을 사용하여 로그인하려고 합니다" 확인 창을 띄우면 계속한다
+- tapOn: { text: "(계속|Continue)", optional: true }
+- takeScreenshot: b27-google-sheet
+# 여기서 개발자가 Google 계정을 고른다(최대 90초)
+- extendedWaitUntil: { notVisible: "Google 계정으로 계속하기", timeout: 90000 }
+- takeScreenshot: b27-after-login
+# 앱을 완전히 껐다 켜도 로그인이 남아 있다(AC-F01-03)
+- stopApp
+- launchApp: { clearState: false }
+- extendedWaitUntil: { notVisible: "Google 계정으로 계속하기", timeout: 15000 }
+- takeScreenshot: b27-relaunch

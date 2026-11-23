@@ -11,6 +11,8 @@ executionOrder:
     - b19-coach-select
     - b16-icons
     - b10-b13-onboarding
+    # 로그인 설정(.env)이 된 빌드에서 사람이 Google 계정을 고른다. 아래 흐름은 이 로그인을 이어 쓴다
+    - b27-google-login
     # 로그인과 T-407이 준비된 계정에서 각각 실행한다.
     - b22-chat-s2
     - b23-chat-s3

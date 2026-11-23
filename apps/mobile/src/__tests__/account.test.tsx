@@ -66,13 +66,23 @@ describe('로그인 화면 (F01-R01)', () => {
     ['Apple로 계속하기', 'apple'],
     ['Google 계정으로 계속하기', 'google'],
   ])('%s를 누르면 로그인하고 시작 화면으로 간다', async (label, provider) => {
-    jest.mocked(signIn).mockResolvedValue();
+    jest.mocked(signIn).mockResolvedValue(true);
     await show(<Login />);
 
     await press(label);
 
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/'));
     expect(signIn).toHaveBeenCalledWith(provider);
+  });
+
+  test('로그인 창을 닫으면 안내 없이 로그인 화면에 남는다', async () => {
+    jest.mocked(signIn).mockResolvedValue(false);
+    await show(<Login />);
+
+    await press('Google 계정으로 계속하기');
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Google 계정으로 계속하기' })).toBeEnabled());
+    expect(router.replace).not.toHaveBeenCalled();
   });
 
   test('로그인에 실패하면 로그인 화면에 남는다', async () => {

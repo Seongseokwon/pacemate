@@ -2,6 +2,19 @@
 
 제품·기술 의사결정을 날짜순으로 기록한다. 결정의 배경과 대안은 `docs/PRD.md` §13, §15에 있으며 여기에는 복제하지 않는다.
 
+## 2026-11-23 — 로그인 연결의 라이브러리와 방식 (T-106, AD-05)
+
+개발자가 의존성 추가를 승인했다. Apple 개발자 계정 등록 전이라 Google 로그인부터 붙이고, Apple 로그인은 등록 뒤에 같은 구조로 더한다.
+
+| 항목 | 결정 |
+|---|---|
+| Google 로그인 | `@react-native-google-signin/google-signin`(Expo 설정 플러그인). Firebase 없이 iOS URL 스킴만 설정한다. 받은 ID 토큰을 인증 서비스에 넘긴다(ARCHITECTURE §9) |
+| 인증 SDK | `@supabase/auth-js`(Supabase의 공식 인증 SDK). 전체 SDK(`@supabase/supabase-js`)는 클라이언트를 만들 때 `URL.protocol`을 바꾸는데 React Native의 기본 `URL`이 이를 지원하지 않아 폴리필 의존성이 더 필요하다. 앱은 인증 서비스를 로그인에만 쓰므로(ARCHITECTURE §9) 인증 SDK만 쓴다. 토큰 갱신은 이 SDK가 한다 |
+| 세션 저장 | 기기의 보안 저장소(`expo-secure-store`)에 나눠 담는다. 한 칸이 2KB를 넘으면 저장하지 못할 수 있어서다(`apps/mobile/src/auth/secure-storage.ts`) |
+| 설정 값 | Supabase 주소·Publishable 키, Google 클라이언트 ID는 공개 값이라 `apps/mobile/.env`의 `EXPO_PUBLIC_*`로, iOS URL 스킴은 `GOOGLE_IOS_URL_SCHEME`으로 넣는다(`apps/mobile/app.config.ts`). 값이 없으면 로그인을 성공으로 넘기지 않는다 |
+| 인증 서비스 쪽 계정 삭제 | 의존성 없이 Supabase 관리 API(`DELETE /auth/v1/admin/users/{id}`)를 부른다. 이미 없는 사용자(404)는 지운 것으로 본다. 키(`SUPABASE_URL`, `SUPABASE_SECRET_KEY`)가 없으면 지금처럼 삭제를 끝내지 않는다 |
+| Apple 로그인 | Apple 개발자 계정 등록 뒤 Expo의 `expo-apple-authentication`을 제안한다. Apple 쪽 토큰 폐기(ARCHITECTURE §9)도 그때 붙인다 |
+
 ## 2026-11-22 — 2027-01-01 출시: iOS 먼저, 구독 없이 무료로 시작, 범위 축소
 
 11-21(토)에 하려던 개발자 작업이 밀려, 2027-01-01에 사용자가 쓸 수 있도록 출시 범위를 다시 정했다. 일정은 `URGENT_PRE_MVP.md`의 "타임라인: 2027-01-01 출시"에 있다.
