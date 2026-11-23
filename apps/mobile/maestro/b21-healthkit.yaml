@@ -7,11 +7,15 @@ tags:
 - openLink: pacemate://records
 - extendedWaitUntil: { visible: "건강 앱에서 가져오기", timeout: 15000 }
 - tapOn: "건강 앱에서 가져오기"
+- assertVisible: "Apple 건강 연결 안내"
+- tapOn: "계속"
 # 처음이면 건강 앱 권한 창이 뜬다. 개발자가 읽기 권한을 허용한다(최대 90초)
 - extendedWaitUntil: { visible: ".*개를 가져왔어요.*|건강 앱에서 러닝 기록을 찾지 못했어요.*", timeout: 90000 }
 - takeScreenshot: b21-first-import
 # 다시 가져오면 같은 기록이 두 번 저장되지 않는다(가져온 개수가 0이고 건너뛴 개수로 나온다)
 - tapOn: "건강 앱에서 가져오기"
+- assertVisible: "Apple 건강 연결 안내"
+- tapOn: "계속"
 - extendedWaitUntil: { visible: ".*개를 가져왔어요.*|건강 앱에서 러닝 기록을 찾지 못했어요.*", timeout: 60000 }
 - takeScreenshot: b21-second-import
 - tapOn: ".*Apple 건강.*"

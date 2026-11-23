@@ -1,6 +1,8 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { ApiClientError } from '@/api/client';
+import { importHealthkitWorkouts } from '@/health/healthkit';
+import { Platform } from 'react-native';
 import { createWorkout, getCandidates, getSimilarWorkouts, getWorkouts, getWorkoutStats, updateWorkout } from '@/api/workouts';
 import Records from '../app/(tabs)/records';
 import { testQueryClient } from '../test-fixtures';
@@ -101,4 +103,22 @@ test('비슷한 기록을 비교하고 다른 달리기로 분리한다', async 
   expect(await screen.findByText('비슷한 기록')).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: '다른 달리기예요' }));
   await waitFor(() => expect(updateWorkout).toHaveBeenCalledWith('two', { separateRun: true }));
+});
+
+
+test('건강 기록을 가져오기 전에 안내하고 계속할 때만 권한을 요청한다', async () => {
+  const original = Platform.OS;
+  Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
+  try {
+    jest.mocked(importHealthkitWorkouts).mockResolvedValue({ imported: 0, skipped: 0, failed: 0, missingDistance: 0, total: 0 });
+    await render(<QueryClientProvider client={testQueryClient()}><Records /></QueryClientProvider>);
+    await screen.findByText('아직 운동 기록이 없어요.');
+    await fireEvent.press(screen.getByRole('button', { name: '건강 앱에서 가져오기' }));
+    expect(screen.getByText('Apple 건강 연결 안내')).toBeOnTheScreen();
+    expect(importHealthkitWorkouts).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByRole('button', { name: '계속' }));
+    await waitFor(() => expect(importHealthkitWorkouts).toHaveBeenCalledTimes(1));
+  } finally {
+    Object.defineProperty(Platform, 'OS', { value: original, configurable: true });
+  }
 });

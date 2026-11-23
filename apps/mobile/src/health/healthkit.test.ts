@@ -15,6 +15,7 @@ test('건강 기록의 거리와 심박수를 변환하고 중복 기록은 건�
   jest.mocked(queryWorkoutSamples).mockResolvedValue([sample, sample] as never);
   jest.mocked(importHealthkitWorkout).mockResolvedValueOnce({ imported: true }).mockResolvedValueOnce({ imported: false });
   await expect(importHealthkitWorkouts()).resolves.toEqual({ imported: 1, skipped: 1, failed: 0, missingDistance: 0, total: 2 });
+  expect(requestAuthorization).toHaveBeenCalledWith({ toRead: ['HKWorkoutTypeIdentifier', 'HKQuantityTypeIdentifierDistanceWalkingRunning', 'HKQuantityTypeIdentifierHeartRate'] });
   expect(importHealthkitWorkout).toHaveBeenCalledWith({ externalId: sample.uuid, date: '2026-11-18', startedAt: '2026-11-18T03:00:00.000Z', endedAt: '2026-11-18T03:30:00.000Z', distanceKm: 5, durationSec: 1800, averageHeartRate: 145 });
   expect(dispose).toHaveBeenCalledTimes(2);
 });
