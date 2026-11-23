@@ -33,7 +33,7 @@ describe('인증 서비스의 사용자 삭제 (F01-R06, ARCHITECTURE §9)', () 
 
 
 test('관리 API에서 일치하는 공급자의 식별자만 읽는다', async () => {
-  const fetchMock = vi.fn<typeof fetch>(async () => Response.json({ id: USER_ID, identities: [{ provider: 'google', provider_id: 'google-subject' }] }));
+  const fetchMock = vi.fn<typeof fetch>(async () => Response.json({ id: USER_ID, identities: [{ provider: 'google', id: 'google-subject', identity_id: 'supabase-identity-uuid' }] }));
   const admin = new SupabaseAuthAdmin('https://ref.supabase.co', 'key', fetchMock);
   await expect(admin.providerId(USER_ID, 'google')).resolves.toBe('google-subject');
   await expect(admin.providerId(USER_ID, 'apple')).rejects.toThrow();

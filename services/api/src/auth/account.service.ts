@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { type AuthProvider, type Coach, type CreateMeRequest, DEFAULT_COACH, type MeResponse } from '@pacemate/shared';
 import { AppError } from '../common/app-error.js';
 import { PrismaService } from '../db/prisma.service.js';
@@ -11,6 +11,7 @@ export const consentRequired = () => new AppError('CONSENT_REQUIRED', '약관 �
 
 @Injectable()
 export class AccountService {
+  private readonly logger = new Logger(AccountService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly usage: UsageService,
@@ -37,8 +38,11 @@ export class AccountService {
       },
     });
     if (user && !user.identityHash) {
-      const hash = await this.getIdentityHash(userId, user.authProvider);
-      await this.prisma.$transaction(async (tx) => {
+      const hash = await this.getIdentityHash(userId, user.authProvider).catch(() => {
+        this.logger.warn('기존 계정의 체험분 식별자를 연결하지 못했습니다.');
+        return null;
+      });
+      if (hash) await this.prisma.$transaction(async (tx) => {
         const updated = await tx.user.updateMany({ where: { id: userId, identityHash: null, deletionRequestedAt: null }, data: { identityHash: hash } });
         if (updated.count) await tx.usageTrial.upsert({ where: { identityHash: hash }, create: { identityHash: hash }, update: { accountDeletedAt: null } });
       });
@@ -76,6 +80,8 @@ export class AccountService {
           data: { ...consent, authProvider, identityHash: hash, coach: DEFAULT_COACH, createdAt: now, deletionRequestedAt: null },
         });
         await tx.user.updateMany({ where: { id: userId, identityHash: null, deletionRequestedAt: null }, data: { identityHash: hash } });
+        const registered = await tx.user.findUnique({ where: { id: userId }, select: { identityHash: true } });
+        if (!registered?.identityHash) throw new Error('계정을 생성하지 못했다');
         await tx.usageTrial.upsert({ where: { identityHash: hash }, create: { identityHash: hash }, update: { accountDeletedAt: null } });
       });
     }
@@ -113,7 +119,7 @@ export class AccountService {
         }
         // 연쇄 삭제로 개인 데이터를 지운 뒤 재시도용 표시만 남긴다(DATABASE §7)
         await tx.user.delete({ where: { id: userId } });
-        await tx.user.create({ data: { ...user, deletionRequestedAt: now } });
+        await tx.user.create({ data: { ...user, identityHash: null, deletionRequestedAt: now } });
       }
     });
     await this.authAdmin.deleteUser(userId);

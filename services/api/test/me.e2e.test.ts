@@ -363,3 +363,36 @@ test('공급자 식별자를 조회하지 못하면 가입하지 않는다', asy
   expect(await prisma.user.count()).toBe(0);
   expect(await prisma.usageTrial.count()).toBe(0);
 });
+
+
+test('기존 계정은 식별자 조회가 실패해도 조회되며 다음 조회에서 연결한다', async () => {
+  await register(USER_A);
+  await prisma.user.update({ where: { id: USER_A }, data: { identityHash: null } });
+  authAdmin.identityFailing = true;
+  expect((await call('get', '/v1/me')).body.registered).toBe(true);
+  expect((await prisma.user.findUniqueOrThrow({ where: { id: USER_A } })).identityHash).toBeNull();
+  authAdmin.identityFailing = false;
+  const result = await call('get', '/v1/me');
+  expect(result.body.usage.chat.pool).toBe('trial');
+  expect((await prisma.user.findUniqueOrThrow({ where: { id: USER_A } })).identityHash).toBeTruthy();
+});
+
+test('삭제 재시도 표시가 남은 상태에서 새 사용자 ID로 가입해도 체험분을 유지한다', async () => {
+  authAdmin.subject = 'same-provider-account';
+  await register(USER_A);
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: USER_A } });
+  await prisma.usageTrial.update({ where: { identityHash: user.identityHash! }, data: { chatCount: 7 } });
+  authAdmin.failing = true;
+  expect((await call('delete', '/v1/me', USER_A)).status).toBe(500);
+  expect((await prisma.user.findUniqueOrThrow({ where: { id: USER_A } })).identityHash).toBeNull();
+  const response = await register(USER_B);
+  expect(response.status).toBe(200);
+  expect(response.body).toMatchObject({ registered: true, usage: { chat: { used: 7, pool: 'trial' } } });
+});
+
+test('활성 계정의 공급자 식별자가 중복되면 가입 실패를 성공으로 표시하지 않는다', async () => {
+  authAdmin.subject = 'same-provider-account';
+  await register(USER_A);
+  expect((await register(USER_B)).status).toBe(500);
+  expect(await prisma.user.findUnique({ where: { id: USER_B } })).toBeNull();
+});

@@ -35,10 +35,10 @@ export class SupabaseAuthAdmin implements AuthAdmin {
       signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) throw new Error(`인증 서비스의 사용자를 조회하지 못했다: ${response.status}`);
-    const parsed = z.object({ id: z.literal(userId), identities: z.array(z.object({ provider: z.string(), provider_id: z.string().min(1) })) }).safeParse(await response.json());
+    const parsed = z.object({ id: z.literal(userId), identities: z.array(z.object({ provider: z.string(), id: z.string().min(1) })) }).safeParse(await response.json());
     const identities = parsed.success ? parsed.data.identities.filter((identity) => identity.provider === provider) : [];
     if (identities.length !== 1) throw new Error('인증 서비스의 로그인 식별자를 확인하지 못했다');
-    return identities[0]!.provider_id;
+    return identities[0]!.id;
   }
 
   async deleteUser(userId: string): Promise<void> {
