@@ -1,0 +1,8 @@
+# B-30: 기록 화면의 이번 주 요약(T-602). 활성 계획과 이번 주 기록이 있는 로그인 계정으로 실행한다
+appId: com.pacemate.app
+---
+- openLink: pacemate://records
+- extendedWaitUntil: { visible: "이번 주 요약", timeout: 15000 }
+- assertVisible: ".*회 완료"
+- assertVisible: "달린 거리"
+- takeScreenshot: b30-weekly-summary

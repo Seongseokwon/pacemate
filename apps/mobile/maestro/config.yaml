@@ -21,3 +21,6 @@ executionOrder:
     - b24-chat-s4
     - b25-similar-workouts
     - b26-goal-change
+    - b30-weekly-summary
+    # 로그아웃으로 끝나므로 맨 끝에 둔다
+    - b29-my-page
