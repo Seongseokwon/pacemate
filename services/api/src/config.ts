@@ -20,6 +20,7 @@ const envSchema = z.object({
   LLM_INPUT_USD_PER_MTOK: z.coerce.number().positive().optional(),
   LLM_OUTPUT_USD_PER_MTOK: z.coerce.number().positive().optional(),
   LLM_CACHED_INPUT_USD_PER_MTOK: z.coerce.number().positive().optional(),
+  SENTRY_DSN: z.url().optional(),
   MIN_APP_VERSION: z.string().regex(/^\d+\.\d+\.\d+$/).default('1.0.0'),
   // 웹훅과 내부 작업의 호출자를 확인하는 비밀값. 없으면 그 경로는 모든 요청을 거절한다
   SUBSCRIPTION_WEBHOOK_SECRET: z.string().min(32).optional(),

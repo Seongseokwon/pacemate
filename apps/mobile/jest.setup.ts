@@ -3,3 +3,6 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
   GoogleSignin: { configure: jest.fn(), hasPlayServices: jest.fn(), signIn: jest.fn(), signOut: jest.fn(() => Promise.resolve(null)) },
   isSuccessResponse: (response: { type?: string } | undefined) => response?.type === 'success',
 }));
+
+// 테스트에서는 Sentry 네이티브 모듈을 실행하지 않는다.
+jest.mock('@sentry/react-native', () => ({ init: jest.fn(), wrap: (component: unknown) => component }));

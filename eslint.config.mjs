@@ -21,6 +21,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
 
   { files: ['apps/mobile/src/**'], ...reactHooks.configs.flat.recommended },
+  { files: ['apps/mobile/metro.config.js'], languageOptions: { globals: { require: 'readonly', module: 'readonly', __dirname: 'readonly' } }, rules: { '@typescript-eslint/no-require-imports': 'off' } },
 
   // 아래는 구조 규칙이다(ARCHITECTURE §4, AGENTS.md "반드시 지킬 구조 규칙"). 규칙마다 `eslint.config.test.ts`에 사례가 있다.
   {
