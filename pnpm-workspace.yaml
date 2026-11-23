@@ -5,8 +5,8 @@ packages:
 
 # 설치 스크립트 실행 여부를 패키지별로 명시한다. 목록에 없는 패키지가 스크립트를 가지면 설치가 실패한다.
 allowBuilds:
-  # Sentry 소스맵 업로드에 쓰는 CLI 바이너리
-  '@sentry/cli': true
+  # 네이티브 소스맵 업로드는 쓰지 않는다
+  '@sentry/cli': false
   # 마이그레이션에 쓰는 엔진 바이너리를 내려받는다
   '@prisma/engines': true
   prisma: true
