@@ -29,7 +29,7 @@
 | 세션 저장 | 기기의 보안 저장소(`expo-secure-store`)에 나눠 담는다. 한 칸이 2KB를 넘으면 저장하지 못할 수 있어서다(`apps/mobile/src/auth/secure-storage.ts`) |
 | 설정 값 | Supabase 주소·Publishable 키, Google 클라이언트 ID는 공개 값이라 `apps/mobile/.env`의 `EXPO_PUBLIC_*`로, iOS URL 스킴은 `GOOGLE_IOS_URL_SCHEME`으로 넣는다(`apps/mobile/app.config.ts`). 값이 없으면 로그인을 성공으로 넘기지 않는다 |
 | 인증 서비스 쪽 계정 삭제 | 의존성 없이 Supabase 관리 API(`DELETE /auth/v1/admin/users/{id}`)를 부른다. 이미 없는 사용자(404)는 지운 것으로 본다. 키(`SUPABASE_URL`, `SUPABASE_SECRET_KEY`)가 없으면 지금처럼 삭제를 끝내지 않는다 |
-| Apple 로그인 | Apple 개발자 계정 등록 뒤 Expo의 `expo-apple-authentication`을 제안한다. Apple 쪽 토큰 폐기(ARCHITECTURE §9)도 그때 붙인다 |
+| Apple 로그인 | 개발자 승인으로 Expo의 `expo-apple-authentication`을 쓴다(2026-11-23). iOS에서만 동작하고, 해시한 nonce로 받은 ID 토큰을 인증 서비스에 넘긴다. 이름·이메일은 쓰지 않아 요청하지 않는다. Sign in with Apple 권한은 모듈을 설치하면 Expo가 자동으로 넣는다(HealthKit처럼 실기기 빌드에 유료 Apple 개발자 계정이 필요하다). **계정 삭제 때 Apple 쪽 토큰 폐기(ARCHITECTURE §9, App Store 심사 기준)는 아직 없다.** Apple 개발자 계정의 키(.p8)로 만든 비밀값과 로그인 때 받은 인증 코드가 필요해, 계정 등록 뒤 `T-106`에서 붙인다 |
 
 ## 2026-11-22 — 2027-01-01 출시: iOS 먼저, 구독 없이 무료로 시작, 범위 축소
 

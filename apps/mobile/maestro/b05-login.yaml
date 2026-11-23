@@ -1,4 +1,4 @@
-# B-05: Apple 로그인은 Apple 개발자 계정 등록 전이라 실패 안내를 띄우고 로그인 화면에 남는다. Google 로그인은 B-27에서 본다
+# B-05: 로그인 설정(.env)이 없는 빌드에서 Apple 로그인은 실패 안내를 띄우고 로그인 화면에 남는다. 로그인 확인은 B-27(Google), B-28(Apple)에서 한다
 appId: com.pacemate.app
 ---
 - openLink: pacemate://
