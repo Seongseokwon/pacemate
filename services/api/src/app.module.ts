@@ -16,7 +16,7 @@ import { ChatService } from './chat/chat.service.js';
 import { ContextBuilder } from './chat/context-builder.js';
 import { LlmGateway } from './chat/llm/llm-gateway.js';
 import { LLM_PROVIDER } from './chat/llm/llm-provider.js';
-import { UnconfiguredLlmProvider } from './chat/llm/unconfigured-llm-provider.js';
+import { createLlmProvider } from './chat/llm/create-llm-provider.js';
 import { toolRegistryProvider } from './chat/tools/chat-tools.js';
 import { AppVersionGuard } from './common/app-version.guard.js';
 import { ErrorFilter } from './common/error.filter.js';
@@ -60,8 +60,7 @@ import { WorkoutService } from './workout/workout.service.js';
     toolRegistryProvider,
     ContextBuilder,
     LlmGateway,
-    // LLM 공급자를 정하면(D-03, T-407) 실제 구현으로 바꾼다
-    { provide: LLM_PROVIDER, useClass: UnconfiguredLlmProvider },
+    { provide: LLM_PROVIDER, useFactory: createLlmProvider, inject: [APP_CONFIG] },
     ChatService,
     { provide: TRAINING_ENGINE, useValue: { generate, validate, reschedule, version: ENGINE_VERSION } satisfies TrainingEngine },
     { provide: AUTH_ADMIN, useFactory: createAuthAdmin, inject: [APP_CONFIG] },

@@ -151,7 +151,7 @@ export class ChatService {
         break;
       }
       if (round >= MAX_TOOL_ROUNDS) throw new ChatFailure('TOO_MANY_TOOL_ROUNDS');
-      conversation.push({ role: 'assistant', content: response.text, toolCalls: response.toolCalls });
+      conversation.push({ role: 'assistant', content: response.text, toolCalls: response.toolCalls, providerData: response.providerData });
       for (const call of response.toolCalls) {
         const result = await this.tools.execute({ userId, messageId: message.id }, call);
         if (result.proposalId) proposals.created.push(result.proposalId);

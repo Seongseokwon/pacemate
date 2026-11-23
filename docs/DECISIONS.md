@@ -2,6 +2,22 @@
 
 제품·기술 의사결정을 날짜순으로 기록한다. 결정의 배경과 대안은 `docs/PRD.md` §13, §15에 있으며 여기에는 복제하지 않는다.
 
+## 2026-11-23 — 실제 LLM 게이트웨이의 방식 (T-407, D-03 준비)
+
+개발자가 공급자 공식 SDK 사용을 승인했다. 공급자와 모델은 아직 정하지 않았다(`D-03`). 키(`D-A3`)를 받으면 평가 세트로 비교해 정한다.
+
+| 항목 | 결정 |
+|---|---|
+| SDK | Claude는 `@anthropic-ai/sdk`(Messages API), GPT는 `openai`(Chat Completions API). 공급자 SDK의 타입은 `services/api/src/chat/llm/`의 구현 파일 밖으로 내보내지 않는다(ARCHITECTURE §7.2) |
+| 고르는 방법 | 환경 변수 `LLM_PROVIDER`, `LLM_MODEL`, `LLM_EFFORT`, 키. 공급자를 정하지 않으면 지금처럼 채팅이 실패로 답한다. 공급자를 정했는데 모델·키·단가가 빠졌으면 서버를 띄우지 않는다 |
+| 재시도 | SDK의 자체 재시도를 끄고 게이트웨이의 재시도 1회만 쓴다(메시지 1건의 제한 시간 60초를 지키기 위해) |
+| 추론 토큰 | 최신 모델은 추론(thinking)을 출력 한도 안에서 쓴다. 답변 한도(`MAX_OUTPUT_TOKENS`)에 4,000토큰(초기값, `LLM_REASONING_HEADROOM_TOKENS`)을 더해 요청한다 |
+| Claude effort | 기본 `low`(초기값, `DEFAULT_CLAUDE_EFFORT`). 채팅은 짧은 답이라 낮게 시작하고, 평가 세트를 effort별로 돌려 정한다 |
+| Claude 거절 대체 | 정책상 거절(`refusal`)하면 서버가 정한 대체 모델로 같은 요청을 다시 돌리게 한다(`fallbacks: "default"`). 대체를 지원하지 않는 모델은 그대로 거절로 끝나고, 게이트웨이가 `REFUSAL`로 처리한다 |
+| 캐시 | Claude는 시스템 지침과 도구 정의를 캐시한다. 매 요청 같은 내용이라 입력 비용이 줄어든다 |
+| 비용 | 모델별 단가 표(`chat/llm/pricing.ts`, 2026-11 공개 가격)로 메시지당 비용을 계산해 호출 기록에 남긴다. 표에 없는 모델(GPT 포함)은 단가를 환경 변수로 넣어야 서버가 뜬다. 비용을 0으로 남겨 비교를 틀리게 하지 않기 위해서다 |
+| 비교 실행 | `EVAL_MODELS="anthropic:모델@effort,openai:모델:입력단가:출력단가" pnpm --filter @pacemate/api eval`. 사례 × 세 코치를 실제 API로 돌려 `test/eval/reports/`에 보고서를 남긴다. 확정 기준은 2026-11-19 결정과 같다 |
+
 ## 2026-11-23 — 로그인 연결의 라이브러리와 방식 (T-106, AD-05)
 
 개발자가 의존성 추가를 승인했다. Apple 개발자 계정 등록 전이라 Google 로그인부터 붙이고, Apple 로그인은 등록 뒤에 같은 구조로 더한다.
