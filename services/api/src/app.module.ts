@@ -32,6 +32,7 @@ import { ProfileController } from './profile/profile.controller.js';
 import { ProfileService } from './profile/profile.service.js';
 import { ProposalController } from './proposal/proposal.controller.js';
 import { ProposalService } from './proposal/proposal.service.js';
+import { SummaryController } from './summary/summary.controller.js';
 import { SummaryService } from './summary/summary.service.js';
 import { UsageService } from './usage/usage.service.js';
 import { WorkoutController } from './workout/workout.controller.js';
@@ -39,7 +40,7 @@ import { WorkoutService } from './workout/workout.service.js';
 
 @Module({
   imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: RATE_LIMIT_PER_MINUTE.default }])],
-  controllers: [HealthController, MeController, CoachController, ProfileController, PlanController, WorkoutController, ProposalController, ChatController],
+  controllers: [HealthController, MeController, CoachController, ProfileController, PlanController, WorkoutController, ProposalController, ChatController, SummaryController],
   providers: [
     { provide: APP_CONFIG, useFactory: () => loadConfig() },
     {

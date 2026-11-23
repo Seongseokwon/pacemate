@@ -5,8 +5,10 @@ import { useState } from 'react';
 import { Modal, Platform } from 'react-native';
 import { ApiClientError } from '@/api/client';
 import { isRedirectError } from '@/api/query-client';
+import { getWeeklySummary, WEEKLY_SUMMARY_KEY } from '@/api/summary';
 import { createWorkout, deleteWorkout, getCandidates, getSimilarWorkouts, getWorkouts, getWorkoutStats, updateWorkout } from '@/api/workouts';
 import { importHealthkitWorkouts } from '@/health/healthkit';
+import { WeeklySummaryCard } from '@/summary/weekly-summary-card';
 import { BottomSheet, Button, Card, DateInput, Dialog, EmptyState, Field, formatDate, Heading, List, ListItem, NumberInput, ProgressBar, ScaleInput, Screen, SegmentedControl, Selector, Stack, Text, TextArea } from '@/ui';
 
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -24,6 +26,8 @@ export default function Records() {
   const [healthMessage, setHealthMessage] = useState<string | null>(null);
   const list = useInfiniteQuery({ queryKey: ['workouts'], queryFn: ({ pageParam }) => getWorkouts(pageParam), initialPageParam: undefined as string | undefined, getNextPageParam: (last) => last.hasMore ? last.items.at(-1)?.id : undefined });
   const stats = useQuery({ queryKey: ['workout-stats'], queryFn: getWorkoutStats });
+  // 요약을 못 불러와도 기록 목록은 그대로 보여 준다
+  const weekly = useQuery({ queryKey: WEEKLY_SUMMARY_KEY, queryFn: () => getWeeklySummary() });
   const similar = useQuery({ queryKey: ['similar-workouts', selected?.id], queryFn: () => getSimilarWorkouts(selected!.id), enabled: selected !== null });
   const refresh = async () => { await client.invalidateQueries(); };
   const remove = useMutation({ mutationFn: deleteWorkout, onSuccess: async () => { setDeleting(false); setSelected(null); await refresh(); }, onError: (error) => { if (!isRedirectError(error)) { setDeleting(false); setDeleteError(message(error)); } } });
@@ -36,6 +40,7 @@ export default function Records() {
       <Stack gap={5}>
         {Platform.OS === 'ios' && <Button variant="secondary" label="건강 앱에서 가져오기" loading={health.isPending} onPress={() => { setHealthMessage(null); health.mutate(); }} />}
         {healthMessage && <Text>{healthMessage}</Text>}
+        {weekly.data && <WeeklySummaryCard summary={weekly.data} />}
         {stats.data && <Stack gap={3}>
           <Stack direction="row"><Stack fill><Card><Text>이번 주 거리</Text><Heading level={2}>{stats.data.week.distanceKm}km</Heading></Card></Stack><Stack fill><Card><Text>이번 주 횟수</Text><Heading level={2}>{stats.data.week.count}회</Heading></Card></Stack></Stack>
           <Stack direction="row"><Stack fill><Card><Text>이번 달 거리</Text><Heading level={2}>{stats.data.month.distanceKm}km</Heading></Card></Stack><Stack fill><Card><Text>이번 달 횟수</Text><Heading level={2}>{stats.data.month.count}회</Heading></Card></Stack></Stack>
