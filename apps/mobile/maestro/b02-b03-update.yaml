@@ -1,0 +1,13 @@
+# B-02, B-03: 업데이트 안내 화면. 스토어 주소(EXPO_PUBLIC_*_STORE_URL)가 없으면 버튼이 없고(B-02), 있으면 버튼을 눌러 그 주소를 연다(B-03)
+appId: com.pacemate.app
+---
+- openLink: pacemate://update
+- extendedWaitUntil: { visible: "새 버전이 나왔어요.*", timeout: 15000 }
+- takeScreenshot: b02-update
+- runFlow:
+    when: { visible: "업데이트하러 가기" }
+    commands:
+      - tapOn: "업데이트하러 가기"
+      - waitForAnimationToEnd
+      # 연 주소가 .env에 넣은 주소인지는 스크린샷으로 본다
+      - takeScreenshot: b03-store-opened
