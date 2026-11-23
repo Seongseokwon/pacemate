@@ -24,6 +24,7 @@ export default function Records() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [healthMessage, setHealthMessage] = useState<string | null>(null);
+  const [healthInfo, setHealthInfo] = useState(false);
   const list = useInfiniteQuery({ queryKey: ['workouts'], queryFn: ({ pageParam }) => getWorkouts(pageParam), initialPageParam: undefined as string | undefined, getNextPageParam: (last) => last.hasMore ? last.items.at(-1)?.id : undefined });
   const stats = useQuery({ queryKey: ['workout-stats'], queryFn: getWorkoutStats });
   // 요약을 못 불러와도 기록 목록은 그대로 보여 준다
@@ -38,7 +39,7 @@ export default function Records() {
   return (
     <Screen title="기록" loading={list.isLoading || stats.isLoading} error={failure && !isRedirectError(failure) ? message(failure) : undefined} onRetry={() => { void list.refetch(); void stats.refetch(); }} headerRight={<Button label="기록 추가" variant="text" onPress={() => setEditing('new')} />} onRefresh={() => { void refresh(); }}>
       <Stack gap={5}>
-        {Platform.OS === 'ios' && <Button variant="secondary" label="건강 앱에서 가져오기" loading={health.isPending} onPress={() => { setHealthMessage(null); health.mutate(); }} />}
+        {Platform.OS === 'ios' && <Button variant="secondary" label="건강 앱에서 가져오기" loading={health.isPending} onPress={() => { setHealthMessage(null); setHealthInfo(true); }} />}
         {healthMessage && <Text>{healthMessage}</Text>}
         {weekly.data && <WeeklySummaryCard summary={weekly.data} />}
         {stats.data && <Stack gap={3}>
@@ -50,6 +51,12 @@ export default function Records() {
         {list.hasNextPage && <Button variant="secondary" label="더 보기" loading={list.isFetchingNextPage} onPress={() => { void list.fetchNextPage(); }} />}
         {list.isFetchNextPageError && <Text tone="error">기록을 더 불러오지 못했어요. 다시 시도해 주세요.</Text>}
       </Stack>
+      <BottomSheet visible={healthInfo} title="Apple 건강 연결 안내" onClose={() => setHealthInfo(false)}><Stack gap={4}>
+        <Text>최근 30일 동안 달린 날짜, 거리, 시간과 심박수(있는 경우)를 읽어요. 운동 기록에 저장하고 훈련에 연결하며 광고에는 사용하지 않아요.</Text>
+        <Text>다른 운동이나 수면 정보는 읽지 않으며, 건강 앱에 데이터를 쓰지 않아요.</Text>
+        <Text>연결을 끊으려면 iPhone 설정의 건강 &gt; 데이터 접근 및 기기에서 PaceMate의 접근 권한을 꺼 주세요.</Text>
+        <Button label="계속" onPress={() => { setHealthInfo(false); health.mutate(); }} />
+      </Stack></BottomSheet>
       <BottomSheet visible={selected !== null && !deleting && editing === null} title="운동 기록" onClose={() => { setSelected(null); setDeleteError(null); }}><Stack gap={4}>{selected && <><Text>{formatDate(selected.date)} · {selected.distanceKm}km</Text><Text>{durationText(selected.durationSec)} · {paceText(selected.paceSecPerKm)}</Text>{selected.source === 'healthkit' && <Text>Apple 건강에서 가져옴</Text>}{selected.averageHeartRate != null && <Text>평균 심박수 {selected.averageHeartRate}회/분</Text>}{selected.rpe !== null && <Text>운동 강도 {selected.rpe}/10</Text>}{selected.memo && <Text>통증: {selected.memo}</Text>}{similar.isError && <Text tone="error">비슷한 기록을 불러오지 못했어요.</Text>}{similar.data && similar.data.items.length > 0 && <><Heading level={2}>비슷한 기록</Heading><Stack direction="row"><Stack fill><Text>이 기록</Text><Text>{selected.distanceKm}km · {durationText(selected.durationSec)}</Text></Stack><Stack fill>{similar.data.items.map((item) => <Stack key={item.id}><Text>{item.source === 'healthkit' ? 'Apple 건강' : '직접 입력'}</Text><Text>{item.distanceKm}km · {durationText(item.durationSec)}</Text><Button variant="text" label="다른 달리기예요" loading={separate.isPending} onPress={() => separate.mutate(item.id)} /></Stack>)}</Stack></Stack></>}{deleteError && <Text tone="error">{deleteError}</Text>}<Button label="수정하기" onPress={() => { setEditing(selected); setDeleteError(null); }} /><Button variant="danger" label="삭제하기" onPress={() => setDeleting(true)} /></>}</Stack></BottomSheet>
       <Dialog visible={deleting} title="기록을 삭제할까요?" message="연결된 훈련의 완료 표시도 사라져요." danger confirmLabel="삭제" onCancel={() => setDeleting(false)} onConfirm={() => { if (selected && !remove.isPending) remove.mutate(selected.id); }} />
       <Modal visible={editing !== null} animationType="slide" onRequestClose={() => { setEditing(null); setSelected(null); setResult(null); }}>

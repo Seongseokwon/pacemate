@@ -18,7 +18,7 @@
       "expo-router",
       "expo-secure-store",
       "expo-notifications",
-      ["@kingstinct/react-native-healthkit", { "NSHealthShareUsageDescription": "러닝 기록을 가져와 훈련에 연결합니다.", "NSHealthUpdateUsageDescription": "건강 데이터를 업데이트하지 않습니다.", "background": false }]
+      ["@kingstinct/react-native-healthkit", { "NSHealthShareUsageDescription": "러닝 날짜, 거리, 시간과 심박수를 읽어 운동 기록을 저장하고 훈련에 연결합니다. 광고에는 사용하지 않습니다.", "NSHealthUpdateUsageDescription": false, "background": false }]
     ]
   }
 }
