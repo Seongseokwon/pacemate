@@ -2,6 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { type AuthProvider, type Coach, type CreateMeRequest, DEFAULT_COACH, type MeResponse } from '@pacemate/shared';
 import { AppError } from '../common/app-error.js';
 import { PrismaService } from '../db/prisma.service.js';
+import { APP_CONFIG, type AppConfig } from '../config.js';
+import { identityHash } from '../usage/identity-hash.js';
 import { UsageService } from '../usage/usage.service.js';
 import { AUTH_ADMIN, type AuthAdmin } from './auth-admin.js';
 
@@ -13,6 +15,7 @@ export class AccountService {
     private readonly prisma: PrismaService,
     private readonly usage: UsageService,
     @Inject(AUTH_ADMIN) private readonly authAdmin: AuthAdmin,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   /** 필수 동의를 마친 계정인지. 삭제가 끝나지 않은 계정은 가입하지 않은 것으로 본다. */
@@ -26,12 +29,20 @@ export class AccountService {
       where: { id: userId, deletionRequestedAt: null },
       select: {
         authProvider: true,
+        identityHash: true,
         coach: true,
         profile: { select: { userId: true } },
         plans: { where: { status: 'active' }, select: { id: true }, take: 1 },
         subscription: true,
       },
     });
+    if (user && !user.identityHash) {
+      const hash = await this.getIdentityHash(userId, user.authProvider);
+      await this.prisma.$transaction(async (tx) => {
+        const updated = await tx.user.updateMany({ where: { id: userId, identityHash: null, deletionRequestedAt: null }, data: { identityHash: hash } });
+        if (updated.count) await tx.usageTrial.upsert({ where: { identityHash: hash }, create: { identityHash: hash }, update: { accountDeletedAt: null } });
+      });
+    }
     const subscription = user?.subscription;
     return {
       registered: !!user,
@@ -55,13 +66,25 @@ export class AccountService {
   async register(userId: string, authProvider: AuthProvider, { consentVersion }: CreateMeRequest): Promise<MeResponse> {
     const now = new Date();
     const consent = { termsAgreedAt: now, privacyAgreedAt: now, healthDataAgreedAt: now, consentVersion };
-    await this.prisma.user.createMany({ data: { id: userId, authProvider, ...consent }, skipDuplicates: true });
-    // 삭제가 끝나지 않은 계정이 다시 가입하면 새 계정으로 시작한다. 개인 데이터는 이미 지워져 있다
-    await this.prisma.user.updateMany({
-      where: { id: userId, deletionRequestedAt: { not: null } },
-      data: { ...consent, authProvider, coach: DEFAULT_COACH, createdAt: now, deletionRequestedAt: null },
-    });
+    const existing = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!existing || existing.deletionRequestedAt || !existing.identityHash) {
+      const hash = await this.getIdentityHash(userId, authProvider);
+      await this.prisma.$transaction(async (tx) => {
+        await tx.user.createMany({ data: { id: userId, authProvider, identityHash: hash, ...consent }, skipDuplicates: true });
+        await tx.user.updateMany({
+          where: { id: userId, deletionRequestedAt: { not: null } },
+          data: { ...consent, authProvider, identityHash: hash, coach: DEFAULT_COACH, createdAt: now, deletionRequestedAt: null },
+        });
+        await tx.user.updateMany({ where: { id: userId, identityHash: null, deletionRequestedAt: null }, data: { identityHash: hash } });
+        await tx.usageTrial.upsert({ where: { identityHash: hash }, create: { identityHash: hash }, update: { accountDeletedAt: null } });
+      });
+    }
     return this.getMe(userId, authProvider);
+  }
+
+  private async getIdentityHash(userId: string, provider: AuthProvider): Promise<string> {
+    if (!this.config.IDENTITY_HASH_SECRET) throw new Error('체험분 식별 비밀값이 설정되지 않았다');
+    return identityHash(provider, await this.authAdmin.providerId(userId, provider), this.config.IDENTITY_HASH_SECRET);
   }
 
   /**
@@ -79,16 +102,20 @@ export class AccountService {
    * 인증 서비스 쪽이 실패하면 표시만 있는 행이 남고, 다시 호출하면 거기서부터 이어서 한다.
    */
   async delete(userId: string): Promise<void> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw consentRequired();
-
-    if (!user.deletionRequestedAt) {
-      // 행을 지워야 연쇄 삭제로 모든 테이블의 개인 데이터가 없어진다(DATABASE §7). 표시만 담은 행을 다시 만든다
-      await this.prisma.$transaction([
-        this.prisma.user.delete({ where: { id: userId } }),
-        this.prisma.user.create({ data: { ...user, deletionRequestedAt: new Date() } }),
-      ]);
-    }
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
+      const user = await tx.user.findUnique({ where: { id: userId } });
+      if (!user) throw consentRequired();
+      if (!user.deletionRequestedAt) {
+        const now = new Date();
+        if (user.identityHash) {
+          await tx.usageTrial.upsert({ where: { identityHash: user.identityHash }, create: { identityHash: user.identityHash, accountDeletedAt: now }, update: { accountDeletedAt: now } });
+        }
+        // 연쇄 삭제로 개인 데이터를 지운 뒤 재시도용 표시만 남긴다(DATABASE §7)
+        await tx.user.delete({ where: { id: userId } });
+        await tx.user.create({ data: { ...user, deletionRequestedAt: now } });
+      }
+    });
     await this.authAdmin.deleteUser(userId);
     await this.prisma.user.deleteMany({ where: { id: userId } });
   }

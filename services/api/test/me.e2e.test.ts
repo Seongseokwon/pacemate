@@ -18,6 +18,7 @@ const config: AppConfig = {
   AUTH_ISSUER: 'https://auth.test/auth/v1',
   AUTH_AUDIENCE: 'authenticated',
   MIN_APP_VERSION: '1.0.0',
+  IDENTITY_HASH_SECRET: 'test-identity-secret-at-least-32-bytes',
 };
 const USER_A = '11111111-1111-4111-8111-111111111111';
 const USER_B = '22222222-2222-4222-8222-222222222222';
@@ -33,7 +34,7 @@ class ProbeController {
 }
 
 const prisma = createTestPrisma();
-const authAdmin = { deleted: [] as string[], failing: false };
+const authAdmin = { deleted: [] as string[], failing: false, identityFailing: false, subject: '' };
 let app: INestApplication;
 let sign: (sub: string, provider?: string) => Promise<string>;
 
@@ -56,6 +57,7 @@ beforeAll(async () => {
     .useValue(createLocalJWKSet({ keys: [jwk] }))
     .overrideProvider(AUTH_ADMIN)
     .useValue({
+      async providerId(userId: string) { if (authAdmin.identityFailing) throw new Error('식별 실패'); return authAdmin.subject || userId; },
       async deleteUser(userId: string) {
         if (authAdmin.failing) throw new Error('인증 서비스 오류');
         authAdmin.deleted.push(userId);
@@ -71,6 +73,8 @@ beforeEach(async () => {
   await resetDatabase(prisma);
   authAdmin.deleted = [];
   authAdmin.failing = false;
+  authAdmin.subject = '';
+  authAdmin.identityFailing = false;
 });
 
 afterAll(async () => {
@@ -336,4 +340,26 @@ describe('DELETE /v1/me (F01-R05, F01-R06, DI-11)', () => {
   test('관리 기능이 설정되지 않은 기본 구현은 성공한 것처럼 넘어가지 않는다', async () => {
     await expect(new UnconfiguredAuthAdmin().deleteUser()).rejects.toThrow();
   });
+});
+
+
+test('탈퇴와 다른 사용자 ID로 재가입해도 체험분 사용량을 유지한다 (AC-F10-07)', async () => {
+  authAdmin.subject = 'same-provider-account';
+  expect((await register(USER_A)).status).toBe(200);
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: USER_A } });
+  await prisma.usageTrial.update({ where: { identityHash: user.identityHash! }, data: { chatCount: 7 } });
+  expect((await call('delete', '/v1/me', USER_A)).status).toBe(204);
+  expect((await prisma.usageTrial.findUniqueOrThrow({ where: { identityHash: user.identityHash! } })).accountDeletedAt).toBeInstanceOf(Date);
+  const response = await register(USER_B);
+  expect(response.status).toBe(200);
+  expect(response.body.usage.chat).toMatchObject({ pool: 'trial', used: 7 });
+  expect((await prisma.usageTrial.findUniqueOrThrow({ where: { identityHash: user.identityHash! } })).accountDeletedAt).toBeNull();
+});
+
+
+test('공급자 식별자를 조회하지 못하면 가입하지 않는다', async () => {
+  authAdmin.identityFailing = true;
+  expect((await register()).status).toBe(500);
+  expect(await prisma.user.count()).toBe(0);
+  expect(await prisma.usageTrial.count()).toBe(0);
 });

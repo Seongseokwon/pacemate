@@ -9,6 +9,7 @@ const envSchema = z.object({
   // 계정 삭제 때 인증 서비스의 사용자를 지우는 관리 키(T-106). 둘 중 하나라도 없으면 계정 삭제가 끝나지 않는다
   SUPABASE_URL: z.url().optional(),
   SUPABASE_SECRET_KEY: z.string().min(1).optional(),
+  IDENTITY_HASH_SECRET: z.string().min(32).optional(),
   // LLM 공급자(T-407, D-03). LLM_PROVIDER가 없으면 채팅이 AI_UNAVAILABLE로 답한다. 키는 비밀값이다
   LLM_PROVIDER: z.enum(['anthropic', 'openai']).optional(),
   LLM_MODEL: z.string().min(1).optional(),
