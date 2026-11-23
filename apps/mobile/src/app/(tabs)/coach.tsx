@@ -21,6 +21,7 @@ import { isRedirectError, redirectOnApiError } from '@/api/query-client';
 import { ChatCardView, type ProposalCardState } from '@/chat/chat-card';
 import { ChatBubble, ChatSystemMessage, DateDivider, TypingIndicator } from '@/chat/chat-messages';
 import { proposalFailureOf } from '@/chat/proposal-failure';
+import { chatUsageLabel, TRIAL_EXHAUSTED_MESSAGE, trialJustExhausted } from '@/usage/labels';
 import { Button, Chip, CoachAvatar, Field, formatShortDate, IconButton, localDateOf, Screen, Stack, Text, TextInput } from '@/ui';
 
 type CardAction = 'approve' | 'cancel' | 'alternative';
@@ -54,6 +55,8 @@ function CoachContent() {
   const [cardStates, setCardStates] = useState<Record<string, ProposalCardState & { action?: CardAction }>>({});
   const [localUsage, setUsage] = useState<Usage>();
   const usage = localUsage ?? me.data?.usage;
+  // 체험분을 다 쓴 응답의 ID. 대화 기록에 저장하지 않아 다시 열면 보이지 않는다(UI_UX §7.3)
+  const [trialNoticeAfter, setTrialNoticeAfter] = useState<string>();
   // 상태 갱신보다 먼저 막아야 연속으로 눌러도 요청이 한 번만 간다(AC-F05-04)
   const lock = useRef(false);
   const scroll = useRef<ScrollViewInstance>(null);
@@ -83,6 +86,7 @@ function CoachContent() {
       const reply = response;
       scrollToLatest.current = true;
       setMessages((previous) => [...(previous ?? messages).filter((m) => m.id !== reply.userMessage.id), reply.userMessage, ...reply.replies]);
+      if (trialJustExhausted(usage, reply.usage)) setTrialNoticeAfter(reply.replies.at(-1)?.id ?? reply.userMessage.id);
       setUsage(reply.usage);
       void refreshReplacedProposals(messages, reply.replies);
       setSessionId(undefined);
@@ -228,8 +232,8 @@ function CoachContent() {
       headerRight={
         <Stack direction="row" gap={2} align="center">
           <CoachAvatar coach={coach} size="header" />
-          {/* 체험분 표시("체험 대화 N회 남음")는 T-410의 usage.pool 뒤에, 누르면 구독 화면은 T-501 뒤에 붙인다 */}
-          {usage && <Chip label={`이번 달 ${usage.chat.used}/${usage.chat.limit}`} />}
+          {/* 누르면 구독 화면으로 가는 동작은 구독(T-501, 출시 2단계)과 함께 붙인다 */}
+          {usage && <Chip label={chatUsageLabel(usage.chat)} />}
         </Stack>
       }
       scroll={false}
@@ -314,6 +318,7 @@ function CoachContent() {
                     {card}
                   </ChatBubble>
                 )}
+                {message.id === trialNoticeAfter && <ChatSystemMessage>{TRIAL_EXHAUSTED_MESSAGE}</ChatSystemMessage>}
                 {message.role === 'user' && message.status === 'failed' && (
                   <Stack gap={2} align="flex-end">
                     <Text tone="error">보내지 못했어요</Text>

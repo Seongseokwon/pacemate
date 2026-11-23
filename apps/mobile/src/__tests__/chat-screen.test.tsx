@@ -36,6 +36,40 @@ test('홈에서 받은 문장을 입력하고 이용량과 빠른 질문을 표�
   expect(mockFetch.mock.calls.filter(([path, , options]) => path === '/v1/chat/messages' && options?.method === 'POST')).toHaveLength(0);
 });
 
+test('마지막 체험 대화를 쓰면 응답 아래에 한 줄 안내를 보여 주고 이용량 표시를 바꾼다 (F10-R07, AC-F10-08)', async () => {
+  const trial: Usage = { ...usage, chat: { used: 29, limit: 30, pool: 'trial' } };
+  const after: Usage = { ...usage, chat: { used: 0, limit: 5, pool: 'month' } };
+  mockFetch.mockImplementation(async (path, _schema, options) => {
+    if (options?.method === 'POST') return { userMessage, replies: [reply], usage: after };
+    if (path === '/v1/me') return { coach: 'oni', usage: trial };
+    if (path === '/v1/chat/messages') return { items: [], hasMore: false };
+    return { suggestions: [] };
+  });
+  await show();
+  expect(await screen.findByText('체험 대화 1회 남음')).toBeOnTheScreen();
+  expect(screen.queryByText(/체험 대화를 모두 썼어요/)).toBeNull();
+
+  await fireEvent.press(screen.getByRole('button', { name: '보내기' }));
+
+  expect(await screen.findByText('체험 대화를 모두 썼어요. 이제부터는 매달 5회를 쓸 수 있어요.')).toBeOnTheScreen();
+  expect(screen.getByText('이번 달 0/5')).toBeOnTheScreen();
+});
+
+test('체험분이 남아 있으면 안내를 띄우지 않는다', async () => {
+  const trial: Usage = { ...usage, chat: { used: 3, limit: 30, pool: 'trial' } };
+  mockFetch.mockImplementation(async (path, _schema, options) => {
+    if (options?.method === 'POST') return { userMessage, replies: [reply], usage: { ...trial, chat: { ...trial.chat, used: 4 } } };
+    if (path === '/v1/me') return { coach: 'oni', usage: trial };
+    if (path === '/v1/chat/messages') return { items: [], hasMore: false };
+    return { suggestions: [] };
+  });
+  await show();
+  await fireEvent.press(screen.getByRole('button', { name: '보내기' }));
+
+  expect(await screen.findByText('체험 대화 26회 남음')).toBeOnTheScreen();
+  expect(screen.queryByText(/체험 대화를 모두 썼어요/)).toBeNull();
+});
+
 test('빠른 질문을 전송하고 답과 이용량을 표시한다', async () => {
   const original = mockFetch.getMockImplementation()!;
   mockFetch.mockImplementation(async (path, schema, options) => options?.method === 'POST' ? { userMessage, replies: [reply], usage } : original(path, schema, options));
