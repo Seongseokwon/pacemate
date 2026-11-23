@@ -3,6 +3,9 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { APP_CONFIG, type AppConfig } from './config.js';
 import { configureApp } from './setup.js';
+import { initMonitoring } from './monitoring.js';
+
+initMonitoring(process.env.SENTRY_DSN);
 
 const app = await NestFactory.create(AppModule, {
   logger: new ConsoleLogger({ json: process.env.NODE_ENV === 'production' }),

@@ -1,5 +1,6 @@
 import { type ArgumentsHost, Catch, type ExceptionFilter, HttpException, Logger } from '@nestjs/common';
 import { type ApiError, ERROR_STATUS } from '@pacemate/shared';
+import { captureException } from '@sentry/node';
 import type { Response } from 'express';
 import { AppError } from './app-error.js';
 
@@ -11,6 +12,7 @@ export class ErrorFilter implements ExceptionFilter {
   catch(error: unknown, host: ArgumentsHost): void {
     const body = toApiError(error);
     if (body.code === 'INTERNAL_ERROR') {
+      captureException(error);
       this.logger.error(error instanceof Error ? (error.stack ?? error.message) : String(error));
     }
     host.switchToHttp().getResponse<Response>().status(ERROR_STATUS[body.code]).json(body);
