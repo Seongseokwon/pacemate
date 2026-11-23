@@ -11,6 +11,9 @@ export const chatUsageLabel = (c: Counter): string => (c.pool === 'trial' ? `체
 export const rescheduleUsageLabel = (c: Counter): string =>
   c.pool === 'trial' ? `체험 일정 변경 ${remaining(c)}회 남음` : `AI 일정 변경 ${c.used}/${c.limit}회 사용`;
 
+/** 마이페이지의 "AI 일정 변경" 줄 오른쪽 값. 제목이 따로 있어 종류를 빼고 쓴다 */
+export const rescheduleUsageValue = (c: Counter): string => (c.pool === 'trial' ? `체험 ${remaining(c)}회 남음` : `이번 달 ${c.used}/${c.limit}`);
+
 /** 마지막 체험 대화를 쓴 응답 아래의 한 줄 안내(UI_UX §7.3). 숫자는 한도 설정값에서 가져온다. */
 export const TRIAL_EXHAUSTED_MESSAGE = `체험 대화를 모두 썼어요. 이제부터는 매달 ${PLAN_LIMITS.free.chat}회를 쓸 수 있어요.`;
 

@@ -1,14 +1,18 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { deleteMe } from '@/api/me';
+import { deleteMe, getMe, ME_KEY } from '@/api/me';
 import { isRedirectError } from '@/api/query-client';
 import { signOut } from '@/auth/session';
 import { Banner, Button, Dialog, Screen, showToast, Stack, Text } from '@/ui';
 
-/** 계정 삭제(F01-R05, UI_UX §6.7). 지워지는 내용과 구독 해지 안내를 보여 준 뒤 한 번 더 확인한다. */
+/**
+ * 계정 삭제(F01-R05, UI_UX §6.7). 지워지는 내용과 구독 해지 안내를 보여 준 뒤 한 번 더 확인한다.
+ * 1단계 출시는 구독이 없어(DECISIONS 2026-11-22) 구독 기록이 있는 계정에만 해지 안내를 보여 준다.
+ */
 export default function DeleteAccount() {
   const [confirming, setConfirming] = useState(false);
+  const me = useQuery({ queryKey: ME_KEY, queryFn: getMe });
 
   const remove = useMutation({
     mutationFn: deleteMe,
@@ -30,7 +34,7 @@ export default function DeleteAccount() {
       <Stack>
         <Text>계정을 삭제하면 아래 내용이 모두 지워지고 되돌릴 수 없어요.</Text>
         <Text tone="secondary">{'· 러닝 프로필과 목표\n· 훈련 계획과 변경 내역\n· 운동 기록\n· AI 코치와 나눈 대화'}</Text>
-        <Banner status="warning">구독은 함께 해지되지 않아요. 구독 중이라면 스토어의 구독 관리에서 따로 해지해 주세요.</Banner>
+        {me.data?.subscription && <Banner status="warning">구독은 함께 해지되지 않아요. 구독 중이라면 스토어의 구독 관리에서 따로 해지해 주세요.</Banner>}
       </Stack>
       <Dialog
         visible={confirming}

@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import type { ReactElement } from 'react';
-import { createMe, deleteMe, ME_KEY } from '@/api/me';
+import { createMe, deleteMe, getMe, ME_KEY } from '@/api/me';
 import { signIn, signOut } from '@/auth/session';
 import Consent from '../app/(auth)/consent';
 import Login from '../app/(auth)/login';
@@ -11,7 +11,7 @@ import { testQueryClient } from '../test-fixtures';
 
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 jest.mock('expo-router', () => ({ router: { replace: jest.fn(), back: jest.fn(), canDismiss: jest.fn(() => false), dismissAll: jest.fn() } }));
-jest.mock('@/api/me', () => ({ ...jest.requireActual('@/api/me'), createMe: jest.fn(), deleteMe: jest.fn() }));
+jest.mock('@/api/me', () => ({ ...jest.requireActual('@/api/me'), createMe: jest.fn(), deleteMe: jest.fn(), getMe: jest.fn() }));
 jest.mock('@/auth/session', () => ({ signIn: jest.fn(), signOut: jest.fn(() => Promise.resolve()) }));
 
 const ME = { registered: true, onboardingCompleted: false };
@@ -97,10 +97,18 @@ describe('로그인 화면 (F01-R01)', () => {
 });
 
 describe('계정 삭제 화면 (F01-R05)', () => {
-  test('구독 해지 안내를 보여 주고, 한 번 더 확인한 뒤에만 삭제한다', async () => {
+  test('구독 기록이 있으면 해지 안내를 보여 준다', async () => {
+    jest.mocked(getMe).mockResolvedValue({ ...ME, subscription: { productId: 'pro_monthly', store: 'app_store', expiresAt: '2026-12-31T00:00:00Z', willRenew: true } } as never);
+    await show(<DeleteAccount />);
+    expect(await screen.findByText(/스토어의 구독 관리에서 따로 해지/)).toBeOnTheScreen();
+  });
+
+  test('구독이 없으면(1단계 출시) 해지 안내 없이, 한 번 더 확인한 뒤에만 삭제한다', async () => {
+    jest.mocked(getMe).mockResolvedValue({ ...ME, subscription: null } as never);
     jest.mocked(deleteMe).mockResolvedValue(undefined);
     await show(<DeleteAccount />);
-    expect(screen.getByText(/스토어의 구독 관리에서 따로 해지/)).toBeOnTheScreen();
+    await waitFor(() => expect(getMe).toHaveBeenCalled());
+    expect(screen.queryByText(/스토어의 구독 관리에서 따로 해지/)).toBeNull();
 
     await press('계정 삭제');
     expect(deleteMe).not.toHaveBeenCalled();
