@@ -17,7 +17,7 @@
 
 ## 현재 상태
 
-설계 문서와 기반 코드 위에 M1~M3 기능(온보딩, 계획 생성·유지 계획, 홈·캘린더, 운동 기록, 코치 고르기)과 M4의 서버 기반(Engine 변경기, 이용량, LLM 게이트웨이, 제안·승인 모듈), 채팅 서버(`T-405`, `T-406`)와 AI 코치 화면(`T-408`), Apple 건강 기록 가져오기와 기록·훈련 연결(`T-303`, `T-305`), 마이페이지의 목표·프로필 변경(`T-409`), 가입 체험분의 저장과 차감(`T-410` 앞부분)이 들어가 있다. Apple 로그인과 기기에서의 로그인 확인(`T-106`, `D-A1`. Google 로그인은 코드로 연결함), 실제 LLM 공급자(`T-407`, `D-A3`), 체험분의 로그인 계정 연결(`T-410` 나머지), 구독, 알림은 아직 없다. 그래서 채팅과 로그인 뒤 흐름은 테스트로만 검증했고 기기 확인은 남아 있다. 기능 작업은 두 도구가 나눠서 병행한다. 진행 상황은 `docs/DEVELOPMENT_PLAN.md`의 작업 표가 기준이다. 2027-01-01에 iOS만, 구독 없이 무료로 출시한다(`docs/DECISIONS.md` 2026-11-22). 남은 기간의 순서는 `docs/URGENT_PRE_MVP.md`의 "타임라인: 2027-01-01 출시"를 따른다.
+설계 문서와 기반 코드 위에 M1~M3 기능(온보딩, 계획 생성·유지 계획, 홈·캘린더, 운동 기록, 코치 고르기), M4(Engine 변경기, 이용량, LLM 게이트웨이, 제안·승인 모듈, 채팅 서버 `T-405`·`T-406`, AI 코치 화면 `T-408`과 체험분 표시), Apple 건강 기록 가져오기와 기록·훈련 연결(`T-303`, `T-305`), 마이페이지의 목표·프로필 변경(`T-409`)과 1단계 마이페이지(`T-503`), 주간 요약 수치(`T-602`), 가입 체험분의 저장과 차감(`T-410` 앞부분)이 들어가 있다. 로그인(`T-106`)은 Google·Apple 모두 코드로 연결했고 값은 `.env`에서 읽는다. LLM 공급자(`T-407`)는 Claude·GPT 구현과 비교 평가 명령까지 있고, 어느 공급자를 쓸지는 키(`D-A3`)를 받아 평가한 뒤 정한다. 아직 없는 것: 운영 배포(`T-108`), 체험분의 로그인 계정 연결(`T-410` 나머지), 알림(`T-601`), 분석·오류 모니터링(`T-502`, `T-505`, `T-604`), Apple 건강 권한 안내(`T-306`), 계정 삭제 때 Apple 토큰 폐기. 기기 확인은 개발자 작업(`D-A1` 등) 뒤에 한다. 기능 작업은 두 도구가 나눠서 병행한다. 진행 상황은 `docs/DEVELOPMENT_PLAN.md`의 작업 표가 기준이다. 2027-01-01에 iOS만, 구독 없이 무료로 출시한다(`docs/DECISIONS.md` 2026-11-22). 남은 기간의 순서는 `docs/URGENT_PRE_MVP.md`의 "타임라인: 2027-01-01 출시"를 따른다.
 
 ## 문서
 
@@ -99,6 +99,7 @@ UI를 확인하거나 구현할 때는 [`docs/design/README.md`](docs/design/REA
 - 작업별 담당은 `docs/DEVELOPMENT_PLAN.md` §5에 있다. 자기 담당이 아닌 작업은 시작하지 않는다. 담당을 바꾸려면 개발자에게 제안한다.
 - **앱 빌드는 개발자가 하고, 기기 확인은 개발자가 요청할 때 도구가 Maestro로 한다.** 도구는 개발 빌드(`ios`, `android`), 시뮬레이터·에뮬레이터 실행, EAS 빌드를 돌리지 않는다. `pnpm check`는 도구가 돌린다. 기기에서 봐야 하는 것은 `docs/DEVELOPMENT_PLAN.md` §7에 준비·순서·기대 결과를 적고, 확인을 기다리지 않고 "검토"로 넘긴다. 확인 요청을 적을 때 `apps/mobile/maestro/`에 그 흐름을 더한다.
   - 개발자가 빌드한 앱을 시뮬레이터에 띄우고 확인을 요청하면, 도구는 `apps/mobile/maestro/README.md`대로 흐름을 돌리고 스크린샷을 기대 결과와 비교해 §7의 결과 칸을 채운다. 눈으로 본 것과 흐름이 통과한 것을 구분해 적고, 못 본 부분은 "일부 확인"으로 남긴다.
+  - 흐름 목록과 앞선 조건은 `apps/mobile/maestro/README.md`에 있다. 사람이 조건을 준비해야 하는 흐름은 `tags: manual`로 전체 실행에서 빠져 있다.
   - 앱 데이터를 지우는 흐름(`clearState`)은 기기에 저장된 온보딩 답변과 번들러 연결을 지운다. 돌리기 전에 개발자에게 알린다.
 
 ## 명령어
@@ -137,12 +138,13 @@ UI를 확인하거나 구현할 때는 [`docs/design/README.md`](docs/design/REA
   - `ios/`와 `android/` 폴더는 빌드 때 생성되며 커밋하지 않는다. 네이티브 설정은 `app.json`과 설정 플러그인으로 한다.
   - API는 `src/api/client.ts`의 `apiFetch`로만 호출한다. 응답은 `packages/shared`의 스키마로 검증된다.
   - 앱을 열 때 갈 화면은 `src/app/index.tsx`가 `GET /v1/me`로 정한다. 로그인 세션은 `src/auth/session.ts`만 다룬다. 인증 SDK(`@supabase/auth-js`)와 Google 로그인이 여기에 붙어 있고, 설정 값은 `apps/mobile/.env`에서 읽는다(`.env.example` 참고).
+  - 테스트에는 네이티브 모듈이 없다. Google 로그인 모듈은 `jest.setup.ts`가 대신한다. 다른 네이티브 모듈을 쓰는 파일을 화면이 불러오면 그 테스트에서 `jest.mock`으로 대신한다.
   - 온보딩 답변은 `src/onboarding/draft.ts`가 기기의 보안 저장소에 둔다. 서버에는 온보딩을 마칠 때 한 번 보낸다.
   - `401`, `426`, `CONSENT_REQUIRED` 오류는 `src/api/query-client.ts`가 로그인·업데이트·동의 화면으로 보낸다. 화면마다 따로 처리하지 않는다.
   - 내부 테스트와 스토어 빌드는 EAS로 만든다(`eas.json`). 계정과 서명 설정은 `T-504`에서 한다.
 - 엔드포인트의 요청·응답 스키마는 `packages/shared/src/api.ts`에 있다. 엔드포인트와 화면은 이 스키마를 쓰고, 형식을 바꿀 때는 `docs/API_SPEC.md`를 먼저 고친다.
 - API에서 "오늘" 날짜는 `services/api/src/common/today.ts`의 `today()`로만 구한다.
-- LLM은 `services/api/src/chat/llm/llm-gateway.ts`의 `LlmGateway`로만 호출한다. 호출 기록은 게이트웨이가 남긴다. 테스트에서는 `FakeLlmProvider`에 응답 대본을 준다. `chat` 모듈만 쓰는 (초기값) 수치는 `services/api/src/chat/chat.config.ts`에 둔다.
+- LLM은 `services/api/src/chat/llm/llm-gateway.ts`의 `LlmGateway`로만 호출한다. 호출 기록은 게이트웨이가 남긴다. 테스트에서는 `FakeLlmProvider`에 응답 대본을 준다. 실제 공급자는 `services/api/.env`의 `LLM_PROVIDER`, `LLM_MODEL`, 키로 고른다(`chat/llm/create-llm-provider.ts`). 공급자 비교는 `EVAL_MODELS=... pnpm --filter @pacemate/api eval`로 하고, 비용이 드므로 개발자에게 확인한 뒤 돌린다. `chat` 모듈만 쓰는 (초기값) 수치는 `services/api/src/chat/chat.config.ts`에 둔다.
 - 필수 동의를 마치지 않은 계정의 요청은 `ConsentGuard`가 `CONSENT_REQUIRED`로 거절한다. 동의 전에도 호출할 수 있어야 하는 경로(`/v1/me`)에만 `@AllowUnregistered()`를 붙인다(`services/api/src/auth/consent.guard.ts`).
 - 계획 생성(`generate`)과 수준 분류(`classifyLevel`)의 수치는 `packages/training-engine/src/safety-config.ts`의 `PLAN`에, 검증기의 수치는 같은 파일의 `SAFETY`에 있다. 생성기는 검증기를 통과한 계획만 돌려주지만, 저장하기 전에 API가 `validate`를 다시 부른다(`TE-S12`). 경고 코드와 문구는 `packages/shared`의 `planWarningSchema`, `PLAN_WARNING_LABELS`에 있다.
 - 계획 API는 `services/api/src/plan`에 있다. Training Engine의 `generate`, `validate`는 `TRAINING_ENGINE`으로 주입받는다(`plan/training-engine.ts`). 훈련 상태(예정·완료·미완료·생략)는 저장하지 않고 `plan/session.mapper.ts`의 `statusOf`로 판정한다.

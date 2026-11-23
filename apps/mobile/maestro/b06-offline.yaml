@@ -1,0 +1,14 @@
+# B-06: API에 닿지 못할 때의 안내와 다시 시도. **API를 끈 채로 시작한다.** 사람이 API를 켜고 [다시 시도]를 누른다
+# 다른 흐름을 막으므로 전체 실행에서 빼고(tags: manual) 이 파일만 따로 돌린다
+appId: com.pacemate.app
+tags:
+  - manual
+---
+- stopApp
+- launchApp: { clearState: false }
+- extendedWaitUntil: { visible: "인터넷 연결을 확인하고 다시 시도해 주세요.", timeout: 30000 }
+- assertVisible: "다시 시도"
+- takeScreenshot: b06-offline
+# 여기서 개발자가 API를 켜고 [다시 시도]를 누른다(최대 90초)
+- extendedWaitUntil: { visible: "Apple로 계속하기|Google 계정으로 계속하기", timeout: 90000 }
+- takeScreenshot: b06-recovered

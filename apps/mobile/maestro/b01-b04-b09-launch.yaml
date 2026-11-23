@@ -1,0 +1,9 @@
+# B-01, B-04, B-09: 설치된 개발 빌드를 다시 켜면 잠깐 로딩 뒤 로그인 화면이 뜬다(T-106부터는 탭 화면 대신 로그인 화면). 로그인하지 않은 상태에서 실행한다
+appId: com.pacemate.app
+---
+- stopApp
+- launchApp: { clearState: false }
+- extendedWaitUntil: { visible: "Apple로 계속하기", timeout: 30000 }
+- assertVisible: "Google 계정으로 계속하기"
+- assertVisible: "대화로 훈련 계획을 관리하는 러닝 매니저"
+- takeScreenshot: b04-login

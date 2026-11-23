@@ -1,0 +1,11 @@
+# B-15: 비주얼 스타일 C2(T-112). 남색 바탕, 흰 상태 표시줄 글자, 주황 주 버튼, 테두리 없는 패널을 스크린샷으로 본다
+# 시작할 때 흰 화면이 번쩍이는지는 Maestro로 볼 수 없어 개발자가 눈으로 본다
+appId: com.pacemate.app
+---
+- stopApp
+- launchApp: { clearState: false }
+- extendedWaitUntil: { visible: "Apple로 계속하기|홈", timeout: 30000 }
+- takeScreenshot: b15-launch
+- openLink: pacemate://ui-gallery
+- extendedWaitUntil: { visible: "컴포넌트 예시", timeout: 15000 }
+- takeScreenshot: b15-gallery

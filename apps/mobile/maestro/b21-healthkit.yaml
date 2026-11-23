@@ -1,0 +1,19 @@
+# B-21: Apple 건강 기록 가져오기(T-303). **실제 iPhone**에서만 된다(시뮬레이터에는 건강 기록이 없다). 로그인한 계정과 API가 필요하다
+# 건강 앱 권한 창은 사람이 허용한다. 전체 실행에서 빼고(tags: manual) 이 파일만 따로 돌린다
+appId: com.pacemate.app
+tags:
+  - manual
+---
+- openLink: pacemate://records
+- extendedWaitUntil: { visible: "건강 앱에서 가져오기", timeout: 15000 }
+- tapOn: "건강 앱에서 가져오기"
+# 처음이면 건강 앱 권한 창이 뜬다. 개발자가 읽기 권한을 허용한다(최대 90초)
+- extendedWaitUntil: { visible: ".*개를 가져왔어요.*|건강 앱에서 러닝 기록을 찾지 못했어요.*", timeout: 90000 }
+- takeScreenshot: b21-first-import
+# 다시 가져오면 같은 기록이 두 번 저장되지 않는다(가져온 개수가 0이고 건너뛴 개수로 나온다)
+- tapOn: "건강 앱에서 가져오기"
+- extendedWaitUntil: { visible: ".*개를 가져왔어요.*|건강 앱에서 러닝 기록을 찾지 못했어요.*", timeout: 60000 }
+- takeScreenshot: b21-second-import
+- tapOn: ".*Apple 건강.*"
+- extendedWaitUntil: { visible: "Apple 건강에서 가져옴", timeout: 5000 }
+- takeScreenshot: b21-detail

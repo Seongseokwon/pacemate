@@ -1,0 +1,41 @@
+# B-14: 기록 입력·저장·중복 확인·상세·삭제(T-302). 로그인한 계정과 API로 실행한다. 저장 결과는 S02c, 11c, 11d 시안과 비교한다
+appId: com.pacemate.app
+---
+- openLink: pacemate://records
+- extendedWaitUntil: { visible: "기록 추가", timeout: 15000 }
+- takeScreenshot: b14-list
+- tapOn: "기록 추가"
+- extendedWaitUntil: { visible: "운동 기록", timeout: 5000 }
+# shortcut: 숫자 입력칸은 제목 아래 요소로 누른다, 입력칸을 이름으로 찾을 수 있으면 글자로 바꾼다
+- tapOn: { below: "거리 \\(km\\)" }
+- inputText: "5"
+- tapOn: { below: "^분$" }
+- inputText: "30"
+- hideKeyboard
+- takeScreenshot: b14-input
+- tapOn: "저장"
+- extendedWaitUntil: { visible: "기록을 저장했어요", timeout: 15000 }
+- takeScreenshot: b14-saved
+- tapOn: "확인"
+# 같은 날 같은 기록을 한 번 더 넣으면 중복 확인이 뜬다
+- tapOn: "기록 추가"
+- extendedWaitUntil: { visible: "운동 기록", timeout: 5000 }
+- tapOn: { below: "거리 \\(km\\)" }
+- inputText: "5"
+- tapOn: { below: "^분$" }
+- inputText: "30"
+- hideKeyboard
+- tapOn: "저장"
+- extendedWaitUntil: { visible: "같은 기록이 있어요", timeout: 15000 }
+- takeScreenshot: b14-duplicate
+- tapOn: "취소"
+- tapOn: "뒤로"
+# 상세에서 삭제하면 목록과 연결된 훈련의 완료 표시가 사라진다
+- tapOn: "5km · .*"
+- extendedWaitUntil: { visible: "수정하기", timeout: 5000 }
+- takeScreenshot: b14-detail
+- tapOn: "삭제하기"
+- assertVisible: "기록을 삭제할까요?"
+- tapOn: "삭제"
+- waitForAnimationToEnd
+- takeScreenshot: b14-deleted
