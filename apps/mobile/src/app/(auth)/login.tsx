@@ -5,15 +5,15 @@ import { useState } from 'react';
 import { signIn } from '@/auth/session';
 import { Button, Heading, Screen, showToast, Stack, Text } from '@/ui';
 
-/** 로그인(PRD §5.2, UI_UX §6.1). 각 플랫폼의 로그인 버튼 모양은 인증 SDK를 붙일 때(D-A1) 맞춘다. */
+/** 로그인(PRD §5.2, UI_UX §6.1). Apple 로그인은 Apple 개발자 계정 등록 뒤에 연결한다(`T-106`). */
 export default function Login() {
   const [pending, setPending] = useState<AuthProvider | null>(null);
 
   const start = async (provider: AuthProvider) => {
     setPending(provider);
     try {
-      await signIn(provider);
-      router.replace('/');
+      // 로그인 창을 닫았으면 안내 없이 로그인 화면에 남는다
+      if (await signIn(provider)) router.replace('/');
     } catch {
       showToast('로그인하지 못했어요. 잠시 후 다시 시도해 주세요.');
     } finally {

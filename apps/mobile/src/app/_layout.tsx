@@ -2,6 +2,8 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { queryClient } from '@/api/query-client';
+// 첫 화면이 내 상태를 묻기 전에 액세스 토큰을 주는 함수를 등록한다
+import '@/auth/session';
 import { Toast, useTheme } from '@/ui';
 
 export default function RootLayout() {

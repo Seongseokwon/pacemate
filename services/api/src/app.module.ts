@@ -5,7 +5,7 @@ import { RATE_LIMIT_PER_MINUTE } from '@pacemate/shared';
 import { classifyLevel, ENGINE_VERSION, generate, reschedule, validate } from '@pacemate/training-engine';
 import { createRemoteJWKSet } from 'jose';
 import { AccountService } from './auth/account.service.js';
-import { AUTH_ADMIN, UnconfiguredAuthAdmin } from './auth/auth-admin.js';
+import { AUTH_ADMIN, createAuthAdmin } from './auth/auth-admin.js';
 import { AuthGuard } from './auth/auth.guard.js';
 import { ConsentGuard } from './auth/consent.guard.js';
 import { CoachController } from './auth/coach.controller.js';
@@ -64,8 +64,7 @@ import { WorkoutService } from './workout/workout.service.js';
     { provide: LLM_PROVIDER, useClass: UnconfiguredLlmProvider },
     ChatService,
     { provide: TRAINING_ENGINE, useValue: { generate, validate, reschedule, version: ENGINE_VERSION } satisfies TrainingEngine },
-    // 인증 서비스의 관리 키가 생기면(D-A1) 실제 구현으로 바꾼다
-    { provide: AUTH_ADMIN, useClass: UnconfiguredAuthAdmin },
+    { provide: AUTH_ADMIN, useFactory: createAuthAdmin, inject: [APP_CONFIG] },
     { provide: APP_FILTER, useClass: ErrorFilter },
     // 순서가 곧 실행 순서다: 앱 버전 → 인증 → 요청 제한(사용자 ID로 센다) → 필수 동의
     { provide: APP_GUARD, useClass: AppVersionGuard },
